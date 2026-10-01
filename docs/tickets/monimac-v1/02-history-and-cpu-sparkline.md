@@ -4,10 +4,12 @@
 
 **Blocked by:** 01 — CPU % in the menu bar
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The CPU menu bar item can show Value, Graph (last 60 s), or Both
-- [ ] History survives an app relaunch
-- [ ] Range queries for 1m/5m/1H/24H and 12H/24H/7D/30D return avg, peak, and peak time, verified with scripted snapshot sequences
-- [ ] Older data is downsampled into coarser tiers, and data older than the retention period (default 30 days) is pruned
-- [ ] Recording history at a 2 s refresh keeps MoniMac under about 1% average CPU with the popover closed
+**Note:** the spec's "top contributor at the peak" needs per-app series, which arrive with per-process sampling in ticket 03. It is built when a ticket first shows it: ticket 06 (GPU peak with app) or ticket 10 (temperature peak with cause).
+
+- [x] The CPU menu bar item can show Value, Graph (last 60 s), or Both
+- [x] History survives an app relaunch
+- [x] Range queries for 1m/5m/1H/24H and 12H/24H/7D/30D return avg, peak, and peak time, verified with scripted snapshot sequences
+- [x] Older data is downsampled into coarser tiers, and data older than the retention period (default 30 days) is pruned
+- [x] Recording history at a 2 s refresh keeps MoniMac under about 1% average CPU with the popover closed

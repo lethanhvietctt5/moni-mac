@@ -28,6 +28,7 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
   - `MoniMacCore` is pure: Snapshot, the SystemSampler seam, math, formatting, and feature state (`Monitor`).
   - `MoniMacSystem` holds the real sampler and is the **only** target allowed to read OS state.
   - `MoniMacSystemTests` are smoke tests that run against the real Mac.
+- **History:** `MetricsHistory` is SQLite (system `SQLite3`) at `~/Library/Application Support/MoniMac/History.sqlite`. Tests use `.inMemory`. Preferences are UserDefaults (`io.github.lethanhvietctt5.MoniMac`), so `defaults write` can switch settings while developing.
 - `App/`: thin AppKit shell (status items now, the popover and window later) that renders `Monitor`'s feature state. `project.yml` builds it.
 - **Signing:** `Config/Signing.xcconfig` defaults to ad-hoc. For a stable identity, so that granted permissions survive rebuilds, run `scripts/create-signing-cert.sh` once and set `CODE_SIGN_IDENTITY` in the gitignored `Config/Local.xcconfig`.
 

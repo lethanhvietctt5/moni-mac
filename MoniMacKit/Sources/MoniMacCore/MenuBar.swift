@@ -6,17 +6,24 @@ public enum Metric: String, CaseIterable, Sendable {
 /// What one menu bar item displays.
 public struct MenuBarItem: Equatable, Sendable {
     public var metric: Metric
+    public var style: MenuBarStyle
+    /// The current value, e.g. `32%`, or a placeholder when unavailable.
     public var text: String
+    /// Sparkline bars (0...1, oldest first, nil = no data), always `Sparkline.barCount` long.
+    /// Empty for the `.value` style.
+    public var bars: [Double?]
 
-    public init(metric: Metric, text: String) {
+    public init(metric: Metric, style: MenuBarStyle, text: String, bars: [Double?]) {
         self.metric = metric
+        self.style = style
         self.text = text
+        self.bars = bars
     }
-}
 
-extension MenuBarItem {
-    static func cpu(_ snapshot: Snapshot?) -> MenuBarItem {
-        let text = snapshot?.cpu.value.map { Format.percent($0.total) } ?? Format.placeholder
-        return MenuBarItem(metric: .cpu, text: text)
+    /// The widest text this metric can show. Surfaces size the item for it so it never changes width.
+    public var widestText: String {
+        switch metric {
+        case .cpu: "100%"
+        }
     }
 }
