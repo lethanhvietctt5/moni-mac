@@ -4,9 +4,18 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through (range switching and tooltips need clicks). Unchecked boxes are built and covered by tests but not observed live.
 
-- [ ] The popover and window Disk tabs show live values
-- [ ] The storage breakdown appears after a background scan and doesn't slow the refresh loop
-- [ ] Written Today and the per-app writes reset at local midnight
-- [ ] SSD health shows "unavailable" with a reason when it can't be read
+**Notes:**
+- Each tick costs a `statfs` and one IOKit read of the startup drive's `IOBlockStorageDriver` "Statistics". The drive is found by walking up from the root volume's media, so disk images and other drives aren't counted.
+- SSD health and lifetime writes come from the NVMeSMARTLib plug-in. It works unprivileged on Apple silicon (98% / 54 TB on the dev Mac). Drives without it show "SSD health unavailable" and the reason.
+- Purgeable space (`volumeAvailableCapacityForImportantUsage`, ~15 ms per read) and the macOS volumes' size (`ATTR_VOL_SPACEUSED` on the Data volume) are read in the background every 5 minutes.
+- The storage scan runs at utility QoS 10 s after launch, then every 6 hours. It walks about 1.15M entries in ~23 s wall and ~10 s CPU on the dev Mac, and is capped at 5M entries. It reads only folders that never prompt for privacy. **Documents is the remainder** of the Data volume after the other categories, labelled "Files, app data & other". `StorageBreakdown` documents each category.
+- Per-app writes are sparse `disk.written.app:<app id>` amounts, each a rate × the time since the previous sample, so the 4 s process rates reused on 2 s ticks aren't double counted. Apps that wrote and then quit stay ranked for the rest of the day. These are each process's logical writes to any volume, so they needn't add up to the drive's Written Today.
+- Peaks are today's (from local midnight) and keep the busiest app as contributor, which the tooltip shows.
+- Shared edits: `MetricsHistory.sums(prefix:from:to:)` and `peak(_:from:to:)`, and `CPUDetail.xAxis` made internal so Disk reuses it.
+
+- [x] The popover and window Disk tabs show live values (screenshots of both, Release and Debug builds)
+- [x] The storage breakdown appears after a background scan and doesn't slow the refresh loop ("Scanning storage…" then the bar; steady self-cost 0.43% vs 0.48% on main, popover closed)
+- [ ] Written Today and the per-app writes reset at local midnight (feature-state tests with a controlled clock, for both raw and bucketed history; not observed across a real midnight)
+- [ ] SSD health shows "unavailable" with a reason when it can't be read (feature-state tests for each reason; this Mac's SSD reports health, so not seen live)
