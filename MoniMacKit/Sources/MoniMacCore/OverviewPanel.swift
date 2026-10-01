@@ -24,9 +24,8 @@ extension OverviewPanel {
     static func make(
         snapshot: Snapshot?, apps: [AppUsage], history: MetricsHistory, hasBattery: Bool, preferences: Preferences
     ) -> OverviewPanel {
-        let metrics = OverviewMetric.allCases.filter { $0 != .battery || hasBattery }
-        return OverviewPanel(
-            rows: metrics.map { metric in
+        OverviewPanel(
+            rows: OverviewMetric.shown(hasBattery: hasBattery).map { metric in
                 guard let snapshot, let (value, share) = figures(metric, snapshot: snapshot, history: history,
                                                                  preferences: preferences)
                 else { return Row(metric: metric, value: Format.placeholder, share: nil) }
@@ -104,11 +103,7 @@ extension OverviewPanel {
     /// The highest combined throughput over the sparkline window, bytes per second.
     @MainActor
     private static func recentNetworkPeak(_ history: MetricsHistory, endingAt now: Date) -> Double {
-        let range = OverviewTiles.sparklineRange
-        func bars(_ series: SeriesKey) -> [Double?] {
-            let points = (try? history.summary(series, over: range, endingAt: now).points) ?? []
-            return Resample.bars(points, endingAt: now, window: range.duration, count: OverviewTiles.sparklineBarCount)
-        }
+        func bars(_ series: SeriesKey) -> [Double?] { OverviewTiles.sparklineBars(series, history: history, endingAt: now) }
         return zip(bars(.networkDown), bars(.networkUp)).compactMap { down, up in
             down.map { $0 + (up ?? 0) }
         }.max() ?? 0

@@ -73,18 +73,6 @@ extension OverviewMetric {
     }
 }
 
-extension OverviewResource {
-    var color: Color {
-        switch self {
-        case .cpu: Palette.cpu
-        case .memory: Palette.memory
-        case .gpu: Palette.gpu
-        case .network: Palette.network
-        case .disk: Palette.disk
-        }
-    }
-}
-
 extension AppKind {
     /// The Processes tile's stacked bar.
     var color: Color {
@@ -105,7 +93,7 @@ private struct OverviewWindowContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(tiles.tiles) { MetricTile(tile: $0) }
+                ForEach(tiles.metricTiles) { MetricTile(tile: $0) }
                 ProcessesTile(processes: tiles.processes)
             }
             busiest
@@ -122,14 +110,12 @@ private struct OverviewWindowContent: View {
                     .help("Coming soon")
             }
             HStack(alignment: .top, spacing: 24) {
-                let half = (tiles.busiest.count + 1) / 2
-                column(tiles.busiest.prefix(half))
-                column(tiles.busiest.dropFirst(half))
+                ForEach(Array(tiles.busiestColumns.enumerated()), id: \.offset) { _, apps in column(apps) }
             }
         }
     }
 
-    private func column(_ apps: ArraySlice<OverviewBusyApp>) -> some View {
+    private func column(_ apps: [OverviewBusyApp]) -> some View {
         VStack(spacing: 0) {
             ForEach(apps) { app in
                 BusyAppRow(app: app, iconSize: 28, showsProcesses: false)
@@ -264,7 +250,7 @@ private struct BusyAppRow: View {
                     }
                 }
                 .lineLimit(1)
-                UsageBar(share: app.share, color: app.resource.color)
+                UsageBar(share: app.share, color: app.resource.metric.color)
             }
             Text(app.value)
                 .font(.system(size: 13, weight: .semibold).monospacedDigit())
@@ -273,7 +259,7 @@ private struct BusyAppRow: View {
                 .fixedSize()
                 .frame(minWidth: 56, alignment: .trailing)
         }
-        .help("\(app.name): busiest at \(app.resource.title)")
+        .help(app.help)
     }
 }
 

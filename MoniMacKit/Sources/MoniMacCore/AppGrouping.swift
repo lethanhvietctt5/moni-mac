@@ -18,7 +18,8 @@ public struct AppUsage: Equatable, Sendable, Identifiable {
     public var canQuit: Bool { quitPID != nil }
 }
 
-/// What sort of software an app group is, for the Processes tile's apps / agents / system split.
+/// What sort of software an app group is. Every group has a kind; the Overview Processes tile
+/// counts only groups with an `.app` bundle, leaving bare daemons to its process count.
 public enum AppKind: CaseIterable, Sendable {
     /// A regular app: at least one of its processes has a Dock presence (Safari, Xcode, Finder).
     case app

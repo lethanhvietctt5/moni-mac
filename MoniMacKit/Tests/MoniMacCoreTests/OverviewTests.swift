@@ -84,7 +84,7 @@ struct OverviewTests {
     }
 
     private func tile(_ metric: OverviewMetric, in tiles: OverviewTiles) -> OverviewTiles.Tile? {
-        tiles.tiles.first { $0.metric == metric }
+        tiles.metricTiles.first { $0.metric == metric }
     }
 
     // MARK: Tiles
@@ -95,8 +95,8 @@ struct OverviewTests {
 
         let tiles = monitor.overviewTiles()
 
-        #expect(tiles.tiles.map(\.metric) == OverviewMetric.allCases)
-        let figures = tiles.tiles.map { [$0.value, $0.caption] }
+        #expect(tiles.metricTiles.map(\.metric) == OverviewMetric.allCases)
+        let figures = tiles.metricTiles.map { [$0.value, $0.caption] }
         #expect(figures == [
             ["32%", "User 21% · System 11%"],
             ["11.2 GB", "of 18 GB · Pressure normal"],
@@ -125,7 +125,7 @@ struct OverviewTests {
         let monitor = try monitor([snapshot(battery: .unavailable(.unsupported))])
         monitor.tick()
 
-        #expect(!monitor.overviewTiles().tiles.map(\.metric).contains(.battery))
+        #expect(!monitor.overviewTiles().metricTiles.map(\.metric).contains(.battery))
         #expect(!monitor.overviewPanel().rows.map(\.metric).contains(.battery))
     }
 
@@ -195,7 +195,7 @@ struct OverviewTests {
 
         let tiles = monitor.overviewTiles()
 
-        for tile in tiles.tiles {
+        for tile in tiles.metricTiles {
             #expect(tile.bars.count == OverviewTiles.sparklineBarCount)
             #expect(tile.bars.last! != nil, "\(tile.metric) has no recent bar")
         }
@@ -230,7 +230,7 @@ struct OverviewTests {
         monitor.tick()
 
         let busiest = monitor.overviewTiles().busiest
-        let labels = Dictionary(uniqueKeysWithValues: busiest.map { ($0.name, [$0.resource.title, $0.value]) })
+        let labels = Dictionary(uniqueKeysWithValues: busiest.map { ($0.name, [$0.resource.metric.title, $0.value]) })
 
         #expect(labels["Xcode"] == ["CPU", "12% CPU"])
         #expect(labels["Google Chrome"] == ["Memory", "1.9 GB"])
@@ -247,11 +247,35 @@ struct OverviewTests {
         let busiest = monitor.overviewTiles().busiest
 
         // Scores: Safari 3.2 of 12.5 MB/s = 0.256; Xcode 12% CPU and Final Cut 12% GPU tie at 0.12, and ties keep
-        // the CPU order; Chrome 1.9 of 18 GB = 0.106.
-        #expect(busiest.prefix(4).map(\.name) == ["Safari", "Xcode", "Final Cut Pro", "Google Chrome"])
+        // the CPU order; backupd 9.4 of 100 MB/s = 0.094; WindowServer 3% CPU; Chrome holds 1.9 of 18 GB = 0.026.
+        #expect(busiest.prefix(6).map(\.name) == ["Safari", "Xcode", "Final Cut Pro", "backupd", "WindowServer", "Google Chrome"])
         #expect(busiest.first?.share == 1)
         #expect(abs(busiest[1].share - 0.12 / 0.256) < 1e-9)
         #expect(busiest.allSatisfy { $0.share > 0 && $0.share <= 1 })
+        #expect(busiest.first?.help == "Safari: busiest at Network")
+        let columns = monitor.overviewTiles().busiestColumns
+        #expect(columns.map(\.count) == [5, 4])
+        #expect(columns[1].first?.name == busiest[5].name)
+    }
+
+    @Test func anAppDoingWorkOutranksOneOnlyHoldingMemory() throws {
+        // On 12 cores and 18 GB: half a core (4.2%) beats an idle app holding 1.9 GB (10.6%, counted at a quarter).
+        let monitor = try monitor([snapshot(processes: [
+            process(1, chrome, regular: true, ResourceUse(memory: UInt64(1.9 * Double(Self.gib)))),
+            process(2, xcode, cpu: 0.5, regular: true, ResourceUse(memory: 100 << 20)),
+        ])])
+        monitor.tick()
+
+        #expect(monitor.overviewTiles().busiest.map(\.name) == ["Xcode", "Google Chrome"])
+    }
+
+    @Test func groupsWithoutBundlesCountAsZeroAppsNotWarmingUp() {
+        let daemon = AppUsage(id: "/usr/libexec/trustd", name: "trustd", processCount: 1, cpu: 0, kind: .system)
+
+        let processes = OverviewTiles.processes(groups: [daemon], counts: nil)
+
+        #expect(processes.value == "0 apps")
+        #expect(processes.groups.map(\.label) == ["0 apps", "0 agents", "0 system"])
     }
 
     @Test func busiestListsAreCappedAndShowProcessCounts() throws {

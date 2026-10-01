@@ -4,13 +4,14 @@ import Foundation
 public enum OverviewResource: CaseIterable, Sendable {
     case cpu, memory, gpu, network, disk
 
-    public var title: String {
+    /// The Overview metric this resource is part of, which gives it its title and color.
+    public var metric: OverviewMetric {
         switch self {
-        case .cpu: "CPU"
-        case .memory: "Memory"
-        case .gpu: "GPU"
-        case .network: "Network"
-        case .disk: "Disk"
+        case .cpu: .cpu
+        case .memory: .memory
+        case .gpu: .gpu
+        case .network: .network
+        case .disk: .disk
         }
     }
 }
@@ -27,6 +28,8 @@ public struct OverviewBusyApp: Equatable, Sendable, Identifiable {
     public var value: String
     /// Bar length relative to the busiest app in the list, 0...1.
     public var share: Double
+    /// Tooltip, e.g. "Xcode: busiest at CPU".
+    public var help: String
 }
 
 /// Picks each app's dominant resource and ranks apps by it.
@@ -35,7 +38,11 @@ public struct OverviewBusyApp: Equatable, Sendable, Identifiable {
 /// Mac has: CPU of all cores, memory of installed memory, GPU of its time. Network and disk have no
 /// fixed capacity, so their rates are scored against reference rates instead. Scoring against the
 /// Mac's current total would make a trickle look busy on an idle Mac.
+///
+/// Memory is held rather than used: an idle browser keeps gigabytes. It counts at `memoryWeight`,
+/// so an app doing work outranks one that only holds memory, and memory leads when nothing is busy.
 public enum OverviewBusiest {
+    static let memoryWeight = 0.25
     /// Network traffic that scores as fully busy: 100 Mbps, a typical home connection.
     static let networkReference = 12_500_000.0
     /// Disk traffic that scores as fully busy: a heavy, sustained copy for an internal SSD.
@@ -63,7 +70,8 @@ public enum OverviewBusiest {
                 processes: app.processCount == 1 ? "1 process" : "\(app.processCount) processes",
                 resource: entry.resource,
                 value: value(of: entry.resource, for: app, logicalCores: cores, mode: mode, units: units),
-                share: top > 0 ? min(entry.score / top, 1) : 0
+                share: top > 0 ? min(entry.score / top, 1) : 0,
+                help: "\(app.name): busiest at \(entry.resource.metric.title)"
             )
         }
     }
@@ -76,7 +84,7 @@ public enum OverviewBusiest {
         let scores: [(OverviewResource, Double?)] = [
             (.cpu, app.cpu / Double(max(logicalCores, 1))),
             (.memory, memoryTotal.flatMap { total in
-                resources.memory.map { total > 0 ? Double($0) / Double(total) : 0 }
+                resources.memory.map { total > 0 ? memoryWeight * Double($0) / Double(total) : 0 }
             }),
             (.gpu, resources.gpu),
             (.network, resources.network.map { $0 / networkReference }),

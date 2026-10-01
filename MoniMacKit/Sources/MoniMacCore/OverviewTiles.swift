@@ -15,6 +15,11 @@ public enum OverviewMetric: CaseIterable, Sendable {
         case .temperature: "Temperature"
         }
     }
+
+    /// Every metric, without Battery on Macs that don't have one.
+    static func shown(hasBattery: Bool) -> [OverviewMetric] {
+        allCases.filter { $0 != .battery || hasBattery }
+    }
 }
 
 /// Everything the main window's Overview tab shows in the Tiles view.
@@ -62,10 +67,15 @@ public struct OverviewTiles: Equatable, Sendable {
     }
 
     /// CPU through Temperature; Battery is left out on Macs without one.
-    public var tiles: [Tile]
+    public var metricTiles: [Tile]
     public var processes: Processes
-    /// Two columns of five, busiest first, filling the left column first.
+    /// Busiest first.
     public var busiest: [OverviewBusyApp]
+    /// `busiest` laid out in two columns, filling the left column first.
+    public var busiestColumns: [[OverviewBusyApp]] {
+        let half = (busiest.count + 1) / 2
+        return [Array(busiest.prefix(half)), Array(busiest.dropFirst(half))]
+    }
     /// e.g. "Show All 61 Apps", counted like the Processes tile.
     public var showAll: String
 }
@@ -75,9 +85,8 @@ extension OverviewTiles {
     static func make(
         snapshot: Snapshot?, apps: [AppUsage], history: MetricsHistory, hasBattery: Bool, preferences: Preferences
     ) -> OverviewTiles {
-        let metrics = OverviewMetric.allCases.filter { $0 != .battery || hasBattery }
-        return OverviewTiles(
-            tiles: metrics.map { metric in
+        OverviewTiles(
+            metricTiles: OverviewMetric.shown(hasBattery: hasBattery).map { metric in
                 Tile(
                     metric: metric,
                     value: value(metric, snapshot: snapshot, preferences: preferences),
@@ -85,7 +94,7 @@ extension OverviewTiles {
                     bars: sparkline(metric, history: history, endingAt: snapshot?.timestamp)
                 )
             },
-            processes: processes(apps: apps, counts: snapshot?.taskCounts),
+            processes: processes(groups: apps, counts: snapshot?.taskCounts),
             busiest: OverviewBusiest.rows(apps, snapshot: snapshot, mode: preferences.cpuMode,
                                           units: preferences.networkUnits, count: busiestCount),
             showAll: "Show All \(Format.count(bundled(apps).count)) Apps"
@@ -132,9 +141,10 @@ extension OverviewTiles {
         case .gpu:
             guard let gpu = snapshot.gpu.value else { return reason(snapshot.gpu) }
             let memory = gpu.memoryInUse.map { "\(GPUFormat.gigabytes($0)) VRAM" }
-            // Only when per-app GPU use is readable; otherwise "0 apps" would be a guess.
+            // Only when per-app GPU use is readable; otherwise "0 apps" would be a guess. Apps are counted
+            // as in the Processes tile.
             let users = apps.contains { $0.resources.gpu != nil }
-                ? apps.filter { ($0.resources.gpu ?? 0) > 0 }.count : nil
+                ? bundled(apps).filter { ($0.resources.gpu ?? 0) > 0 }.count : nil
             let count = users.map { "\(Format.count($0)) \($0 == 1 ? "app" : "apps")" }
             let parts = [memory, count].compactMap { $0 }
             return parts.isEmpty ? gpu.model : parts.joined(separator: " · ")
@@ -154,7 +164,7 @@ extension OverviewTiles {
             return battery.isPluggedIn ? status : "On battery · \(status)"
         case .temperature:
             guard let thermal = snapshot.thermal.value else { return reason(snapshot.thermal) }
-            guard let groups = snapshot.thermalGroups, groups.cpu ?? groups.hottest != nil else { return "Not reported" }
+            guard let groups = snapshot.thermalGroups, (groups.cpu ?? groups.hottest) != nil else { return "Not reported" }
             // Without CPU sensors the headline is the hottest sensor, so don't call it the CPU.
             let source = groups.cpu != nil ? "CPU die" : "Hottest sensor"
             guard let fans = thermal.fans.value, !fans.isEmpty else { return source }
@@ -183,10 +193,7 @@ extension OverviewTiles {
     static func sparkline(_ metric: OverviewMetric, history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         let (range, count) = (sparklineRange, sparklineBarCount)
         guard let now else { return Array(repeating: nil, count: count) }
-        func bars(_ series: SeriesKey) -> [Double?] {
-            let points = (try? history.summary(series, over: range, endingAt: now).points) ?? []
-            return Resample.bars(points, endingAt: now, window: range.duration, count: count)
-        }
+        func bars(_ series: SeriesKey) -> [Double?] { sparklineBars(series, history: history, endingAt: now) }
         return switch metric {
         case .cpu: bars(.cpuTotal)
         case .memory: bars(.memoryUsed)
@@ -200,12 +207,19 @@ extension OverviewTiles {
         }
     }
 
+    /// One series' sparkline bars, unscaled.
+    @MainActor
+    static func sparklineBars(_ series: SeriesKey, history: MetricsHistory, endingAt now: Date) -> [Double?] {
+        let points = (try? history.summary(series, over: sparklineRange, endingAt: now).points) ?? []
+        return Resample.bars(points, endingAt: now, window: sparklineRange.duration, count: sparklineBarCount)
+    }
+
     /// The groups the Processes tile counts as apps.
     static func bundled(_ apps: [AppUsage]) -> [AppUsage] {
         apps.filter { $0.bundlePath != nil }
     }
 
-    static func processes(apps all: [AppUsage], counts: Reading<TaskCounts>?) -> Processes {
+    static func processes(groups: [AppUsage], counts: Reading<TaskCounts>?) -> Processes {
         func label(_ kind: AppKind, _ count: Int) -> String {
             let noun = switch kind {
             case .app: count == 1 ? "app" : "apps"
@@ -217,14 +231,15 @@ extension OverviewTiles {
         let caption = counts?.value.map {
             "\(Format.count($0.processes)) processes · \(Format.count($0.threads)) threads"
         } ?? Format.placeholder
-        let apps = bundled(all)
         // No groups yet means the process list is still warming up.
-        guard !all.isEmpty, !apps.isEmpty else { return Processes(value: Format.placeholder, groups: [], caption: caption) }
+        guard !groups.isEmpty else { return Processes(value: Format.placeholder, groups: [], caption: caption) }
+        let apps = bundled(groups)
         return Processes(
             value: "\(Format.count(apps.count)) \(apps.count == 1 ? "app" : "apps")",
             groups: AppKind.allCases.map { kind in
                 let count = apps.filter { $0.kind == kind }.count
-                return Processes.Group(kind: kind, label: label(kind, count), share: Double(count) / Double(apps.count))
+                return Processes.Group(kind: kind, label: label(kind, count),
+                                       share: apps.isEmpty ? 0 : Double(count) / Double(apps.count))
             },
             caption: caption
         )
