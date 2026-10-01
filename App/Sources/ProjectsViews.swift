@@ -253,9 +253,7 @@ private struct ServerRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(server.ports.count > 1
-                  ? "Open http://localhost:\(first) · also listening on \(server.ports.dropFirst().map(String.init).joined(separator: ", "))"
-                  : "Open http://localhost:\(first)")
+            .help(server.portHelp ?? "")
         } else {
             Text(Format.placeholder).font(.system(size: 12)).foregroundStyle(Palette.textTertiary)
         }

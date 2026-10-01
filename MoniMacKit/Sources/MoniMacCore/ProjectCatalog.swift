@@ -87,7 +87,8 @@ public enum ProjectCatalog {
             }
         let containers = reading.docker.containers.map { container in
             DevServer(
-                id: "docker-\(container.id)-\(Int(container.startedAt?.timeIntervalSince1970 ?? 0))",
+                // The container id alone: its start time comes from a separate call that can fail.
+                id: "docker-\(container.id)",
                 target: .container(id: container.id),
                 projectID: container.project?.path ?? containersProjectID, project: container.project,
                 command: container.image, kind: ServerKind("Docker", .docker), ports: container.ports,

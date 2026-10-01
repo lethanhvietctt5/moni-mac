@@ -24,13 +24,16 @@ final class DevServerReader: Sendable {
     }
 
     private let state = OSAllocatedUnfairLock(initialState: State())
-    /// Only the background read uses it, one read at a time (`running` guards that).
-    private let scanner = OSAllocatedUnfairLock(uncheckedState: DevServerScanner())
+    /// Only the background read uses it, one read at a time (`running` guards that), so holding the
+    /// lock for a whole read never blocks the refresh loop, which only takes `state`.
+    private let scanner: OSAllocatedUnfairLock<DevServerScanner>
     private let interval: TimeInterval
     private let started: Date
     private let firstDelay: TimeInterval
 
-    init(interval: TimeInterval = 12, firstDelay: TimeInterval = 3, now: Date = Date()) {
+    init(scanner: DevServerScanner = DevServerScanner(), interval: TimeInterval = 12, firstDelay: TimeInterval = 3,
+         now: Date = Date()) {
+        self.scanner = OSAllocatedUnfairLock(uncheckedState: scanner)
         self.interval = interval
         self.firstDelay = firstDelay
         self.started = now
@@ -123,7 +126,7 @@ final class DevServerScanner {
                 pid: pid, parentPID: Int32(info.pbi_ppid), startedAt: start, name: identity.name,
                 arguments: identity.arguments ?? [], project: usage == nil ? nil : project,
                 listeningPorts: sockets.listening,
-                connections: Set(sockets.established.filter { ports.contains($0.port) }.map { "\($0.port) \($0.peer)" }),
+                connections: Self.connections(sockets.established, on: ports),
                 cpuTime: usage?.cpuTime ?? 0, memory: usage?.memory
             ))
         }
@@ -133,14 +136,19 @@ final class DevServerScanner {
             let established = dockerProxies.flatMap { DevProcessInfo.sockets($0).established }
             for index in containers.indices {
                 let ports = Set(containers[index].ports)
-                containers[index].connections = Set(established.filter { ports.contains($0.port) }.map { "\($0.port) \($0.peer)" })
+                containers[index].connections = Self.connections(established, on: ports)
             }
             docker = .running(containers)
         }
         resolver.prune(now: now)
         let cpu = Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - cpuStart) / 1_000_000
         log.debug("Dev server read: \(processes.count) processes in projects, \(cpu, format: .fixed(precision: 1)) ms CPU")
-        return DevServerReading(sampledAt: now, processes: processes, docker: docker)
+        return DevServerReading(sampledAt: now, processes: processes, docker: docker, home: home)
+    }
+
+    /// Connections on `ports`, as `DevProcess.connections` identifies them.
+    static func connections(_ established: [(port: UInt16, peer: String)], on ports: Set<UInt16>) -> Set<String> {
+        Set(established.filter { ports.contains($0.port) }.map { "\($0.port) \($0.peer)" })
     }
 
     /// An app or its helper, not a dev server (Electron apps under development included). Python

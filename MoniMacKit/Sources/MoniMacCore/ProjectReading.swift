@@ -13,11 +13,14 @@ public struct DevServerReading: Equatable, Sendable {
     /// or watch have a project; the rest link parents to children (e.g. `npm run` → `sh -c` → `vite`).
     public var processes: [DevProcess]
     public var docker: DockerStatus
+    /// The user's home folder, so paths can be shown as "~/…".
+    public var home: String
 
-    public init(sampledAt: Date, processes: [DevProcess], docker: DockerStatus = .notInstalled) {
+    public init(sampledAt: Date, processes: [DevProcess], docker: DockerStatus = .notInstalled, home: String = "") {
         self.sampledAt = sampledAt
         self.processes = processes
         self.docker = docker
+        self.home = home
     }
 }
 
@@ -91,8 +94,6 @@ public enum DockerStatus: Equatable, Sendable {
 /// A running container.
 public struct DockerContainer: Equatable, Sendable {
     public var id: String
-    /// e.g. "api-gateway-postgres-1".
-    public var name: String
     /// e.g. "postgres:16".
     public var image: String
     public var startedAt: Date?
@@ -107,11 +108,10 @@ public struct DockerContainer: Equatable, Sendable {
     public var connections: Set<String>
 
     public init(
-        id: String, name: String, image: String, startedAt: Date? = nil, ports: [UInt16] = [],
+        id: String, image: String, startedAt: Date? = nil, ports: [UInt16] = [],
         project: ProjectRoot? = nil, cpuTime: TimeInterval? = nil, memory: UInt64? = nil, connections: Set<String> = []
     ) {
         self.id = id
-        self.name = name
         self.image = image
         self.startedAt = startedAt
         self.ports = ports

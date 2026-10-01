@@ -18,6 +18,8 @@ public struct ProjectDetail: Equatable, Sendable {
         public var command: String
         public var kind: ServerKind
         public var ports: [UInt16]
+        /// Tooltip for the port chip, e.g. "Open http://localhost:3000 · also listening on 3001".
+        public var portHelp: String?
         /// e.g. "3h 12m".
         public var uptime: String
         /// e.g. "742 MB".
@@ -64,7 +66,7 @@ public struct ProjectDetail: Equatable, Sendable {
 extension ProjectDetail {
     static func make(
         servers: [DevServer]?, docker: DockerStatus, lastActive: [DevServer.ID: Date], ignored: Set<String>,
-        stopping: Set<DevServer.ID>, now: Date, home: String = NSHomeDirectory(), timeZone: TimeZone = .current
+        stopping: Set<DevServer.ID>, now: Date, home: String, timeZone: TimeZone = .current
     ) -> ProjectDetail {
         guard let servers else {
             return ProjectDetail(subtitle: nil, banner: nil, projects: [], emptyMessage: "Looking for dev servers…")
@@ -89,13 +91,14 @@ extension ProjectDetail {
                     id: id,
                     name: root.map { ($0.path as NSString).lastPathComponent } ?? "Containers",
                     path: root.map { abbreviate($0.path, home: home) },
-                    summary: branch + count(servers.count, "server"),
+                    summary: branch + plural(servers.count, "server"),
                     memory: memoryText(servers.compactMap(\.memory)),
                     isForgotten: servers.allSatisfy { level($0) == .forgotten },
                     servers: sorted.map { server in
                         let level = level(server)
                         return Server(
                             id: server.id, command: server.command, kind: server.kind, ports: server.ports,
+                            portHelp: portHelp(server.ports),
                             uptime: server.startedAt.map { Format.uptime(now.timeIntervalSince($0)) } ?? Format.placeholder,
                             memory: server.memory.map(Format.memorySize) ?? Format.placeholder,
                             activity: level == .stopping ? "Stopping…" : activity(idleFor: idleFor(server)),
@@ -146,7 +149,7 @@ extension ProjectDetail {
         guard !servers.isEmpty else { return "No dev servers running" }
         let across = projects == 1 ? "in 1 project" : "across \(projects) projects"
         let memory = servers.compactMap(\.memory)
-        return "\(count(servers.count, "dev server")) \(across)" + (memory.isEmpty ? "" : " · \(memoryText(memory))")
+        return "\(plural(servers.count, "dev server")) \(across)" + (memory.isEmpty ? "" : " · \(memoryText(memory))")
     }
 
     private static func banner(
@@ -173,11 +176,22 @@ extension ProjectDetail {
         if let since { message += " since \(since)" }
         if !holding.isEmpty { message += " and \(one ? "is" : "are") holding \(holding.joined(separator: " and "))" }
         return Banner(
-            title: "\(count(forgotten.count, "server")) \(forgotten.count == 1 ? "has" : "have") been idle for days",
+            title: "\(plural(forgotten.count, "server")) \(forgotten.count == 1 ? "has" : "have") been idle for days",
             message: message + ".",
             projectIDs: projects.map(\.id).filter(ids.contains),
             serverIDs: forgotten.map(\.id)
         )
+    }
+
+    private static func portHelp(_ ports: [UInt16]) -> String? {
+        guard let first = ports.first else { return nil }
+        let open = "Open \(serverURL(port: first).absoluteString)"
+        return ports.count == 1 ? open : open + " · also listening on " + ports.dropFirst().map(String.init).joined(separator: ", ")
+    }
+
+    /// Where a server's port is opened.
+    static func serverURL(port: UInt16) -> URL {
+        URL(string: "http://localhost:\(port)")!
     }
 
     /// "Active · now", "Active · 2 min", "Idle 26 min", "Idle 3 h", "Idle 4 days".
@@ -186,10 +200,11 @@ extension ProjectDetail {
         if idle < ProjectActivity.idleAfter { return minutes == 0 ? "Active · now" : "Active · \(minutes) min" }
         if minutes < 60 { return "Idle \(minutes) min" }
         if minutes < 1440 { return "Idle \(minutes / 60) h" }
-        return "Idle \(count(minutes / 1440, "day"))"
+        return "Idle \(plural(minutes / 1440, "day"))"
     }
 
-    private static func count(_ value: Int, _ noun: String) -> String {
+    /// e.g. "1 server", "3 servers".
+    private static func plural(_ value: Int, _ noun: String) -> String {
         "\(value) \(noun)\(value == 1 ? "" : "s")"
     }
 
@@ -216,7 +231,7 @@ extension Monitor {
         ProjectDetail.make(
             servers: projectActivity.servers, docker: projectActivity.docker, lastActive: projectActivity.lastActive,
             ignored: projectActivity.ignoredProjects, stopping: Set(projectActivity.stopRequests.keys),
-            now: latest?.timestamp ?? Date()
+            now: latest?.timestamp ?? Date(), home: projectActivity.home
         )
     }
 
@@ -257,8 +272,7 @@ extension Monitor {
 
     /// Opens the server's port in the browser.
     public func openServer(port: UInt16) {
-        guard let url = URL(string: "http://localhost:\(port)") else { return }
-        actions.openURL(url)
+        actions.openURL(ProjectDetail.serverURL(port: port))
     }
 
     /// Reveals the project's folder in Finder.

@@ -81,15 +81,11 @@ enum DevProcessInfo {
         return (Double(nanoseconds) / 1_000_000_000, usage.ri_phys_footprint)
     }
 
-    struct Sockets: Equatable {
+    struct Sockets {
         /// Ports with a TCP listener, ascending.
         var listening: [UInt16] = []
         /// Established TCP connections: (local port, "remoteAddress:remotePort").
         var established: [(port: UInt16, peer: String)] = []
-
-        static func == (lhs: Sockets, rhs: Sockets) -> Bool {
-            lhs.listening == rhs.listening && lhs.established.elementsEqual(rhs.established) { $0 == $1 }
-        }
     }
 
     /// The process's TCP sockets. Only socket descriptors are inspected; a dev server can hold

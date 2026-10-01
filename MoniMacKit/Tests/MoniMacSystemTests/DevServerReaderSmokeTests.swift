@@ -117,7 +117,7 @@ struct DevServerReaderSmokeTests {
     }
 
     @Test func readsInTheBackgroundAndKeepsTheLatest() async throws {
-        let reader = DevServerReader(interval: 60, firstDelay: 0)
+        let reader = DevServerReader(scanner: scanner(), interval: 60, firstDelay: 0)
         #expect(reader.latest() == .unavailable(.warmingUp))
         reader.refreshIfDue()
         for _ in 0..<100 where reader.latest().value == nil {
@@ -168,9 +168,11 @@ struct DevServerParsingTests {
         #expect(resolver.project(for: web.appendingPathComponent("src").path) == ProjectRoot(path: web.path, branch: "main"))
         #expect(resolver.project(for: folder.appendingPathComponent("mono").path)
             == ProjectRoot(path: folder.appendingPathComponent("mono").path, branch: "main"))
-        // Nothing marks the home folder's direct children as projects.
+        // A folder without markers is its own project; the home folder never is.
         try FileManager.default.createDirectory(at: folder.appendingPathComponent("loose"), withIntermediateDirectories: true)
-        #expect(resolver.project(for: folder.appendingPathComponent("loose").path) == nil)
+        #expect(resolver.project(for: folder.appendingPathComponent("loose").path)
+            == ProjectRoot(path: folder.appendingPathComponent("loose").path))
+        #expect(resolver.project(for: folder.path) == nil)
     }
 
     @Test func parsesHTTPResponsesAndDockerDates() throws {

@@ -56,8 +56,9 @@ final class ProjectRootResolver {
         self.allowProtected = allowProtected
     }
 
-    /// The project for `cwd`, or nil when it isn't inside one (e.g. "/", the home folder itself,
-    /// or a folder with no markers up to the home folder).
+    /// The project for `cwd`: the nearest folder with a marker, or `cwd` itself when none up to the
+    /// home folder has one (a server in a plain folder still belongs somewhere). Nil for "/" and the
+    /// home folder itself, which aren't projects.
     func project(for cwd: String, now: Date = Date()) -> ProjectRoot? {
         guard cwd != "/", cwd != home, !cwd.isEmpty else { return nil }
         if ProjectFolderAccess.isProtected(cwd, home: home), !allowProtected() {
@@ -70,7 +71,7 @@ final class ProjectRootResolver {
             entry = resolve(cwd)
             cache[cwd] = (entry, now)
         }
-        guard let entry else { return nil }
+        guard let entry else { return ProjectRoot(path: cwd) }
         return ProjectRoot(path: entry.root, branch: entry.gitDirectory.flatMap(Self.branch(gitDirectory:)))
     }
 

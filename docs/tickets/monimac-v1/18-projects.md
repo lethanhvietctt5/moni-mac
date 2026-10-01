@@ -4,12 +4,12 @@
 
 **Blocked by:** 04 — Main window with CPU tab
 
-**Status:** ready-for-agent
+**Status:** in-review
 
 **Note from ticket 03:** AppGrouping attributes processes to their *responsible* app, so dev servers started from Terminal or iTerm roll up under that terminal app in Top Apps and the Overview list. Projects must group by working directory and project root, not by AppUsage.
 
-- [ ] Running dev servers and containers appear grouped under the right project
-- [ ] Server types are detected from the command line and ports
-- [ ] Idle status follows the definition, verified with scripted connection and CPU histories
-- [ ] Stop, Stop All, Stop Idle Servers, open port, and reveal in Finder record the right actions
-- [ ] Ignore suppresses the banner until the project becomes active
+- [x] Running dev servers and containers appear grouped under the right project (live: throwaway servers in two scratch projects; containers only in tests, since Docker isn't running on the dev Mac)
+- [x] Server types are detected from the command line and ports
+- [x] Idle status follows the definition, verified with scripted connection and CPU histories
+- [x] Stop, Stop All, Stop Idle Servers, open port, and reveal in Finder record the right actions (through `RecordingActions`; no clicks in the running app)
+- [x] Ignore suppresses the banner until the project becomes active (tests, including across a relaunch)

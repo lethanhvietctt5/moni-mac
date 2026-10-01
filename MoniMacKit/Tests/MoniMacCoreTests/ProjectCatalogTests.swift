@@ -20,8 +20,8 @@ struct ProjectCatalogTests {
             process(11, ["node", "/w/node_modules/.bin/storybook", "dev", "-p", "6006"], in: web, ports: [6006]),
             process(20, ["/usr/bin/python3", "/a/.venv/bin/uvicorn", "app:main", "--reload"], in: api, ports: [8000]),
         ], docker: .running([
-            DockerContainer(id: "abc123", name: "api-gateway-postgres-1", image: "postgres:16", ports: [5432], project: api),
-            DockerContainer(id: "def456", name: "scratch", image: "redis:7-alpine", ports: [6379]),
+            DockerContainer(id: "abc123", image: "postgres:16", ports: [5432], project: api),
+            DockerContainer(id: "def456", image: "redis:7-alpine", ports: [6379]),
         ]))
 
         let servers = ProjectCatalog.servers(in: reading)

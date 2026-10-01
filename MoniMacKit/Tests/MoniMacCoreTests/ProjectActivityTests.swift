@@ -270,7 +270,7 @@ struct ProjectActivityTests {
         let sampler = DevServerSampler(clock: clock)
         sampler.processes = [next(), watcher()]
         sampler.docker = .running([
-            DockerContainer(id: "c0ffee", name: "acme-web-db-1", image: "postgres:16", startedAt: started, ports: [5432],
+            DockerContainer(id: "c0ffee", image: "postgres:16", startedAt: started, ports: [5432],
                             project: web),
         ])
         let monitor = try monitor(sampler)
@@ -339,7 +339,7 @@ struct ProjectActivityTests {
         let sampler = DevServerSampler(clock: clock)
         sampler.processes = [vite(), jsonServer(), next(), watcher()]
         sampler.docker = .running([
-            DockerContainer(id: "c0ffee", name: "db", image: "postgres:16", ports: [5432], memory: 264 * mb),
+            DockerContainer(id: "c0ffee", image: "postgres:16", ports: [5432], memory: 264 * mb),
         ])
         let monitor = try monitor(sampler)
         #expect(monitor.projectsSubtitle == nil)
@@ -358,10 +358,41 @@ struct ProjectActivityTests {
         #expect(detail(monitor).emptyMessage == "No dev servers running")
     }
 
+    @Test func aFailedDockerReadKeepsContainersAndTheirIdleTime() throws {
+        let sampler = DevServerSampler(clock: clock)
+        let postgres = DockerContainer(id: "c0ffee", image: "postgres:16", ports: [5432], project: web, cpuTime: 3)
+        sampler.docker = .running([postgres])
+        let monitor = try monitor(sampler)
+        monitor.tick()
+        tick(monitor, after: 3 * 3600)
+        #expect(activity(monitor, "postgres:16") == "Idle 3 h")
+
+        sampler.docker = .failed("HTTP 500")
+        tick(monitor, after: 12)
+        #expect(activity(monitor, "postgres:16") == "Idle 3 h")
+
+        // Back again, it's the same container, still idle: not a new, active one.
+        sampler.docker = .running([postgres])
+        tick(monitor, after: 12)
+        #expect(activity(monitor, "postgres:16") == "Idle 3 h")
+    }
+
+    @Test func portChipsOpenTheFirstPortAndNameTheRest() throws {
+        let sampler = DevServerSampler(clock: clock)
+        var server = next()
+        server.listeningPorts = [3000, 3001]
+        sampler.processes = [server, watcher()]
+        let monitor = try monitor(sampler)
+        monitor.tick()
+
+        let rows = detail(monitor).projects[0].servers
+        #expect(rows.map(\.portHelp) == ["Open http://localhost:3000 · also listening on 3001", nil])
+    }
+
     @Test func containersOutsideComposeAreGroupedLast() throws {
         let sampler = DevServerSampler(clock: clock)
         sampler.processes = [next()]
-        sampler.docker = .running([DockerContainer(id: "beef", name: "cache", image: "redis:7-alpine", ports: [6379])])
+        sampler.docker = .running([DockerContainer(id: "beef", image: "redis:7-alpine", ports: [6379])])
         let monitor = try monitor(sampler)
         monitor.tick()
 

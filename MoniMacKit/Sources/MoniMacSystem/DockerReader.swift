@@ -33,7 +33,6 @@ final class DockerReader {
             let stats = try? JSONDecoder().decode(Stats.self, from: client.get("/containers/\(container.Id)/stats?stream=false&one-shot=true"))
             return DockerContainer(
                 id: container.Id,
-                name: container.Names?.first.map { $0.hasPrefix("/") ? String($0.dropFirst()) : $0 } ?? String(container.Id.prefix(12)),
                 image: container.Image,
                 startedAt: startTime(of: container.Id, client: client),
                 ports: Array(Set((container.Ports ?? []).compactMap(\.PublicPort))).sorted(),
@@ -71,7 +70,6 @@ final class DockerReader {
         }
 
         var Id: String
-        var Names: [String]?
         var Image: String
         var Ports: [Port]?
         var Labels: [String: String]?

@@ -27,6 +27,8 @@ public final class ProjectActivity {
     /// Servers in the latest reading; nil before the first one.
     public private(set) var servers: [DevServer]?
     public private(set) var docker: DockerStatus = .notInstalled
+    /// The user's home folder, from the reading.
+    public private(set) var home = ""
     public private(set) var lastActive: [DevServer.ID: Date]
     /// Projects whose idle banner was dismissed, until they're active again.
     public private(set) var ignoredProjects: Set<String>
@@ -58,7 +60,12 @@ public final class ProjectActivity {
         expireStopRequests(now: now)
         guard let reading = reading.value, reading.sampledAt != lastSampledAt else { return }
         lastSampledAt = reading.sampledAt
-        let servers = ProjectCatalog.servers(in: reading)
+        var servers = ProjectCatalog.servers(in: reading)
+        // A failed Docker read says nothing about the containers: keep the last ones, so their idle
+        // times and Ignore aren't lost to one bad read.
+        if case .failed = reading.docker {
+            servers += (self.servers ?? []).filter { if case .container = $0.target { true } else { false } }
+        }
         let time = reading.sampledAt
         var nextActive: [DevServer.ID: Date] = [:]
         var nextBaselines: [DevServer.ID: Baseline] = [:]
@@ -90,6 +97,7 @@ public final class ProjectActivity {
 
         self.servers = servers
         docker = reading.docker
+        home = reading.home
         baselines = nextBaselines
         lastActive = nextActive
         stopRequests = stopRequests.filter { nextActive[$0.key] != nil }
