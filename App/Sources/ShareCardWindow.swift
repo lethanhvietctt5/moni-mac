@@ -12,13 +12,15 @@ final class ShareCardWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
 
     func show(monitor: Monitor) {
-        let summary = monitor.weeklySummary()
-        let icon = ShareCardRenderer.icon(forApp: summary.figures.busiestApp, in: monitor.apps)
+        let (summary, icon) = ShareCardRenderer.content(monitor)
+        // Both variants are rendered once here, so switching between them and copying are instant.
+        var images: [Bool: CGImage] = [:]
+        for dark in [false, true] {
+            images[dark] = ShareCardRenderer.image(summary, dark: dark, busiestIcon: icon)
+        }
         let window = window ?? makeWindow()
         self.window = window
-        window.contentView = NSHostingView(rootView: ShareCardPreview(summary: summary, busiestIcon: icon) {
-            [weak window] in window
-        })
+        window.contentView = NSHostingView(rootView: ShareCardPreview(images: images) { [weak window] in window })
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
@@ -42,8 +44,7 @@ final class ShareCardWindowController: NSObject, NSWindowDelegate {
 
     /// Development aid: renders the card to a PNG at `path` without showing anything.
     static func export(monitor: Monitor, to path: String, dark: Bool) -> Bool {
-        let summary = monitor.weeklySummary()
-        let icon = ShareCardRenderer.icon(forApp: summary.figures.busiestApp, in: monitor.apps)
+        let (summary, icon) = ShareCardRenderer.content(monitor)
         guard let image = ShareCardRenderer.image(summary, dark: dark, busiestIcon: icon),
               let png = ShareCardRenderer.png(image) else { return false }
         return (try? png.write(to: URL(fileURLWithPath: path))) != nil
@@ -51,24 +52,20 @@ final class ShareCardWindowController: NSObject, NSWindowDelegate {
 }
 
 private struct ShareCardPreview: View {
-    let summary: WeeklySummary
-    let busiestIcon: NSImage?
+    /// The rendered card, keyed by "is dark".
+    let images: [Bool: CGImage]
     let window: () -> NSWindow?
 
     @State private var dark: Bool
-    @State private var images: [Bool: CGImage] = [:]
     @State private var copied = false
 
-    init(summary: WeeklySummary, busiestIcon: NSImage?, window: @escaping () -> NSWindow?) {
-        self.summary = summary
-        self.busiestIcon = busiestIcon
+    init(images: [Bool: CGImage], window: @escaping () -> NSWindow?) {
+        self.images = images
         self.window = window
         _dark = State(initialValue: NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
     }
 
-    private var image: CGImage? {
-        images[dark] ?? ShareCardRenderer.image(summary, dark: dark, busiestIcon: busiestIcon)
-    }
+    private var image: CGImage? { images[dark] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -100,14 +97,7 @@ private struct ShareCardPreview: View {
         .padding(24)
         .frame(width: 768)
         .background(Palette.windowBackground)
-        .onAppear(perform: renderVariants)
         .onChange(of: dark) { copied = false }
-    }
-
-    private func renderVariants() {
-        for variant in [false, true] where images[variant] == nil {
-            images[variant] = ShareCardRenderer.image(summary, dark: variant, busiestIcon: busiestIcon)
-        }
     }
 
     private func copy() {

@@ -63,7 +63,7 @@ public struct WeeklySummary: Equatable, Sendable {
     public var period: String
     /// False when history covers less than the whole window.
     public var coversWindow: Bool
-    /// e.g. "Busy week, cool head.", from `WeeklyHeadline`'s phrase table.
+    /// e.g. "Busy week, cool head.", from `WeeklySummaryHeadline`'s phrase table.
     public var headline: String
     /// e.g. "52 hours of uptime, zero thermal throttling, and Xcode doing most of the heavy lifting."
     public var summary: String
@@ -122,11 +122,11 @@ extension WeeklySummary {
             device: (snapshot?.system ?? .unknown).deviceLine(memory: snapshot?.memory.value?.total),
             period: period(start: start, end: now, full: olderHistory != nil, timeZone: timeZone),
             coversWindow: olderHistory != nil,
-            headline: WeeklyHeadline.pick(figures),
+            headline: WeeklySummaryHeadline.pick(figures),
             summary: summaryLine(figures),
             tiles: tiles,
             busiestLine: figures.busiestApp.map {
-                "Busiest app: \($0) · top CPU user in \(figures.busiestHours) of \(hours(figures.hoursWithCPU))"
+                "Busiest app: \($0) · top CPU user in \(figures.busiestHours) of \(plural(figures.hoursWithCPU, "hour"))"
             },
             figures: figures
         )
@@ -195,10 +195,9 @@ extension WeeklySummary {
     static func duration(_ seconds: TimeInterval) -> String {
         let minutes = max(Int(seconds / 60), 1)
         let (days, hours) = (minutes / 1440, minutes / 60 % 24)
-        func unit(_ n: Int, _ noun: String) -> String { "\(n) \(noun)\(n == 1 ? "" : "s")" }
-        if days > 0 { return hours > 0 ? "\(unit(days, "day")) \(unit(hours, "hour"))" : unit(days, "day") }
-        if hours > 0 { return unit(hours, "hour") }
-        return unit(minutes, "minute")
+        if days > 0 { return hours > 0 ? "\(plural(days, "day")) \(plural(hours, "hour"))" : plural(days, "day") }
+        if hours > 0 { return plural(hours, "hour") }
+        return plural(minutes, "minute")
     }
 
     /// "24 SEP – 1 OCT 2026", "28 DEC 2026 – 3 JAN 2027", or one day, "1 OCT 2026".
@@ -222,8 +221,8 @@ extension WeeklySummary {
     static func summaryLine(_ figures: Figures) -> String {
         guard figures.covered > 0 else { return "MoniMac hasn't recorded any history yet. Check back in a few days." }
         let uptime = figures.uptimeHours >= 1
-            ? "\(hours(Int(figures.uptimeHours.rounded()))) of uptime"
-            : "\(Int(figures.uptimeHours * 60)) minutes of uptime"
+            ? "\(plural(Int(figures.uptimeHours.rounded()), "hour")) of uptime"
+            : "\(plural(Int(figures.uptimeHours * 60), "minute")) of uptime"
         let throttling = figures.throttlingEvents.map { events in
             switch events {
             case 0: "zero thermal throttling"
@@ -238,15 +237,25 @@ extension WeeklySummary {
         return joined + "."
     }
 
-    static func hours(_ count: Int) -> String { "\(count) \(count == 1 ? "hour" : "hours")" }
+    /// e.g. "1 hour", "52 hours", "212 cycles".
+    static func plural(_ count: Int, _ noun: String) -> String {
+        "\(Format.count(count)) \(noun)\(count == 1 ? "" : "s")"
+    }
 
     // MARK: Tiles
+    //
+    // Shares (CPU, memory, GPU, charge) are drawn as they are, like the Overview tiles; network has no
+    // capacity, so its busiest bar is full height.
+
+    /// A figure averaged over the window, with its peak in the caption.
+    private static func averageAndPeak(_ average: Double?, _ peak: Double?, format: (Double) -> String)
+        -> (value: String, caption: String) {
+        (average.map(format) ?? Format.placeholder, "avg · peak \(peak.map(format) ?? Format.placeholder)")
+    }
 
     @MainActor private static func cpuTile(_ figures: Figures, mode: CPUMode, cores: Int, bars: SparklineSource) -> Tile {
-        let format = { Format.cpu($0, mode: mode, logicalCores: cores) }
-        return Tile(kind: .cpu, title: "CPU", value: figures.cpuAverage.map(format) ?? Format.placeholder,
-                    caption: "avg · peak \(figures.cpuPeak.map(format) ?? Format.placeholder)",
-                    bars: bars.relative(bars.series(.cpuTotal)))
+        let text = averageAndPeak(figures.cpuAverage, figures.cpuPeak) { Format.cpu($0, mode: mode, logicalCores: cores) }
+        return Tile(kind: .cpu, title: "CPU", value: text.value, caption: text.caption, bars: bars.series(.cpuTotal))
     }
 
     @MainActor private static func memoryTile(_ figures: Figures, total: UInt64?, bars: SparklineSource) -> Tile {
@@ -267,9 +276,9 @@ extension WeeklySummary {
     }
 
     @MainActor private static func gpuTile(_ figures: Figures, bars: SparklineSource) -> Tile {
-        Tile(kind: .gpu, title: "GPU", value: figures.gpuAverage.map(Format.percent) ?? Format.placeholder,
-             caption: "avg · peak \(figures.gpuPeak.map(Format.percent) ?? Format.placeholder)",
-             bars: bars.relative(bars.series(.gpuUtilization)))
+        let text = averageAndPeak(figures.gpuAverage, figures.gpuPeak, format: Format.percent)
+        return Tile(kind: .gpu, title: "GPU", value: text.value, caption: text.caption,
+                    bars: bars.series(.gpuUtilization))
     }
 
     @MainActor private static func networkTile(_ figures: Figures, bars: SparklineSource) -> Tile {
@@ -284,7 +293,7 @@ extension WeeklySummary {
 
     /// Health and cycles are the battery's current figures; the sparkline is the week's charge.
     @MainActor private static func batteryTile(_ battery: BatteryReading?, bars: SparklineSource) -> Tile {
-        let cycles = battery?.cycleCount.map { "\(Format.count($0)) \($0 == 1 ? "cycle" : "cycles")" }
+        let cycles = battery?.cycleCount.map { plural($0, "cycle") }
         return Tile(kind: .battery, title: "Battery", value: battery?.health.map(Format.percent) ?? Format.placeholder,
                     caption: (["health"] + [cycles].compactMap { $0 }).joined(separator: " · "),
                     bars: bars.series(.batteryCharge))
@@ -311,20 +320,11 @@ private struct SparklineSource {
         return Resample.bars(points, endingAt: now, window: window, count: count)
     }
 
-    /// Bars scaled so the highest is full height, to show the week's shape.
+    /// Bars scaled so the highest is full height, for figures without a capacity.
     func relative(_ bars: [Double?]) -> [Double?] {
         let highest = bars.compactMap { $0 }.max() ?? 0
         guard highest > 0 else { return bars }
         return bars.map { $0.map { $0 / highest } }
-    }
-}
-
-extension SystemInfo {
-    /// e.g. "MacBook Pro · M3 Pro · 36 GB". With a model name the chip drops "Apple"; without one it's kept,
-    /// e.g. "Apple M4 · 24 GB".
-    public func deviceLine(memory: UInt64?) -> String {
-        let chip = modelName != nil && chipName.hasPrefix("Apple ") ? String(chipName.dropFirst("Apple ".count)) : chipName
-        return ([modelName, chip, memory.map(Format.memorySize)].compactMap { $0 }).joined(separator: " · ")
     }
 }
 

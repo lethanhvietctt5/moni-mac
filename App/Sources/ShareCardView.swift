@@ -175,11 +175,11 @@ enum ShareCardRenderer {
         NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
     }
 
-    /// The busiest app's icon: from the running apps MoniMac grouped, else any running app by that name.
-    static func icon(forApp name: String?, in apps: [AppUsage]) -> NSImage? {
-        guard let name else { return nil }
-        if let path = apps.first(where: { $0.name == name })?.bundlePath { return AppIcons.icon(for: path) }
-        return NSWorkspace.shared.runningApplications.first { $0.localizedName == name }?.icon
+    /// The week's summary and the busiest app's icon, when that app is still running with a bundle.
+    static func content(_ monitor: Monitor) -> (summary: WeeklySummary, busiestIcon: NSImage?) {
+        let summary = monitor.weeklySummary()
+        let path = summary.figures.busiestApp.flatMap { name in monitor.apps.first { $0.name == name }?.bundlePath }
+        return (summary, path.map { AppIcons.icon(for: $0) })
     }
 }
 

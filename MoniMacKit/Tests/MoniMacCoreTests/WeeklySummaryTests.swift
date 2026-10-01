@@ -89,6 +89,12 @@ struct WeeklySummaryTests {
         #expect(card.figures.uptimeHours == 168)
         #expect(card.headline == "Busy week, cool head.")
         #expect(card.summary == "168 hours of uptime, zero thermal throttling, and Xcode doing most of the heavy lifting.")
+        // Shares are drawn as they are: a steady 32% week is a row of one-third bars, not a maxed-out one.
+        let cpu = try #require(card.tiles.first)
+        #expect(cpu.bars.allSatisfy { abs(($0 ?? 0) - 0.32) < 1e-9 })
+        // Network has no capacity, so the busiest bar is full height.
+        let network = try #require(card.tiles.first { $0.kind == .network })
+        #expect(network.bars.compactMap { $0 }.max() == 1)
     }
 
     @Test func tilesShowTheWeeksFigures() throws {
@@ -178,15 +184,15 @@ struct WeeklySummaryTests {
     // MARK: Throttling
 
     @Test func throttlingCountsSeparateSpells() throws {
-        // Two spells: an hour on Monday and 30 minutes on Wednesday.
+        // Three spells: an hour, 30 minutes, and 15 minutes on different days.
         let (history, latest) = try week { index, sample in
-            if (100..<104).contains(index) || (400..<402).contains(index) { sample.thermal = .serious }
+            if (100..<104).contains(index) || (400..<402).contains(index) || index == 600 { sample.thermal = .serious }
         }
         let card = summary(history, latest)
 
-        #expect(card.figures.throttlingEvents == 2)
+        #expect(card.figures.throttlingEvents == 3)
         #expect(card.headline == "Busy week, running hot.")
-        #expect(card.summary.contains("2 throttling events"))
+        #expect(card.summary.contains("3 throttling events"))
     }
 
     @Test func fairIsNotThrottling() throws {
@@ -250,10 +256,12 @@ struct WeeklySummaryTests {
     }
 
     @Test(arguments: [
-        (figures(covered: 0), WeeklyHeadline.noHistory, "Just getting started."),
-        (figures(cpu: 0.4, throttling: 1), .busyAndHot, "Busy week, running hot."),
+        (figures(covered: 0), WeeklySummaryHeadline.noHistory, "Just getting started."),
+        (figures(cpu: 0.4, throttling: 3), .busyAndHot, "Busy week, running hot."),
         (figures(throttling: 3), .hot, "A warm week."),
         (figures(cpu: 0.4), .busyAndCool, "Busy week, cool head."),
+        // A couple of spells is "low thermal events": still a cool head.
+        (figures(cpu: 0.4, throttling: 2), .busyAndCool, "Busy week, cool head."),
         (figures(cpu: 0.4, throttling: nil), .busy, "A busy week."),
         (figures(pressure: .critical), .memoryTight, "Memory ran tight."),
         (figures(gpu: 0.3), .graphics, "Pixels pushed all week."),
@@ -263,9 +271,9 @@ struct WeeklySummaryTests {
         (figures(cpu: nil, throttling: nil, gpu: nil, pressure: nil, downloaded: nil), .steady, "A steady week."),
         (figures(cpu: 0.05, covered: 3600), .quiet, "A quiet day."),
     ])
-    func headlineFollowsThePhraseTable(figures: WeeklySummary.Figures, rule: WeeklyHeadline, headline: String) {
-        #expect(WeeklyHeadline.rule(for: figures) == rule)
-        #expect(WeeklyHeadline.pick(figures) == headline)
+    func headlineFollowsThePhraseTable(figures: WeeklySummary.Figures, rule: WeeklySummaryHeadline, headline: String) {
+        #expect(WeeklySummaryHeadline.rule(for: figures) == rule)
+        #expect(WeeklySummaryHeadline.pick(figures) == headline)
     }
 
     // MARK: Text

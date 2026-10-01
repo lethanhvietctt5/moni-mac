@@ -93,6 +93,13 @@ public struct SystemInfo: Equatable, Sendable {
 
     public var logicalCores: Int { performanceCores + efficiencyCores }
 
+    /// e.g. "MacBook Pro · M3 Pro · 36 GB". With a model name the chip drops "Apple"; without one it's kept,
+    /// e.g. "Apple M4 · 24 GB".
+    public func deviceLine(memory: UInt64?) -> String {
+        let chip = modelName != nil && chipName.hasPrefix("Apple ") ? String(chipName.dropFirst("Apple ".count)) : chipName
+        return ([modelName, chip, memory.map(Format.memorySize)].compactMap { $0 }).joined(separator: " · ")
+    }
+
     public static let unknown = SystemInfo(chipName: "Mac", performanceCores: 1, efficiencyCores: 0, bootTime: nil)
 }
 

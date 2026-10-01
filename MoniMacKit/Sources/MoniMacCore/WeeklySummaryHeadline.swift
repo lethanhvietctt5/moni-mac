@@ -2,7 +2,7 @@ import Foundation
 
 /// The share card's headline: a rule-based phrase table, no LLM and no network.
 /// Rules are tried in order and the first match wins; the last always matches.
-public enum WeeklyHeadline: CaseIterable, Sendable {
+public enum WeeklySummaryHeadline: CaseIterable, Sendable {
     case noHistory
     case busyAndHot
     case hot
@@ -18,7 +18,7 @@ public enum WeeklyHeadline: CaseIterable, Sendable {
     static let busyCPU = 0.25
     /// Average CPU below which the week counts as quiet.
     static let quietCPU = 0.08
-    /// Throttling spells that make a week hot even when the CPU wasn't busy.
+    /// Throttling spells from which the week counts as hot. Fewer is "low" and still a cool head.
     static let hotThrottling = 3
     static let heavyGPU = 0.25
     /// Downloaded bytes that make a week download-heavy.
@@ -26,12 +26,14 @@ public enum WeeklyHeadline: CaseIterable, Sendable {
 
     func matches(_ figures: WeeklySummary.Figures) -> Bool {
         let busy = (figures.cpuAverage ?? 0) >= Self.busyCPU
-        let throttling = figures.throttlingEvents
+        let hot = (figures.throttlingEvents ?? 0) >= Self.hotThrottling
+        // Unknown throttling (no thermal state recorded) is neither hot nor cool.
+        let cool = figures.throttlingEvents.map { $0 < Self.hotThrottling } ?? false
         return switch self {
         case .noHistory: figures.covered <= 0
-        case .busyAndHot: busy && (throttling ?? 0) > 0
-        case .hot: (throttling ?? 0) >= Self.hotThrottling
-        case .busyAndCool: busy && throttling == 0
+        case .busyAndHot: busy && hot
+        case .hot: hot
+        case .busyAndCool: busy && cool
         case .busy: busy
         case .memoryTight: figures.memoryPressure == .critical
         case .graphics: (figures.gpuAverage ?? 0) >= Self.heavyGPU
@@ -57,7 +59,7 @@ public enum WeeklyHeadline: CaseIterable, Sendable {
         }
     }
 
-    static func rule(for figures: WeeklySummary.Figures) -> WeeklyHeadline {
+    static func rule(for figures: WeeklySummary.Figures) -> WeeklySummaryHeadline {
         allCases.first { $0.matches(figures) } ?? .steady
     }
 
