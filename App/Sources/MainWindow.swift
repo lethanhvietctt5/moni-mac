@@ -30,24 +30,43 @@ final class WindowState {
     /// Each tab's chart range, so it survives switching tabs.
     var ranges: [WindowTab: TimeRange] = [:]
 
+    /// Overview's Tiles or List view, and the List's sort, search, and grouping.
+    var overviewLayout = OverviewLayout.tiles
+    var listQuery = OverviewListQuery()
+
     func range(for tab: WindowTab) -> Binding<TimeRange> {
         Binding { self.ranges[tab] ?? .twentyFourHours } set: { self.ranges[tab] = $0 }
     }
+
+    /// Shows Overview → List with every app, sorted by `column`.
+    func showList(sortedBy column: OverviewListColumn) {
+        tab = .overview
+        overviewLayout = .list
+        listQuery.showAll(sortedBy: column)
+    }
+}
+
+enum OverviewLayout {
+    case tiles, list
 }
 
 /// Owns the main window. The window (and its SwiftUI views) exist only while it's open.
 @MainActor
 final class MainWindowController: NSObject, NSWindowDelegate {
     private let monitor: Monitor
+    private let quitSheet: QuitSheetPresenter
     private let state = WindowState()
     private var window: NSWindow?
 
-    init(monitor: Monitor) {
+    init(monitor: Monitor, quitSheet: QuitSheetPresenter) {
         self.monitor = monitor
+        self.quitSheet = quitSheet
     }
 
-    func show(tab: WindowTab? = nil) {
+    func show(tab: WindowTab? = nil, layout: OverviewLayout? = nil, expanding expanded: Set<AppUsage.ID> = []) {
         if let tab { state.tab = tab }
+        if let layout { state.overviewLayout = layout }
+        state.listQuery.expanded.formUnion(expanded)
         let window = window ?? makeWindow()
         self.window = window
         NSApp.activate()
@@ -65,7 +84,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 1000, height: 680)
-        window.contentView = NSHostingView(rootView: MainWindowView(monitor: monitor, state: state))
+        window.contentView = NSHostingView(rootView: MainWindowView(monitor: monitor, state: state)
+            .environment(\.requestQuit, RequestQuitAction { [weak self, weak window] id in
+                self?.quitSheet.present(appID: id, over: window)
+            }))
         window.delegate = self
         window.center()
         window.setFrameAutosaveName("MoniMac.MainWindow")
@@ -89,14 +111,20 @@ struct MainWindowView: View {
             VStack(spacing: 0) {
                 toolbar
                 Rectangle().fill(Palette.separator).frame(height: 1)
-                ScrollView {
-                    content.padding(24)
-                        .environment(\.sectionArranger, SectionArranger(monitor: monitor, tab: state.tab))
+                if state.tab == .overview && state.overviewLayout == .list {
+                    // The table scrolls inside, so its header and footer stay put.
+                    OverviewListTab(monitor: monitor, query: $state.listQuery).padding(24)
+                } else {
+                    ScrollView {
+                        content.padding(24)
+                            .environment(\.sectionArranger, SectionArranger(monitor: monitor, tab: state.tab))
+                    }
                 }
             }
             .background(Palette.windowBackground)
         }
         .ignoresSafeArea()
+        .environment(\.showInList, ShowInListAction { [state] in state.showList(sortedBy: $0) })
     }
 
     private var subtitle: String? {
@@ -126,16 +154,17 @@ struct MainWindowView: View {
                 }
             }
             Spacer()
-            if state.tab == .overview { OverviewLayoutToggle() }
-            // Wired up by the share card (ticket 19).
-            Button {} label: {
+            if state.tab == .overview { OverviewLayoutToggle(layout: $state.overviewLayout) }
+            Button {
+                ShareCardWindowController.shared.show(monitor: monitor)
+            } label: {
                 Image(systemName: "square.and.arrow.up").font(.system(size: 14))
                     .frame(width: 30, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(Palette.textSecondary)
-            .disabled(true)
-            .help("Share (coming soon)")
+            .help("Share your week")
         }
         .padding(.horizontal, 24)
         .frame(height: 56)

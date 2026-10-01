@@ -150,9 +150,7 @@ private struct CPUWindowContent: View {
     private var topApps: some View {
         VStack(alignment: .leading, spacing: 4) {
             sectionHeader("Top Apps by CPU") {
-                // Opens the Overview list sorted by CPU once it exists (ticket 12).
-                Text("Show All").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(column: .cpu)
             }
             ForEach(detail.topApps) { app in
                 HStack(spacing: 12) {

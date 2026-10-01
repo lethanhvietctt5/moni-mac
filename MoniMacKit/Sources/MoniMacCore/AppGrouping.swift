@@ -78,6 +78,20 @@ public enum AppGrouping {
             .map(\.app)
     }
 
+    /// Each group's processes, in input order, keyed by the ids `apps(from:)` gives the groups.
+    /// For the Overview List's helper rows and the quit sheet's process list.
+    public static func members(_ processes: [ProcessSample]) -> [AppUsage.ID: [ProcessSample]] {
+        let byPID = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
+        return Dictionary(grouping: processes) { owner(of: $0, byPID: byPID).id }
+    }
+
+    /// Processes busiest CPU first; equal CPU keeps input order.
+    static func busiestFirst(_ processes: [ProcessSample]) -> [ProcessSample] {
+        processes.enumerated()
+            .sorted { $0.element.cpu != $1.element.cpu ? $0.element.cpu > $1.element.cpu : $0.offset < $1.offset }
+            .map(\.element)
+    }
+
     /// The app a process belongs to: its id, display name, and bundle (if any).
     static func owner(of process: ProcessSample, byPID: [Int32: ProcessSample]) -> (id: String, name: String, bundle: String?) {
         let responsible = process.responsiblePID.flatMap { byPID[$0] }

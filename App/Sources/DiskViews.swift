@@ -299,9 +299,7 @@ private struct DiskWindowContent: View {
             HStack {
                 Text("Disk Writes Today").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                // Opens the Overview list sorted by disk once it exists (ticket 12).
-                Text("Show All").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(column: .disk)
             }
             .padding(.bottom, 6)
             if detail.writesToday.isEmpty { NoWritesYet().padding(.horizontal, 12) }

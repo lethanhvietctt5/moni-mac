@@ -105,12 +105,6 @@ public final class Monitor {
         rebuildMenuBarItems()
     }
 
-    /// Asks the app with this id to quit normally. Does nothing for groups that can't be quit.
-    public func quitApp(id: AppUsage.ID) {
-        guard let pid = apps.first(where: { $0.id == id })?.quitPID else { return }
-        actions.quitApp(pid: pid)
-    }
-
     public func openActivityMonitor() {
         actions.openActivityMonitor()
     }

@@ -21,7 +21,7 @@ struct SettingsTests {
         )
     }
 
-    /// 32% CPU on 12 cores, Xcode using 1.44 cores, 56 °C, 4.2 MB/s down and 0.38 MB/s up.
+    /// 32% CPU on 12 cores, Xcode using 1.44 cores, Safari downloading 3.2 MB/s, 56 °C, 4.2 MB/s down and 0.38 MB/s up.
     private func snapshot() -> Snapshot {
         Snapshot(
             timestamp: clock.now,
@@ -29,6 +29,8 @@ struct SettingsTests {
             cpu: .cpu(user: 0.21, system: 0.11),
             processes: .value([
                 ProcessSample(pid: 1, name: "Xcode", path: xcode, cpu: 1.44, isRegularApp: true),
+                ProcessSample(pid: 2, name: "Safari", path: "/Applications/Safari.app/Contents/MacOS/Safari", cpu: 0.01,
+                              isRegularApp: true, resources: ResourceUse(network: 3_200_000)),
             ]),
             network: .value(NetworkReading(interface: nil, downloadPerSecond: 4_200_000, uploadPerSecond: 380_000,
                                            received: 0, sent: 0)),
@@ -54,7 +56,8 @@ struct SettingsTests {
             monitor.cpuDetail(range: .twentyFourHours).topApps.first?.value,
             monitor.overviewTiles().metricTiles.first { $0.metric == .cpu }?.value,
             monitor.overviewPanel().rows.first { $0.metric == .cpu }?.value,
-            monitor.overviewTiles().busiest.first?.value,
+            monitor.overviewTiles().busiest.first { $0.name == "Xcode" }?.value,
+            monitor.overviewList(OverviewListQuery()).rows.first?.values[.cpu],
         ]
     }
 
@@ -68,14 +71,14 @@ struct SettingsTests {
 
     // MARK: CPU mode
 
-    @Test func switchingCPUModeChangesTheMenuBarPopoverWindowAndOverview() throws {
+    @Test func switchingCPUModeChangesTheMenuBarPopoverWindowOverviewAndList() throws {
         let monitor = try monitor()
         monitor.tick()
-        #expect(cpuFigures(monitor) == ["32%", "32%", "32%", "12.0%", "32%", "32%", "12% CPU"])
+        #expect(cpuFigures(monitor) == ["32%", "32%", "32%", "12.0%", "32%", "32%", "12% CPU", "12.0%"])
 
         monitor.setCPUMode(.perCore)
 
-        #expect(cpuFigures(monitor) == ["384%", "384%", "384%", "144.0%", "384%", "384%", "144% CPU"])
+        #expect(cpuFigures(monitor) == ["384%", "384%", "384%", "144.0%", "384%", "384%", "144% CPU", "144.0%"])
         #expect(monitor.settingsPanel(version: "1.0").cpuMode == .perCore)
     }
 
@@ -147,13 +150,14 @@ struct SettingsTests {
                 monitor.overviewTiles().metricTiles.first { $0.metric == .network }?.value,
                 monitor.networkDetail().summary.download.text,
                 monitor.networkPanel(range: .fiveMinutes).summary.upload.text,
+                monitor.overviewList(OverviewListQuery(sort: .network)).rows.first?.values[.network],
             ]
         }
-        #expect(figures() == ["4.6 MB/s", "4.6 MB/s", "4.2 MB/s", "380 KB/s"])
+        #expect(figures() == ["4.6 MB/s", "4.6 MB/s", "4.2 MB/s", "380 KB/s", "3.2 MB/s"])
 
         monitor.setNetworkUnits(.bits)
 
-        #expect(figures() == ["37 Mbps", "37 Mbps", "34 Mbps", "3.0 Mbps"])
+        #expect(figures() == ["37 Mbps", "37 Mbps", "34 Mbps", "3.0 Mbps", "26 Mbps"])
         #expect(monitor.menuBarItems.first { $0.metric == .network }?.widestText == "999 Mbps")
     }
 

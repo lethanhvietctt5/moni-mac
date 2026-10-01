@@ -15,9 +15,14 @@ final class StatusBarController: NSObject {
     private let popover = NSPopover()
     private let openWindow: () -> Void
     private let openSettings: () -> Void
+    private let quitSheet: QuitSheetPresenter
 
-    init(monitor: Monitor, openWindow: @escaping () -> Void, openSettings: @escaping () -> Void) {
+    init(
+        monitor: Monitor, quitSheet: QuitSheetPresenter, openWindow: @escaping () -> Void,
+        openSettings: @escaping () -> Void
+    ) {
         self.monitor = monitor
+        self.quitSheet = quitSheet
         self.openWindow = openWindow
         self.openSettings = openSettings
         super.init()
@@ -46,7 +51,11 @@ final class StatusBarController: NSObject {
                 self?.popover.performClose(nil)
                 self?.openSettings()
             }
-        ))
+        ).environment(\.requestQuit, RequestQuitAction { [weak self] id in
+            // The popover would close anyway once the panel takes focus; the panel stands alone.
+            self?.popover.performClose(nil)
+            self?.quitSheet.present(appID: id)
+        }))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

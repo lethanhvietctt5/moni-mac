@@ -34,6 +34,7 @@ private struct NetworkPopoverContent: View {
     let monitor: Monitor
     let panel: NetworkPanel
     @Binding var range: TimeRange
+    @Environment(\.requestQuit) private var requestQuit
 
     var body: some View {
         VStack(spacing: 12) {
@@ -135,7 +136,7 @@ private struct NetworkPopoverContent: View {
             ForEach(panel.topApps) { app in
                 HStack(spacing: 4) {
                     NetworkAppRowView(app: app).padding(.vertical, 6)
-                    Button { monitor.quitApp(id: app.id) } label: {
+                    Button { requestQuit(app.id) } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(Palette.textSecondary)
@@ -240,9 +241,7 @@ private struct NetworkWindowContent: View {
             HStack {
                 Text("Top Apps by Network").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                // Opens the Overview list sorted by network once it exists (ticket 12).
-                Text("Show All").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(column: .network)
             }
             .padding(.bottom, 4)
             if detail.topApps.isEmpty {
