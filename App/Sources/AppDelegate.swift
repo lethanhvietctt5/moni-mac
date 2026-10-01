@@ -14,6 +14,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBar: StatusBarController?
     private lazy var mainWindow = MainWindowController(monitor: monitor)
     private var refresh: Task<Void, Never>?
+    /// Development aid: `--tab <name>` or `--tab=<name>` (e.g. `--tab battery`) picks the tab the window
+    /// or popover opens on. Names are the tabs' raw values, case-insensitive.
+    static let launchTab: String? = {
+        let arguments = CommandLine.arguments
+        if let inline = arguments.first(where: { $0.hasPrefix("--tab=") }) {
+            return String(inline.dropFirst("--tab=".count)).lowercased()
+        }
+        return arguments.firstIndex(of: "--tab").flatMap {
+            arguments.indices.contains($0 + 1) ? arguments[$0 + 1].lowercased() : nil
+        }
+    }()
 
     static func main() {
         let app = NSApplication.shared
@@ -30,14 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await monitor.run(every: .seconds(2))
         }
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
-        // `--show-window` opens the main window on launch, for the same reason; `--tab gpu` picks its tab.
+        // `--show-window` opens the main window on launch, for the same reason; `--tab` picks its tab.
         if CommandLine.arguments.contains("--show-window") {
-            let arguments = CommandLine.arguments
-            let tab = arguments.firstIndex(of: "--tab").flatMap { arguments.dropFirst($0 + 1).first }
-                .flatMap(WindowTab.init(rawValue:))
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
-                self?.mainWindow.show(tab: tab)
+                self?.mainWindow.show(tab: Self.launchTab.flatMap(WindowTab.init(rawValue:)))
             }
         }
         if CommandLine.arguments.contains("--show-popover") {
