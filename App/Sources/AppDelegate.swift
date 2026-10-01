@@ -30,11 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await monitor.run(every: .seconds(2))
         }
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
-        // `--show-window` opens the main window on launch, for the same reason.
+        // `--show-window` opens the main window on launch, for the same reason; add `--tab=<tab>`
+        // (a `WindowTab` raw value, e.g. `--tab=temperature`) to open it on that tab.
         if CommandLine.arguments.contains("--show-window") {
+            let tab = CommandLine.arguments.lazy.filter { $0.hasPrefix("--tab=") }
+                .compactMap { WindowTab(rawValue: String($0.dropFirst("--tab=".count))) }.first
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
-                self?.mainWindow.show()
+                self?.mainWindow.show(tab: tab)
             }
         }
         if CommandLine.arguments.contains("--show-popover") {
