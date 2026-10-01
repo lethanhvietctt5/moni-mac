@@ -109,7 +109,7 @@ extension CPUDetail {
     }
 
     /// Four labels at 0, ¼, ½, ¾ of the range, then "Now". Within a day they snap to the hour.
-    private static func xAxis(range: TimeRange, endingAt now: Date?, timeZone: TimeZone) -> [String] {
+    static func xAxis(range: TimeRange, endingAt now: Date?, timeZone: TimeZone) -> [String] {
         guard let now else { return [] }
         let start = now.addingTimeInterval(-range.duration)
         return (0..<4).map { index in
