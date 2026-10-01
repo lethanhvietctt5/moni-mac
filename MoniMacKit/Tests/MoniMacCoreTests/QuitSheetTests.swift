@@ -54,6 +54,7 @@ struct QuitSheetTests {
 
         #expect(sheet.title == "Quit Xcode?")
         #expect(sheet.more == nil)
+        #expect(sheet.total == nil)
         #expect(sheet.processes.map(\.name) == ["Xcode"])
     }
 

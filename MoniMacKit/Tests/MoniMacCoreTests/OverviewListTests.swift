@@ -147,6 +147,18 @@ struct OverviewListTests {
         #expect(list.footer == "Showing 1 of 3 apps · 6 processes grouped")
     }
 
+    @Test func aGroupOpenedBySearchCanBeClosedAndReopened() throws {
+        let monitor = try monitor()
+        var query = OverviewListQuery(search: "renderer")
+
+        query.toggle("/Applications/Google Chrome.app")
+        #expect(names(monitor.overviewList(query)) == ["Google Chrome"])
+        #expect(monitor.overviewList(query).rows[0].isExpanded == false)
+
+        query.toggle("/Applications/Google Chrome.app")
+        #expect(names(monitor.overviewList(query)) == ["Google Chrome", "Google Chrome Helper (Renderer) ×4"])
+    }
+
     @Test func searchingAnAppNameKeepsItCollapsed() throws {
         let list = try monitor().overviewList(OverviewListQuery(search: " XCODE "))
 
@@ -173,6 +185,23 @@ struct OverviewListTests {
         #expect(list.rows.isEmpty)
         #expect(list.emptyMessage == "No apps or processes match “zzz”")
         #expect(list.footer == "Showing 0 of 3 apps · 0 processes grouped")
+    }
+
+    // MARK: Show All
+
+    @Test(arguments: OverviewListColumn.allCases)
+    func showAllListsEveryAppGroupedAndSortedByItsMetric(column: OverviewListColumn) throws {
+        let monitor = try monitor()
+        // Whatever the user left: ungrouped, filtered, another sort.
+        var query = OverviewListQuery(sort: .power, search: "chrome", grouped: false)
+
+        query.showAll(sortedBy: column)
+        let list = monitor.overviewList(query)
+
+        #expect(list.sortLabel == column.sortLabel)
+        #expect(list.rows.allSatisfy { $0.kind == .app })
+        #expect(list.footer == "Showing 3 of 3 apps · 11 processes grouped")
+        #expect(names(list) == names(monitor.overviewList(OverviewListQuery(sort: column))))
     }
 
     // MARK: Footer

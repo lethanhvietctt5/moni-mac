@@ -22,6 +22,9 @@ public enum OverviewListColumn: String, CaseIterable, Sendable {
         "Sorted by \(self == .processes ? "Processes" : title)"
     }
 
+    /// App sorts A to Z; every figure sorts highest first.
+    public var sortsAscending: Bool { self == .app }
+
     /// The columns that hold a figure, i.e. all but App.
     public static let figures: [OverviewListColumn] = allCases.filter { $0 != .app }
 }
@@ -32,7 +35,8 @@ public struct OverviewListQuery: Equatable, Sendable {
     public var sort: OverviewListColumn
     public var search: String
     public var grouped: Bool
-    /// Ids of the app groups whose helpers are shown.
+    /// Ids of the app groups the user opened or closed. A group is open when listed here, except one
+    /// that a search opened (only its helpers matched), which closes when listed.
     public var expanded: Set<AppUsage.ID>
 
     public init(sort: OverviewListColumn = .cpu, search: String = "", grouped: Bool = true,
@@ -41,6 +45,18 @@ public struct OverviewListQuery: Equatable, Sendable {
         self.search = search
         self.grouped = grouped
         self.expanded = expanded
+    }
+
+    /// What "Show All" opens: every app, grouped, sorted by `column`.
+    public mutating func showAll(sortedBy column: OverviewListColumn) {
+        sort = column
+        search = ""
+        grouped = true
+    }
+
+    /// Opens or closes a group's helpers.
+    public mutating func toggle(_ id: AppUsage.ID) {
+        if expanded.remove(id) == nil { expanded.insert(id) }
     }
 }
 
@@ -120,8 +136,8 @@ extension OverviewList {
     ) -> OverviewList {
         let processes = snapshot?.processes.value ?? []
         let cores = max(snapshot?.system.logicalCores ?? 1, 1)
-        let format = Formatter(cores: cores, mode: preferences.cpuMode, units: preferences.networkUnits)
-        let members = membership(processes)
+        let format = RowFormat(cores: cores, mode: preferences.cpuMode, units: preferences.networkUnits)
+        let members = AppGrouping.members(processes)
         let needle = query.search.trimmingCharacters(in: .whitespaces)
         func matches(_ name: String) -> Bool { needle.isEmpty || name.localizedCaseInsensitiveContains(needle) }
 
@@ -142,11 +158,11 @@ extension OverviewList {
                 Entry(name: item.app.name, count: item.app.processCount, cpu: item.app.cpu,
                       resources: item.app.resources, order: index)
             }
-            rows = sorted(entries, by: query.sort).flatMap { entry -> [Row] in
+            rows = entries.sorted(by: query.sort).flatMap { entry -> [Row] in
                 let (app, helpers, openedBySearch) = shown[entry.order]
-                let expanded = openedBySearch || query.expanded.contains(app.id)
-                let row = Row(id: app.id, kind: .app, appID: app.id, appName: app.name, name: app.name, bundlePath: app.bundlePath,
-                              values: format.values(entry), isExpandable: app.processCount > 1,
+                let expanded = openedBySearch != query.expanded.contains(app.id)
+                let row = Row(id: app.id, kind: .app, appID: app.id, appName: app.name, name: app.name,
+                              bundlePath: app.bundlePath, values: format.values(entry), isExpandable: app.processCount > 1,
                               isExpanded: expanded && app.processCount > 1, canQuit: app.canQuit)
                 guard row.isExpanded else { return [row] }
                 return [row] + helperRows(helpers, of: app, sort: query.sort, format: format)
@@ -158,27 +174,23 @@ extension OverviewList {
                 + "\(bundled.count == 1 ? "app" : "apps") · \(Format.count(grouped)) "
                 + "\(grouped == 1 ? "process" : "processes") grouped"
         } else {
-            let byPID = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
             let appsByID = Dictionary(apps.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let owners = members.flatMap { id, processes in processes.map { ($0.pid, id) } }
+            let ownerByPID = Dictionary(owners, uniquingKeysWith: { first, _ in first })
             // Processes arrive in pid order; rank them by CPU first, so ties keep the busiest on top.
-            let shown = processes.compactMap { process -> (process: ProcessSample, app: AppUsage?)? in
-                let owner = AppGrouping.owner(of: process, byPID: byPID)
-                guard matches(process.name) || matches(owner.name) else { return nil }
-                return (process, appsByID[owner.id])
+            let shown = AppGrouping.busiestFirst(processes).compactMap { process -> (ProcessSample, AppUsage)? in
+                guard let app = ownerByPID[process.pid].flatMap({ appsByID[$0] }),
+                      matches(process.name) || matches(app.name) else { return nil }
+                return (process, app)
             }
-            .enumerated().sorted { $0.element.process.cpu != $1.element.process.cpu
-                ? $0.element.process.cpu > $1.element.process.cpu : $0.offset < $1.offset }
-            .map(\.element)
             let entries = shown.enumerated().map { index, item in
-                Entry(name: item.process.name, count: 1, cpu: item.process.cpu, resources: item.process.resources,
-                      order: index)
+                Entry(name: item.0.name, count: 1, cpu: item.0.cpu, resources: item.0.resources, order: index)
             }
-            rows = sorted(entries, by: query.sort).map { entry in
+            rows = entries.sorted(by: query.sort).map { entry in
                 let (process, app) = shown[entry.order]
-                return Row(id: "pid:\(process.pid)", kind: .process, appID: app?.id ?? process.name,
-                           appName: app?.name ?? process.name,
-                           name: process.name, bundlePath: app?.bundlePath, values: format.values(entry),
-                           isExpandable: false, isExpanded: false, canQuit: app?.canQuit ?? false)
+                return Row(id: "pid:\(process.pid)", kind: .process, appID: app.id, appName: app.name,
+                           name: process.name, bundlePath: app.bundlePath, values: format.values(entry),
+                           isExpandable: false, isExpanded: false, canQuit: app.canQuit)
             }
             footer = "Showing \(Format.count(rows.count)) of \(Format.count(processes.count)) "
                 + (processes.count == 1 ? "process" : "processes")
@@ -195,15 +207,9 @@ extension OverviewList {
                             totals: totals(snapshot, format: format), emptyMessage: emptyMessage)
     }
 
-    /// Each group's processes, in input order. Built once per list, not per row.
-    static func membership(_ processes: [ProcessSample]) -> [AppUsage.ID: [ProcessSample]] {
-        let byPID = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
-        return Dictionary(grouping: processes) { AppGrouping.owner(of: $0, byPID: byPID).id }
-    }
-
     /// An expanded group's processes, collapsed by name: "Google Chrome Helper (Renderer) ×14".
     private static func helperRows(
-        _ processes: [ProcessSample], of app: AppUsage, sort: OverviewListColumn, format: Formatter
+        _ processes: [ProcessSample], of app: AppUsage, sort: OverviewListColumn, format: RowFormat
     ) -> [Row] {
         var names: [String] = []
         var byName: [String: Entry] = [:]
@@ -220,23 +226,19 @@ extension OverviewList {
             }
         }
         // Rank by CPU first, so equal figures keep the busier helper on top, as app rows do.
-        let ranked = sorted(names.compactMap { byName[$0] }, by: .cpu).enumerated().map { rank, entry in
+        let ranked = names.compactMap { byName[$0] }.sorted(by: .cpu).enumerated().map { rank, entry in
             var entry = entry
             entry.order = rank
             return entry
         }
-        return sorted(ranked, by: sort).map { entry in
+        return ranked.sorted(by: sort).map { entry in
             Row(id: "\(app.id)\u{0}\(entry.name)", kind: .helper, appID: app.id, appName: app.name,
                 name: entry.count > 1 ? "\(entry.name) ×\(entry.count)" : entry.name, bundlePath: nil,
                 values: format.values(entry), isExpandable: false, isExpanded: false, canQuit: app.canQuit)
         }
     }
 
-    private static func sorted(_ entries: [Entry], by column: OverviewListColumn) -> [Entry] {
-        entries.sorted(by: column)
-    }
-
-    private static func totals(_ snapshot: Snapshot?, format: Formatter) -> [Total] {
+    private static func totals(_ snapshot: Snapshot?, format: RowFormat) -> [Total] {
         let dash = Format.placeholder
         let cpu = snapshot?.cpu.value.map { format.cpu($0.total * Double(format.cores), decimals: 0) }
         let memory = snapshot?.memory.value.map { Format.memorySize($0.used) }
@@ -248,7 +250,7 @@ extension OverviewList {
     }
 
     /// Formats an entry's figures in the user's CPU mode and network units.
-    private struct Formatter {
+    private struct RowFormat {
         var cores: Int
         var mode: CPUMode
         var units: NetworkUnits
@@ -301,7 +303,7 @@ private extension Array where Element == OverviewList.Entry {
             }
         }
         return sorted { lhs, rhs in
-            if column == .app {
+            if column.sortsAscending {
                 let order = lhs.name.localizedStandardCompare(rhs.name)
                 return order != .orderedSame ? order == .orderedAscending : lhs.order < rhs.order
             }

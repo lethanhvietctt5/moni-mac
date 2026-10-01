@@ -27,8 +27,9 @@ final class QuitSheetPresenter: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     /// The window the sheet is attached to, or nil for a standalone panel.
     private weak var parent: NSWindow?
-    /// The "Reopen windows" checkbox, remembered while MoniMac runs.
-    private var reopenWindows = true
+    /// The "Reopen windows" checkbox, remembered while MoniMac runs. Off by default: it takes effect
+    /// only where macOS lets MoniMac send the app Apple events (see `WorkspaceActions.quitApp`).
+    private var reopenWindows = false
 
     init(monitor: Monitor) {
         self.monitor = monitor
@@ -64,7 +65,7 @@ final class QuitSheetPresenter: NSObject, NSWindowDelegate {
         panel.delegate = self
         let content = NSHostingController(rootView: QuitSheetView(
             monitor: monitor, appID: appID,
-            reopenWindows: Binding { [weak self] in self?.reopenWindows ?? true } set: { [weak self] in
+            reopenWindows: Binding { [weak self] in self?.reopenWindows ?? false } set: { [weak self] in
                 self?.reopenWindows = $0
             },
             finish: { [weak self] choice in self?.finish(appID: appID, choice: choice) }
@@ -142,7 +143,8 @@ private struct QuitSheetContent: View {
                 Text(sheet.reopenLabel).font(.system(size: 12)).foregroundStyle(Palette.textPrimary)
             }
             .toggleStyle(.checkbox)
-            .help("Like Quit and Keep Windows (⌥⌘Q): apps that restore windows reopen them next launch")
+            .help("Like Quit and Keep Windows (⌥⌘Q): the app reopens its windows next launch. "
+                + "Needs macOS to allow MoniMac to control the app; otherwise it quits normally.")
             HStack {
                 Button { finish(.forceQuit) } label: {
                     Text("Force Quit").foregroundStyle(.red)
@@ -169,11 +171,11 @@ private struct QuitSheetContent: View {
             ForEach(sheet.processes) { process in
                 row(process.name, process.pid, process.cpu, process.memory, header: false)
             }
-            if sheet.more != nil || sheet.processes.count > 1 {
+            if let total = sheet.total {
                 HStack {
                     Text(sheet.more ?? "").font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
                     Spacer()
-                    Text(sheet.total).font(.system(size: 11, weight: .semibold).monospacedDigit())
+                    Text(total).font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(Palette.textPrimary)
                 }
                 .padding(.horizontal, 12)

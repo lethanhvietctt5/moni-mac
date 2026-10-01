@@ -75,12 +75,11 @@ final class WindowState {
         Binding { self.ranges[tab] ?? .twentyFourHours } set: { self.ranges[tab] = $0 }
     }
 
-    /// Shows Overview → List sorted by `column`, with the search cleared so every app shows.
+    /// Shows Overview → List with every app, sorted by `column`.
     func showList(sortedBy column: OverviewListColumn) {
         tab = .overview
         overviewLayout = .list
-        listQuery.sort = column
-        listQuery.search = ""
+        listQuery.showAll(sortedBy: column)
     }
 }
 

@@ -136,11 +136,7 @@ private struct OverviewListContent: View {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(list.rows.enumerated()), id: \.element.id) { index, row in
                             OverviewListRow(row: row, sort: query.sort, striped: index % 2 == 1) {
-                                if query.expanded.contains(row.appID) {
-                                    query.expanded.remove(row.appID)
-                                } else {
-                                    query.expanded.insert(row.appID)
-                                }
+                                query.toggle(row.appID)
                             }
                         }
                     }
@@ -162,7 +158,7 @@ private struct OverviewListContent: View {
                         Text(column.title)
                             .foregroundStyle(sorted ? Palette.accent : Palette.textSecondary)
                         if sorted {
-                            Image(systemName: column == .app ? "chevron.up" : "chevron.down")
+                            Image(systemName: column.sortsAscending ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(Palette.accent)
                         }

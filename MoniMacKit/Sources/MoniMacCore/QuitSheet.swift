@@ -27,8 +27,8 @@ public struct QuitSheet: Equatable, Sendable {
     public var processes: [Process]
     /// e.g. "and 18 more helper processes"; nil when every process is listed.
     public var more: String?
-    /// e.g. "Total  86% · 6.8 GB".
-    public var total: String
+    /// e.g. "Total  86% · 6.8 GB"; nil for a single-process app, whose one row is the total.
+    public var total: String?
     /// e.g. "Reopen Google Chrome windows next time".
     public var reopenLabel: String
 }
@@ -51,15 +51,11 @@ extension QuitSheet {
         let count = app.processCount
         let memory = app.resources.memory.map(Format.memorySize)
         // Whole percents, except below 10% where "0%" would hide a working app.
-        let shown = mode == .system ? app.cpu / Double(cores) : app.cpu
-        let appCPU = cpu(app.cpu, decimals: shown < 0.095 ? 1 : 0)
+        let displayedShare = mode == .system ? app.cpu / Double(cores) : app.cpu
+        let appCPU = cpu(app.cpu, decimals: displayedShare < 0.095 ? 1 : 0)
         let usage = "\(app.name) is using \(appCPU) CPU"
             + (memory.map { " and \($0) of memory" } ?? "") + "."
-        // Busiest first; stable for equal CPU.
-        let listed = members.enumerated()
-            .sorted { $0.element.cpu != $1.element.cpu ? $0.element.cpu > $1.element.cpu : $0.offset < $1.offset }
-            .prefix(processLimit)
-            .map(\.element)
+        let listed = AppGrouping.busiestFirst(members).prefix(processLimit)
         let remaining = count - listed.count
         return QuitSheet(
             appID: app.id,
@@ -74,7 +70,7 @@ extension QuitSheet {
             },
             more: remaining > 0
                 ? "and \(Format.count(remaining)) more helper \(remaining == 1 ? "process" : "processes")" : nil,
-            total: "Total  \(appCPU)" + (memory.map { " · \($0)" } ?? ""),
+            total: count > 1 ? "Total  \(appCPU)" + (memory.map { " · \($0)" } ?? "") : nil,
             reopenLabel: "Reopen \(app.name) windows next time"
         )
     }
@@ -85,14 +81,14 @@ extension Monitor {
     public func quitSheet(for id: AppUsage.ID) -> QuitSheet? {
         guard let latest, let app = apps.first(where: { $0.id == id }), app.canQuit else { return nil }
         let processes = latest.processes.value ?? []
-        return QuitSheet.make(app: app, members: OverviewList.membership(processes)[id] ?? [],
+        return QuitSheet.make(app: app, members: AppGrouping.members(processes)[id] ?? [],
                               logicalCores: latest.system.logicalCores, mode: preferences.cpuMode)
     }
 
     /// Carries out the quit sheet's choice for an app group. Always the group's app process (its
     /// `quitPID`), never a helper; nothing happens for groups that can't be quit or on Cancel.
     public func resolveQuit(appID: AppUsage.ID, choice: QuitChoice) {
-        guard choice != .cancel, let pid = apps.first(where: { $0.id == appID })?.quitPID else { return }
+        guard let pid = apps.first(where: { $0.id == appID })?.quitPID else { return }
         switch choice {
         case .quit(let reopenWindows): actions.quitApp(pid: pid, reopenWindows: reopenWindows)
         case .forceQuit: actions.forceQuitApp(pid: pid)

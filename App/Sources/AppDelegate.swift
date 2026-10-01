@@ -55,17 +55,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
                 guard let self else { return }
-                let expanded = await self.appIDs(named: Self.value(after: "--expand").map { [$0] } ?? [])
+                var expanded: AppUsage.ID?
+                if let name = Self.value(after: "--expand") { expanded = await self.appID(named: name) }
                 self.mainWindow.show(tab: Self.launchTab.flatMap(WindowTab.init(rawValue:)),
                                      layout: CommandLine.arguments.contains("--overview-list") ? .list : nil,
-                                     expanding: Set(expanded))
+                                     expanding: expanded.map { [$0] } ?? [])
             }
         }
         // Development aid: `--show-quit-sheet <app name>` opens the quit sheet for that app on launch,
         // standalone as from the popover, so it can be screenshotted. It never presses a button.
         if let name = Self.value(after: "--show-quit-sheet") {
             Task { @MainActor [weak self] in
-                guard let self, let id = await self.appIDs(named: [name]).first else { return }
+                guard let self, let id = await self.appID(named: name) else { return }
                 self.quitSheet.present(appID: id)
             }
         }
@@ -92,18 +93,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return main
     }
 
-    /// For the development flags: the ids of the app groups with these names (case-insensitive).
+    /// For the development flags: the id of the app group with this name (case-insensitive).
     /// The process list takes a few seconds to arrive, so this waits up to 15 s for it.
-    private func appIDs(named names: [String]) async -> [AppUsage.ID] {
-        guard !names.isEmpty else { return [] }
-        let wanted = Set(names.map { $0.lowercased() })
+    private func appID(named name: String) async -> AppUsage.ID? {
         for _ in 0..<30 {
-            let ids = monitor.apps.filter { wanted.contains($0.name.lowercased()) }.map(\.id)
-            if !ids.isEmpty { return ids }
+            if let app = monitor.apps.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+                return app.id
+            }
             try? await Task.sleep(for: .milliseconds(500))
         }
-        log.notice("No running app named \(names.joined(separator: ", "), privacy: .public)")
-        return []
+        log.notice("No running app named \(name, privacy: .public)")
+        return nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {
