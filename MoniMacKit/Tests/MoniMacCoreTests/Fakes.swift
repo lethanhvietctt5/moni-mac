@@ -46,12 +46,20 @@ final class RecordingActions: SystemActions {
     enum Action: Equatable {
         case quitApp(pid: Int32)
         case openActivityMonitor
+        case stopProcess(pid: Int32, startedAt: Date)
+        case stopContainer(id: String)
+        case openURL(URL)
+        case revealInFinder(path: String)
     }
 
     private(set) var recorded: [Action] = []
 
     func quitApp(pid: Int32) { recorded.append(.quitApp(pid: pid)) }
     func openActivityMonitor() { recorded.append(.openActivityMonitor) }
+    func stopProcess(pid: Int32, startedAt: Date) { recorded.append(.stopProcess(pid: pid, startedAt: startedAt)) }
+    func stopContainer(id: String) { recorded.append(.stopContainer(id: id)) }
+    func openURL(_ url: URL) { recorded.append(.openURL(url)) }
+    func revealInFinder(path: String) { recorded.append(.revealInFinder(path: path)) }
 }
 
 extension Reading<CPUUsage> {

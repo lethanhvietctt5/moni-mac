@@ -144,7 +144,8 @@ struct MainWindowView: View {
         case .disk: monitor.diskSubtitle
         case .battery: monitor.batterySubtitle
         case .temperature: monitor.temperatureSubtitle
-        case .overview, .bluetooth, .sound, .projects, .settings: nil
+        case .projects: monitor.projectsSubtitle
+        case .overview, .bluetooth, .sound, .settings: nil
         }
     }
 
@@ -184,7 +185,8 @@ struct MainWindowView: View {
         case .disk: DiskWindowTab(monitor: monitor, range: range)
         case .battery: BatteryWindowTab(monitor: monitor, range: range)
         case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
-        case .overview, .bluetooth, .sound, .projects, .settings: ComingSoon(title: state.tab.title)
+        case .projects: ProjectsWindowTab(monitor: monitor)
+        case .overview, .bluetooth, .sound, .settings: ComingSoon(title: state.tab.title)
         }
     }
 }
