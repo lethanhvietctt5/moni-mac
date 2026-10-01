@@ -9,14 +9,17 @@ struct NetworkReaderSmokeTests {
     @Test func secondSampleReportsRatesAndTheActiveInterface() async throws {
         let reader = NetworkReader()
         #expect(reader.sample() == .unavailable(.warmingUp))
+        let start = Date()
         try await Task.sleep(for: .seconds(1))
 
         let network = try #require(reader.sample().value)
+        // Under a busy parallel test run the gap can be several seconds, not one.
+        let gap = Date().timeIntervalSince(start)
 
         #expect(network.downloadPerSecond >= 0 && network.uploadPerSecond >= 0)
         #expect(network.received >= 0 && network.sent >= 0)
-        // Rates are amounts over roughly the one-second gap.
-        #expect(network.received <= network.downloadPerSecond * 2)
+        // Rates are the amounts over the gap between the two samples.
+        #expect(network.received <= network.downloadPerSecond * (gap + 0.5))
         // This Mac is online while tests run; the interface has a user-facing name.
         let interface = try #require(network.interface)
         #expect(!interface.name.isEmpty)

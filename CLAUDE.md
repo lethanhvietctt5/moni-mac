@@ -22,9 +22,16 @@ open build/Build/Products/Debug/MoniMac.app
 
 Rerun `xcodegen generate` after adding or removing app source files or editing `project.yml`.
 
-`--show-popover` and `--show-window` (e.g. `open …/MoniMac.app --args --show-window`) open the popover or main window on launch. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI.
+`--show-popover` and `--show-window` open the popover or main window on launch. Add `--tab <name>` (or `--tab=<name>`, a tab's raw value, e.g. `--tab gpu`) to choose its tab, e.g. `open …/MoniMac.app --args --show-window --tab disk`. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI.
 
-**Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
+**Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Menu bar items can't be captured, so they're verified by tests.
+
+**Self-cost** (budget: under 1% CPU with the popover and window closed):
+- **Build:** measure a **Release** build; Debug is several times slower.
+- **Wait:** start at least 60 s after launch. Startup work (SMC key discovery; the storage scan when no saved one is under 6 h old) isn't steady state.
+- **Measure:** take the `ps -o cputime` delta over 120 s, or log it in 5 s windows to spot bursts.
+- **Compare:** run back to back against a `main` Release build on the same machine, since load from other work skews single readings.
+- **Popover:** if someone opens it during a run, SwiftUI re-renders every tick and the reading is invalid; check a `sample` profile for `statusItemClicked`.
 
 ## Layout
 
@@ -44,7 +51,11 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
   - **`App/Sources/<Metric>Views.swift`** holds the popover and window tabs. They get a `range` binding kept by the popover or window.
 
   Shared switches already route to all of these. Per-process memory, disk, and power (`ResourceUse`) come from `ProcessReader`.
+- **Metric-file names** are prefixed with the metric (`DiskFormat`, `SeriesKey.networkDown…`, `Palette` extensions), so files written in parallel never declare the same name.
 - **History for totals:** series that record an amount per sample (e.g. bytes since the previous sample) support `MetricsHistory.sum(from:to:)` for "since launch" (`Monitor.startedAt`) or "today", and `dailyTotals` for per-day charts.
+  - **Per-app series** use keys `<metric>.app:<id>`, recorded only when nonzero, and are read with `sums(prefix:from:to:)`. `peak(from:to:)` gives a peak since a time, e.g. midnight.
+  - **Past windows:** query them through a range whose tier still holds the data. The minute tier behind 24H is pruned after about 25 h, so "yesterday's 24H average" must come from the 7D (15-minute) tier.
+  - **Worst level in a bucket:** buckets keep averages. To show a bucket's worst level (e.g. memory pressure), record 0/1 indicator series.
 - **Naming:** data types say *Thermal* (thermal state, sensors, fans). UI says *Temperature* (`Metric.temperature`, `TemperatureMenuBar`, the "Temperature & Fans" tab).
 - `App/`: thin AppKit shell (status items now, the popover and window later) that renders `Monitor`'s feature state. `project.yml` builds it.
 - **Signing:** `Config/Signing.xcconfig` defaults to ad-hoc. For a stable identity, so that granted permissions survive rebuilds, run `scripts/create-signing-cert.sh` once and set `CODE_SIGN_IDENTITY` in the gitignored `Config/Local.xcconfig`.
@@ -102,4 +113,29 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
 - **Menu bar reorder and hide** use the system's ⌘-drag behavior. Don't build a custom drag UI in the menu bar.
 - **Per-app volume** (Core Audio process taps) needs a feasibility spike first. If it fails, Sound ships without per-app sliders.
 - **Process sampling (no privileged helper):** own-user processes come from `proc_pid_rusage` (every 4 s; its times are Mach absolute units, converted with `mach_timebase_info`). Other users' processes come from the setuid `/bin/ps` in the background (every 15 s). Helpers are attributed via the private responsible-pid call, with a fallback to the outermost `.app` in the path. Quit (×) is offered only for running regular apps.
+- **Metric sources** (no privileges needed; each reader is throttled to how fast its value changes):
+  - **Memory:** `host_statistics64` VM info, `vm.swapusage`, `kern.memorystatus_vm_pressure_level`. Sizes are binary (GB = 2³⁰); there's no cheap memory-type source, so it reads "unified memory".
+  - **GPU:**
+    - totals come from the IOAccelerator `PerformanceStatistics` dictionary
+    - per-app use comes from `AGXDeviceUserClient` `AppUsage.accumulatedGPUTime` (ns)
+    - read single keys only, never whole property tables
+  - **Network:**
+    - totals sum the `en*` interfaces' 64-bit counters (`NET_RT_IFLIST2`), timed with a clock that runs through sleep
+    - per-app traffic comes from `nettop -t external` in the background
+    - Location (for the Wi-Fi name) is requested only when a Network tab appears; ad-hoc rebuilds can reset the grant
+  - **Disk:**
+    - read/write rates come from `IOBlockStorageDriver` statistics
+    - SSD health comes from NVMe SMART through the NVMeSMARTLib plug-in
+    - purgeable space is read every 5 min in the background
+    - the storage scan never reads Documents, Desktop, Downloads, or other apps' containers (Documents is a remainder, so no privacy prompt). It is saved in `StorageScan.json` and reused for 6 h.
+    - sizes are decimal
+  - **Battery:**
+    - `IOPowerSources` plus the `AppleSmartBattery` registry; on macOS 27 temperature and capacity keys moved under `BatteryData`
+    - health = nominal ÷ design capacity
+    - the charging series records "adapter connected"
+    - `hasBattery` is false before the first sample
+  - **Thermal:**
+    - SMC read-only calls, with sensor key tables per Apple silicon generation. Unknown keys are counted, never given guessed names.
+    - IOHID is a fallback only
+    - chart times use 24-hour `HH:mm`
 - **Name:** the product is **MoniMac**; the repo is `moni-mac`. "Vitals" was its old name.

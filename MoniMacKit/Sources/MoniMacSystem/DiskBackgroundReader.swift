@@ -11,7 +11,8 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 ///   space macOS takes, and SSD health.
 /// - `scanDelay` after launch, then every `scanInterval` (6 h): the storage scan, which walks about
 ///   a million files and costs several seconds of CPU. Free space and the Documents remainder stay
-///   current between scans because they're derived from live figures.
+///   current between scans because they're derived from live figures. The result is saved, so a
+///   relaunch within `scanInterval` shows it at once and doesn't rescan.
 ///
 /// `refreshIfDue` only starts work; the refresh loop never waits for it.
 final class DiskBackgroundReader: Sendable {
@@ -32,6 +33,7 @@ final class DiskBackgroundReader: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: State())
     private let nvmeDevice: UInt64?
     private let scanner: DiskStorageScanner
+    private let cache: StorageScanCache?
     private let started = Date()
     private let spaceInterval: TimeInterval
     private let scanDelay: TimeInterval
@@ -39,10 +41,18 @@ final class DiskBackgroundReader: Sendable {
 
     init(
         nvmeDevice: UInt64?, scanner: DiskStorageScanner = DiskStorageScanner(),
+        cache: StorageScanCache? = .standard,
         spaceInterval: TimeInterval = 300, scanDelay: TimeInterval = 10, scanInterval: TimeInterval = 6 * 3600
     ) {
         self.nvmeDevice = nvmeDevice
         self.scanner = scanner
+        self.cache = cache
+        if let saved = cache?.load(), Date().timeIntervalSince(saved.scannedAt) < scanInterval {
+            state.withLock {
+                $0.latest.scan = .value(saved.scan)
+                $0.lastScan = saved.scannedAt
+            }
+        }
         self.spaceInterval = spaceInterval
         self.scanDelay = scanDelay
         self.scanInterval = scanInterval
@@ -88,7 +98,36 @@ final class DiskBackgroundReader: Sendable {
                     $0.latest.scan = .value(result)
                     $0.scanRunning = false
                 }
+                cache?.save(result, scannedAt: wallStart)
             }
+        }
+    }
+}
+
+/// The last storage scan, saved next to the history database so relaunches don't rescan.
+struct StorageScanCache: Sendable {
+    struct Saved: Codable {
+        var scannedAt: Date
+        var scan: StorageScan
+    }
+
+    let url: URL
+
+    static let standard: StorageScanCache? = StorageScanCache(
+        url: URL.applicationSupportDirectory.appending(path: "MoniMac/StorageScan.json")
+    )
+
+    func load() -> Saved? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Saved.self, from: data)
+    }
+
+    func save(_ scan: StorageScan, scannedAt: Date) {
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try JSONEncoder().encode(Saved(scannedAt: scannedAt, scan: scan)).write(to: url, options: .atomic)
+        } catch {
+            log.error("Couldn't save the storage scan: \(String(describing: error), privacy: .public)")
         }
     }
 }

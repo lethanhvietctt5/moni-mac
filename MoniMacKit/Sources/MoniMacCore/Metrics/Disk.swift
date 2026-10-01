@@ -98,7 +98,7 @@ public struct VolumeSpace: Equatable, Sendable {
 
 /// Folder sizes from one background scan. Protected folders (Documents, Desktop, other apps'
 /// containers) are never read, so scanning never triggers a privacy prompt.
-public struct StorageScan: Equatable, Sendable {
+public struct StorageScan: Equatable, Sendable, Codable {
     /// Allocated bytes in /Applications and ~/Applications.
     public var applications: UInt64
     /// `.app` bundles found there, including one folder level down (e.g. Utilities).
@@ -108,7 +108,7 @@ public struct StorageScan: Equatable, Sendable {
     /// Whether the scan hit its work cap, so the sizes are lower bounds.
     public var isPartial: Bool
 
-    public struct Item: Equatable, Sendable {
+    public struct Item: Equatable, Sendable, Codable {
         public var name: String
         public var bytes: UInt64
 
