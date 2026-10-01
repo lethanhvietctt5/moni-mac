@@ -11,9 +11,9 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 /// Each read:
 /// - checks every pid's owner and start time (`PROC_PIDTBSDINFO`); for the user's own processes
 ///   it reads, once per process, the working directory and executable path
-/// - for processes started from a folder other than "/" (and that aren't app bundles): argv once,
-///   then each time their TCP sockets, CPU time, and memory; and for those that listen or watch,
-///   the project their folder is in
+/// - for processes started from a folder other than "/", the home folder, or ~/Library (and that
+///   aren't app bundles): argv once, then each time their TCP sockets; and for those that listen or
+///   watch, the project their folder is in, CPU time, and memory
 /// - asks Docker for its containers, if Docker's socket exists, and attributes inbound connections
 ///   held by Docker's host-side proxy to the containers whose published ports they're on
 final class DevServerReader: Sendable {
@@ -75,6 +75,7 @@ final class DevServerScanner {
     }
 
     private let uid = getuid()
+    private let home = NSHomeDirectory()
     private let timebase: (numer: UInt64, denom: UInt64) = {
         var info = mach_timebase_info()
         mach_timebase_info(&info)
@@ -108,18 +109,22 @@ final class DevServerScanner {
             defer { live[pid] = identity }
             if identity.name.hasPrefix("com.docker") { dockerProxies.append(pid) }
             guard !identity.isAppBundle, let cwd = identity.cwd, cwd != "/" else { continue }
-            if identity.arguments == nil { identity.arguments = DevProcessInfo.arguments(pid) ?? [] }
-            guard let usage = DevProcessInfo.usage(pid, timebase: timebase) else { continue }
-            let sockets = DevProcessInfo.sockets(pid)
+            // Agents and helpers started from the home folder or ~/Library are never in a project, but
+            // they're kept (with nothing else read) to link parents to children.
+            let outside = cwd == home || cwd.hasPrefix(home + "/Library/")
+            if !outside, identity.arguments == nil { identity.arguments = DevProcessInfo.arguments(pid) ?? [] }
+            let sockets = outside ? DevProcessInfo.Sockets() : DevProcessInfo.sockets(pid)
             let ports = Set(sockets.listening)
             // Only servers and watchers need their project; looking it up touches the folder.
-            let qualifies = !ports.isEmpty || ProjectCatalog.isWatcher(arguments: identity.arguments ?? [])
+            let qualifies = !outside && (!ports.isEmpty || ProjectCatalog.isWatcher(arguments: identity.arguments ?? []))
             let project = qualifies ? resolver.project(for: cwd, now: now) : nil
+            let usage = project == nil ? nil : DevProcessInfo.usage(pid, timebase: timebase)
             processes.append(DevProcess(
                 pid: pid, parentPID: Int32(info.pbi_ppid), startedAt: start, name: identity.name,
-                arguments: identity.arguments ?? [], project: project, listeningPorts: sockets.listening,
+                arguments: identity.arguments ?? [], project: usage == nil ? nil : project,
+                listeningPorts: sockets.listening,
                 connections: Set(sockets.established.filter { ports.contains($0.port) }.map { "\($0.port) \($0.peer)" }),
-                cpuTime: usage.cpuTime, memory: usage.memory
+                cpuTime: usage?.cpuTime ?? 0, memory: usage?.memory
             ))
         }
         identities = live
