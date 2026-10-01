@@ -5,6 +5,24 @@ public enum MemoryPressureLevel: Equatable, Sendable {
     case normal
     case warning
     case critical
+
+    /// How `SeriesKey.memoryPressureLevel` records it: 0, 1, 2.
+    var seriesValue: Double {
+        switch self {
+        case .normal: 0
+        case .warning: 1
+        case .critical: 2
+        }
+    }
+
+    /// The nearest level to a recorded (possibly averaged) series value.
+    init(seriesValue: Double) {
+        switch seriesValue {
+        case ..<0.5: self = .normal
+        case ..<1.5: self = .warning
+        default: self = .critical
+        }
+    }
 }
 
 /// What SystemSampler reads for memory on each tick. Sizes are bytes.
@@ -76,6 +94,8 @@ extension SeriesKey {
     public static let memoryUsed = SeriesKey(rawValue: "memory.used")
     /// Memory pressure, 0...1.
     public static let memoryPressure = SeriesKey(rawValue: "memory.pressure")
+    /// The kernel's pressure level: 0 normal, 1 warning, 2 critical.
+    public static let memoryPressureLevel = SeriesKey(rawValue: "memory.pressureLevel")
 }
 
 extension Snapshot {
@@ -86,6 +106,9 @@ extension Snapshot {
         var samples = [SeriesSample(.memoryUsed, memory.usedFraction, contributor: biggest)]
         if let pressure = memory.pressure {
             samples.append(SeriesSample(.memoryPressure, pressure, contributor: biggest))
+        }
+        if let level = memory.pressureLevel {
+            samples.append(SeriesSample(.memoryPressureLevel, level.seriesValue))
         }
         return samples
     }

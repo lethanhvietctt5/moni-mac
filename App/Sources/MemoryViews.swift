@@ -67,16 +67,18 @@ private struct MemoryPopoverContent: View {
     private var breakdown: some View {
         VStack(alignment: .leading, spacing: 8) {
             BreakdownBar(segments: detail.breakdown, spacing: 1, cornerRadius: 3).frame(height: 6)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .leading), count: 3),
-                      alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
                 ForEach(detail.breakdown, id: \.label) { segment in
-                    HStack(spacing: 5) {
-                        Circle().fill(segment.kind.color).frame(width: 8, height: 8)
-                        Text(segment.label).foregroundStyle(Palette.textSecondary).lineLimit(1)
-                        Text(segment.value).fontWeight(.semibold).foregroundStyle(Palette.textPrimary).monospacedDigit()
-                            .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Circle().fill(segment.kind.color).frame(width: 7, height: 7)
+                            Text(segment.label).font(.system(size: 10)).foregroundStyle(Palette.textSecondary)
+                                .lineLimit(1).fixedSize()
+                        }
+                        Text(segment.value).font(.system(size: 12, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(Palette.textPrimary)
                     }
-                    .font(.system(size: 11))
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -84,7 +86,7 @@ private struct MemoryPopoverContent: View {
 
     private var stats: some View {
         HStack(alignment: .top) {
-            stat(detail.pressure, short: "Pressure", band: detail.pressureBand)
+            stat(detail.pressure, short: "Pressure", level: detail.pressureLevel)
             Spacer()
             stat(detail.swap, short: "Swap")
             Spacer()
@@ -95,10 +97,10 @@ private struct MemoryPopoverContent: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
     }
 
-    private func stat(_ stat: MemoryDetail.Stat, short: String, band: MemoryDetail.Band? = nil) -> some View {
+    private func stat(_ stat: MemoryDetail.Stat, short: String, level: MemoryPressureLevel? = nil) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 5) {
-                if let band { Circle().fill(band.color).frame(width: 7, height: 7) }
+                if let level { Circle().fill(level.color).frame(width: 7, height: 7) }
                 Text(short).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.textSecondary)
             }
             Text(stat.value).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(Palette.textPrimary)
@@ -157,16 +159,16 @@ private struct MemoryWindowContent: View {
                 UsageBar(share: detail.usedShare, color: Palette.memory, height: 8)
             }
             .frame(width: 260, alignment: .leading)
-            card(detail.pressure, band: detail.pressureBand)
+            card(detail.pressure, level: detail.pressureLevel)
             card(detail.swap)
             card(detail.compression)
         }
     }
 
-    private func card(_ stat: MemoryDetail.Stat, band: MemoryDetail.Band? = nil) -> some View {
+    private func card(_ stat: MemoryDetail.Stat, level: MemoryPressureLevel? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                if let band { Circle().fill(band.color).frame(width: 8, height: 8) }
+                if let level { Circle().fill(level.color).frame(width: 8, height: 8) }
                 Text(stat.label).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.textSecondary)
             }
             Text(stat.value).font(.system(size: 20, weight: .semibold).monospacedDigit())
@@ -325,7 +327,7 @@ private struct BreakdownBar: View {
     }
 }
 
-/// One column per bar, as tall as the pressure and colored by its band; nil bars are empty.
+/// One column per bar, as tall as the pressure and colored by the pressure level; nil bars are empty.
 private struct PressureChart: View {
     let bars: [MemoryDetail.PressureBar?]
     let cornerRadius: CGFloat
@@ -339,7 +341,7 @@ private struct PressureChart: View {
                         Spacer(minLength: 0)
                         if let bar, bar.value > 0 {
                             UnevenRoundedRectangle(topLeadingRadius: cornerRadius, topTrailingRadius: cornerRadius)
-                                .fill(bar.band.color)
+                                .fill(bar.level.color)
                                 .frame(height: geometry.size.height * bar.value)
                         }
                     }
@@ -363,12 +365,13 @@ private extension MemoryDetail.SegmentKind {
     }
 }
 
-private extension MemoryDetail.Band {
+private extension MemoryPressureLevel {
+    /// The chart's Low, Med, and High.
     var color: Color {
         switch self {
-        case .low: Palette.success
-        case .medium: MemoryColors.warning
-        case .high: MemoryColors.danger
+        case .normal: Palette.success
+        case .warning: MemoryColors.warning
+        case .critical: MemoryColors.danger
         }
     }
 }

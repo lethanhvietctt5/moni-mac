@@ -21,20 +21,6 @@ public struct MemoryDetail: Equatable, Sendable {
     /// The pressure chart's scale, top to bottom.
     public static let yAxis = ["High", "Med", "Low"]
 
-    /// Pressure bands for the card's dot and the history chart's colors.
-    public enum Band: Equatable, Sendable {
-        case low, medium, high
-
-        /// Chart buckets: below 50% is Low, below 75% Med, else High.
-        static func of(pressure: Double) -> Band {
-            switch pressure {
-            case ..<0.5: .low
-            case ..<0.75: .medium
-            default: .high
-            }
-        }
-    }
-
     public struct Stat: Equatable, Sendable {
         public var label: String
         public var value: String
@@ -60,7 +46,8 @@ public struct MemoryDetail: Equatable, Sendable {
     public struct PressureBar: Equatable, Sendable {
         /// Pressure, 0...1: the bar's height.
         public var value: Double
-        public var band: Band
+        /// The kernel's level over the bar's span (the nearest to its average), which colors the bar Low/Med/High.
+        public var level: MemoryPressureLevel
     }
 
     public struct AppRow: Equatable, Sendable, Identifiable {
@@ -87,8 +74,8 @@ public struct MemoryDetail: Equatable, Sendable {
     /// Used share of installed memory, 0...1, for the usage bar.
     public var usedShare: Double
     public var pressure: Stat
-    /// Nil when the pressure state is unknown.
-    public var pressureBand: Band?
+    /// Colors the card's dot. Nil when the pressure state is unknown.
+    public var pressureLevel: MemoryPressureLevel?
     public var swap: Stat
     public var compression: Stat
     /// App Memory, Wired, Compressed, Cached Files, Free; empty before the first reading.
@@ -121,7 +108,7 @@ extension MemoryDetail {
             total: memory.map { Format.memorySize($0.total) } ?? dash,
             usedShare: memory?.usedFraction ?? 0,
             pressure: pressureStat(memory),
-            pressureBand: memory?.pressureLevel.map(band),
+            pressureLevel: memory?.pressureLevel,
             swap: swapStat(memory?.swap),
             compression: compressionStat(memory),
             breakdown: memory.map { breakdown($0, apps: apps) } ?? [],
@@ -134,14 +121,6 @@ extension MemoryDetail {
 
     public static func subtitle(total: UInt64) -> String {
         "\(Format.memorySize(total)) unified memory"
-    }
-
-    static func band(_ level: MemoryPressureLevel) -> Band {
-        switch level {
-        case .normal: .low
-        case .warning: .medium
-        case .critical: .high
-        }
     }
 
     private static func pressureStat(_ memory: MemoryReading?) -> Stat {
@@ -193,13 +172,18 @@ extension MemoryDetail {
         ]
     }
 
-    /// Pressure as `historyBarCount` bars over the range, each colored by its band.
+    /// Pressure as `historyBarCount` bars over the range, each colored by the kernel's level. As in
+    /// Activity Monitor, color comes from the level, not the height: a Mac can sit at 50% and be fine.
     @MainActor
     private static func pressureBars(_ history: MetricsHistory, range: TimeRange, endingAt now: Date?) -> [PressureBar?] {
         guard let now else { return Array(repeating: nil, count: historyBarCount) }
-        let points = (try? history.summary(.memoryPressure, over: range, endingAt: now).points) ?? []
-        return Resample.bars(points, endingAt: now, window: range.duration, count: historyBarCount).map { value in
-            value.map { PressureBar(value: min(max($0, 0), 1), band: .of(pressure: $0)) }
+        func bars(_ series: SeriesKey) -> [Double?] {
+            let points = (try? history.summary(series, over: range, endingAt: now).points) ?? []
+            return Resample.bars(points, endingAt: now, window: range.duration, count: historyBarCount)
+        }
+        return zip(bars(.memoryPressure), bars(.memoryPressureLevel)).map { pressure, level in
+            guard let pressure, let level else { return nil }
+            return PressureBar(value: min(max(pressure, 0), 1), level: MemoryPressureLevel(seriesValue: level))
         }
     }
 

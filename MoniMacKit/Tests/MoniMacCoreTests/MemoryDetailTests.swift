@@ -61,25 +61,23 @@ struct MemoryDetailTests {
 
         #expect([detail.pressure.label, detail.pressure.value, detail.pressure.detail]
             == ["Memory Pressure", "Normal", "24% · no throttling"])
-        #expect(detail.pressureBand == .low)
+        #expect(detail.pressureLevel == .normal)
         #expect([detail.swap.label, detail.swap.value, detail.swap.detail] == ["Swap Used", "512 MB", "of 2 GB swap file"])
         #expect([detail.compression.label, detail.compression.value, detail.compression.detail]
             == ["Compression", "2.6×", "5.9 GB → 2.3 GB"])
     }
 
     @Test(arguments: [
-        (MemoryPressureLevel.normal, "Normal", "no throttling", MemoryDetail.Band.low),
-        (.warning, "Warning", "some throttling", .medium),
-        (.critical, "Critical", "heavy throttling", .high),
+        (MemoryPressureLevel.normal, "Normal", "no throttling"),
+        (.warning, "Warning", "some throttling"),
+        (.critical, "Critical", "heavy throttling"),
     ])
-    func pressureCardFollowsTheKernelLevel(
-        level: MemoryPressureLevel, value: String, state: String, band: MemoryDetail.Band
-    ) throws {
+    func pressureCardFollowsTheKernelLevel(level: MemoryPressureLevel, value: String, state: String) throws {
         let detail = try detail(latest: snapshot(at: now, memory: designMemory(pressureLevel: level, pressure: 0.6)))
 
         #expect(detail.pressure.value == value)
         #expect(detail.pressure.detail == "60% · \(state)")
-        #expect(detail.pressureBand == band)
+        #expect(detail.pressureLevel == level)
     }
 
     @Test func unreadablePressureAndSwapShowPlaceholders() throws {
@@ -87,7 +85,7 @@ struct MemoryDetailTests {
 
         #expect(detail.pressure.value == "—")
         #expect(detail.pressure.detail == "—")
-        #expect(detail.pressureBand == nil)
+        #expect(detail.pressureLevel == nil)
         #expect(detail.swap.value == "—")
     }
 
@@ -118,32 +116,43 @@ struct MemoryDetailTests {
         #expect(overcounted.usedFraction == 1)
     }
 
-    @Test func pressureHistoryColorsBucketsByBand() throws {
-        let pressures = [0.2, 0.49, 0.6, 0.74, 0.8]
+    /// Bars are as tall as the pressure and colored by the kernel's level, not by their height.
+    @Test func pressureHistoryColorsBucketsByLevel() throws {
+        let samples: [(Double, MemoryPressureLevel)] = [
+            (0.55, .normal), (0.3, .warning), (0.7, .warning), (0.8, .critical), (0.4, .normal),
+        ]
         // One sample per bar slot of the last minute, oldest first.
-        let history = pressures.enumerated().map { index, pressure in
-            snapshot(at: now.addingTimeInterval(-Double(pressures.count - 1 - index) * 2),
-                     memory: designMemory(pressure: pressure))
+        let history = samples.enumerated().map { index, sample in
+            snapshot(at: now.addingTimeInterval(-Double(samples.count - 1 - index) * 2),
+                     memory: designMemory(pressureLevel: sample.1, pressure: sample.0))
         }
 
         let bars = try detail(history: history, latest: snapshot(at: now), range: .oneMinute, layout: .popover).history
 
         #expect(bars.count == MemoryDetail.historyBarCount)
-        #expect(bars.suffix(5).map { $0?.band } == [.low, .low, .medium, .medium, .high])
-        #expect(bars.suffix(5).map { $0?.value } == pressures)
+        #expect(bars.suffix(5).map { $0?.level } == samples.map(\.1))
+        #expect(bars.suffix(5).map { $0?.value } == samples.map(\.0))
         #expect(bars.dropLast(5).allSatisfy { $0 == nil })
     }
 
+    /// A long-range bar averages its span; its color is the level nearest the average level.
     @Test func pressureHistoryOverLongRangesUsesBucketAverages() throws {
+        // All within the minute before `now`, so one bucket.
         let history = [
-            snapshot(at: now.addingTimeInterval(-10), memory: designMemory(pressure: 0.7)),
-            snapshot(at: now, memory: designMemory(pressure: 0.9)),
+            snapshot(at: now.addingTimeInterval(-30), memory: designMemory(pressureLevel: .normal, pressure: 0.6)),
+            snapshot(at: now.addingTimeInterval(-20), memory: designMemory(pressureLevel: .critical, pressure: 0.9)),
+            snapshot(at: now.addingTimeInterval(-10), memory: designMemory(pressureLevel: .critical, pressure: 0.9)),
         ]
 
         let last = try #require(try detail(history: history, latest: snapshot(at: now)).history.last ?? nil)
 
         #expect(abs(last.value - 0.8) < 1e-9)
-        #expect(last.band == .high)
+        #expect(last.level == .warning)  // average level 1.33
+    }
+
+    @Test(arguments: [(0.0, MemoryPressureLevel.normal), (0.49, .normal), (0.5, .warning), (1.49, .warning), (1.5, .critical)])
+    func averagedLevelsRoundToTheNearest(value: Double, level: MemoryPressureLevel) {
+        #expect(MemoryPressureLevel(seriesValue: value) == level)
     }
 
     @Test(arguments: [
