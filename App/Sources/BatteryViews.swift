@@ -36,6 +36,7 @@ private struct BatteryPopoverContent: View {
     let monitor: Monitor
     let detail: BatteryDetail
     @Binding var range: TimeRange
+    @Environment(\.requestQuit) private var requestQuit
 
     var body: some View {
         VStack(spacing: 12) {
@@ -114,7 +115,7 @@ private struct BatteryPopoverContent: View {
             ForEach(detail.energyApps) { app in
                 HStack(spacing: 4) {
                     EnergyRow(app: app).padding(.vertical, 6)
-                    QuitButton(app: app) { monitor.quitApp(id: app.id) }
+                    QuitButton(app: app) { requestQuit(app.id) }
                 }
             }
         }

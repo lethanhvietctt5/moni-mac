@@ -16,6 +16,7 @@ private struct CPUTabContent: View {
     let monitor: Monitor
     let panel: CPUPanel
     @Binding var range: TimeRange
+    @Environment(\.requestQuit) private var requestQuit
 
     var body: some View {
         VStack(spacing: 12) {
@@ -137,7 +138,7 @@ private struct CPUTabContent: View {
             }
             .padding(.bottom, 6)
             ForEach(panel.topApps) { app in
-                AppRowView(app: app, quit: { monitor.quitApp(id: app.id) })
+                AppRowView(app: app, quit: { requestQuit(app.id) })
             }
         }
     }

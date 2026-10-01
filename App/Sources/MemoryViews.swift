@@ -31,6 +31,7 @@ private struct MemoryPopoverContent: View {
     let monitor: Monitor
     let detail: MemoryDetail
     @Binding var range: TimeRange
+    @Environment(\.requestQuit) private var requestQuit
 
     var body: some View {
         VStack(spacing: 12) {
@@ -123,7 +124,7 @@ private struct MemoryPopoverContent: View {
             ForEach(detail.topApps) { app in
                 HStack(spacing: 4) {
                     MemoryAppRow(app: app, valueWidth: 52).padding(.vertical, 6)
-                    QuitButton(name: app.name, canQuit: app.canQuit) { monitor.quitApp(id: app.id) }
+                    QuitButton(name: app.name, canQuit: app.canQuit) { requestQuit(app.id) }
                 }
             }
         }
@@ -250,9 +251,7 @@ private struct MemoryWindowContent: View {
             HStack {
                 Text("Top Apps by Memory").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                // Opens the Overview list sorted by memory once it exists (ticket 12).
-                Text("Show All").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(column: .memory)
             }
             .padding(.bottom, 6)
             ForEach(detail.topApps) { app in

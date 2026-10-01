@@ -48,6 +48,7 @@ private struct GPUPopoverContent: View {
     let monitor: Monitor
     let panel: GPUPanel
     @Binding var range: TimeRange
+    @Environment(\.requestQuit) private var requestQuit
 
     var body: some View {
         VStack(spacing: 12) {
@@ -136,7 +137,7 @@ private struct GPUPopoverContent: View {
             ForEach(panel.topApps) { app in
                 HStack(spacing: 4) {
                     GPUAppRow(app: app, valueWidth: 44).padding(.vertical, 6)
-                    Button { monitor.quitApp(id: app.id) } label: {
+                    Button { requestQuit(app.id) } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(Palette.textSecondary)
@@ -223,9 +224,7 @@ private struct GPUWindowContent: View {
             HStack {
                 Text("Top Apps by GPU").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                // Opens the Overview list sorted by GPU once it exists (ticket 12).
-                Text("Show All").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(column: .gpu)
             }
             .padding(.bottom, 6)
             if let note = detail.topAppsNote {

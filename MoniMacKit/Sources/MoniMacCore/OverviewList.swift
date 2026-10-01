@@ -68,6 +68,8 @@ public struct OverviewList: Equatable, Sendable {
         public var kind: Kind
         /// The group this row belongs to; quitting any row quits that app.
         public var appID: AppUsage.ID
+        /// The group's name, e.g. "Google Chrome" on its helpers' rows.
+        public var appName: String
         /// e.g. "Google Chrome", "Google Chrome Helper (Renderer) ×14", "mds_stores".
         public var name: String
         /// For the icon: the group's bundle, or nil for a bare executable.
@@ -143,7 +145,7 @@ extension OverviewList {
             rows = sorted(entries, by: query.sort).flatMap { entry -> [Row] in
                 let (app, helpers, openedBySearch) = shown[entry.order]
                 let expanded = openedBySearch || query.expanded.contains(app.id)
-                let row = Row(id: app.id, kind: .app, appID: app.id, name: app.name, bundlePath: app.bundlePath,
+                let row = Row(id: app.id, kind: .app, appID: app.id, appName: app.name, name: app.name, bundlePath: app.bundlePath,
                               values: format.values(entry), isExpandable: app.processCount > 1,
                               isExpanded: expanded && app.processCount > 1, canQuit: app.canQuit)
                 guard row.isExpanded else { return [row] }
@@ -174,6 +176,7 @@ extension OverviewList {
             rows = sorted(entries, by: query.sort).map { entry in
                 let (process, app) = shown[entry.order]
                 return Row(id: "pid:\(process.pid)", kind: .process, appID: app?.id ?? process.name,
+                           appName: app?.name ?? process.name,
                            name: process.name, bundlePath: app?.bundlePath, values: format.values(entry),
                            isExpandable: false, isExpanded: false, canQuit: app?.canQuit ?? false)
             }
@@ -223,7 +226,7 @@ extension OverviewList {
             return entry
         }
         return sorted(ranked, by: sort).map { entry in
-            Row(id: "\(app.id)\u{0}\(entry.name)", kind: .helper, appID: app.id,
+            Row(id: "\(app.id)\u{0}\(entry.name)", kind: .helper, appID: app.id, appName: app.name,
                 name: entry.count > 1 ? "\(entry.name) ×\(entry.count)" : entry.name, bundlePath: nil,
                 values: format.values(entry), isExpandable: false, isExpanded: false, canQuit: app.canQuit)
         }
