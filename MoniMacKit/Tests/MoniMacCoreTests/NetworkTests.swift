@@ -115,8 +115,8 @@ struct NetworkTests {
 
         monitor.tick()
 
-        #expect(monitor.networkDetail().interfaceLine == line)
-        #expect(monitor.networkPanel(range: .fiveMinutes).interfaceLine == line)
+        #expect(monitor.networkDetail().summary.interfaceLine == line)
+        #expect(monitor.networkPanel(range: .fiveMinutes).summary.interfaceLine == line)
     }
 
     @Test func offlineAndUnreadableNetworksSaySo() throws {
@@ -128,7 +128,7 @@ struct NetworkTests {
         let failed = try monitor([snapshot(.unavailable(.failed("sysctl")))])
         failed.tick()
         #expect(failed.networkSubtitle == "Network unavailable")
-        #expect(failed.networkDetail().download.value == "—")
+        #expect(failed.networkDetail().summary.download.value == "—")
     }
 
     // MARK: Window tab
@@ -139,8 +139,8 @@ struct NetworkTests {
         monitor.tick()
         let detail = monitor.networkDetail()
 
-        #expect(detail.download == NetworkFormat.Rate(value: "4.2", unit: "MB/s"))
-        #expect(detail.upload == NetworkFormat.Rate(value: "380", unit: "KB/s"))
+        #expect(detail.summary.download == NetworkFormat.Rate(value: "4.2", unit: "MB/s"))
+        #expect(detail.summary.upload == NetworkFormat.Rate(value: "380", unit: "KB/s"))
     }
 
     @Test func sessionTotalsCountOnlyThisLaunch() throws {
@@ -156,9 +156,9 @@ struct NetworkTests {
         run(monitor, ticks: 3)
         let detail = monitor.networkDetail()
 
-        #expect(detail.downloaded == "3.8 GB")
-        #expect(detail.uploaded == "612 MB")
-        #expect(monitor.networkPanel(range: .fiveMinutes).downloaded == "3.8 GB")
+        #expect(detail.summary.downloaded == "3.8 GB")
+        #expect(detail.summary.uploaded == "612 MB")
+        #expect(monitor.networkPanel(range: .fiveMinutes).summary.downloaded == "3.8 GB")
     }
 
     @Test func sessionShowsItsStartTime() throws {
@@ -171,9 +171,9 @@ struct NetworkTests {
                                history: history, units: .bytes, sessionStart: start, calendar: calendar)
         }
 
-        #expect(detail(at: start.addingTimeInterval(600)).sessionStart == "since 14:13")
-        #expect(detail(at: start.addingTimeInterval(86400)).sessionStart == "since 21 Sep 14:13")
-        #expect(detail(at: start).downloaded == "—")
+        #expect(detail(at: start.addingTimeInterval(600)).summary.sessionStart == "since 14:13")
+        #expect(detail(at: start.addingTimeInterval(86400)).summary.sessionStart == "since 21 Sep 14:13")
+        #expect(detail(at: start).summary.downloaded == "—")
     }
 
     @Test func liveChartCoversTheLastMinuteScaledToItsPeak() throws {
@@ -283,7 +283,7 @@ struct NetworkTests {
         #expect(panel.range == .oneHour)
         #expect(panel.history.count == NetworkPanel.historyBarCount)
         #expect(panel.history.last! == ThroughputBar(down: 0.8, up: 0.2))
-        #expect(panel.download.text == "2.0 MB/s")
+        #expect(panel.summary.download.text == "2.0 MB/s")
         #expect(panel.lastWeek.bars.count == 7)
     }
 }

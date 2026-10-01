@@ -10,6 +10,9 @@ import SystemConfiguration
 /// the physical interfaces (`en*`: Wi-Fi, Ethernet, tethering), so VPN tunnels aren't counted twice.
 /// The active interface's details (name, Wi-Fi network, link rate) change rarely and cost XPC calls,
 /// so they're re-read every `detailsInterval`.
+///
+/// Elapsed time comes from a clock that keeps running while the Mac sleeps: the counters keep
+/// counting during Power Nap, so an uptime clock would turn that traffic into a spike on wake.
 @MainActor
 final class NetworkReader {
     private struct Counters {
@@ -19,20 +22,21 @@ final class NetworkReader {
         var baudRate: UInt64
     }
 
-    private var previous: (counters: [String: Counters], uptime: UInt64)?
+    private var previous: (counters: [String: Counters], time: UInt64)?
     private var buffer = [UInt8]()
-    private var details: (interface: NetworkInterface?, uptime: UInt64)?
+    private var details: (interface: NetworkInterface?, time: UInt64)?
     private var displayNames: [String: String] = [:]
     private let store = SCDynamicStoreCreate(nil, "MoniMac" as CFString, nil, nil)
-    private let processes = NetworkProcessReader()
-    private let detailsInterval: UInt64 = 10_000_000_000
+    private let perProcess = NetworkProcessReader()
+    /// Nanoseconds between interface detail reads.
+    private let detailsInterval: UInt64 = 10 * 1_000_000_000
 
     func sample() -> Reading<NetworkReading> {
         guard let counters = readCounters() else { return .unavailable(.failed("sysctl(NET_RT_IFLIST2) failed")) }
-        let uptime = DispatchTime.now().uptimeNanoseconds
-        defer { previous = (counters, uptime) }
-        let interface = activeInterface(counters: counters, uptime: uptime)
-        guard let previous, uptime > previous.uptime else { return .unavailable(.warmingUp) }
+        let time = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)
+        defer { previous = (counters, time) }
+        let interface = activeInterface(counters: counters, time: time)
+        guard let previous, time > previous.time else { return .unavailable(.warmingUp) }
 
         var received: UInt64 = 0
         var sent: UInt64 = 0
@@ -42,7 +46,7 @@ final class NetworkReader {
             received += now.received >= before.received ? now.received - before.received : 0
             sent += now.sent >= before.sent ? now.sent - before.sent : 0
         }
-        let seconds = Double(uptime - previous.uptime) / 1_000_000_000
+        let seconds = Double(time - previous.time) / 1_000_000_000
         return .value(NetworkReading(
             interface: interface,
             downloadPerSecond: Double(received) / seconds, uploadPerSecond: Double(sent) / seconds,
@@ -53,8 +57,8 @@ final class NetworkReader {
     /// Adds per-process network figures (`ResourceUse.network`) to the process list.
     /// Called only when the process list is refreshed (every few seconds), never with a stale list.
     func annotate(_ processes: Reading<[ProcessSample]>) -> Reading<[ProcessSample]> {
-        self.processes.refreshIfDue()
-        guard case .value(var list) = processes, let rates = self.processes.latest() else { return processes }
+        perProcess.refreshIfDue()
+        guard case .value(var list) = processes, let rates = perProcess.latest() else { return processes }
         for index in list.indices {
             // nettop lists every process with sockets; absent means no traffic.
             list[index].resources.network = rates[list[index].pid] ?? 0
@@ -64,10 +68,10 @@ final class NetworkReader {
 
     // MARK: Interface details
 
-    private func activeInterface(counters: [String: Counters], uptime: UInt64) -> NetworkInterface? {
-        if let details, uptime - details.uptime < detailsInterval { return details.interface }
+    private func activeInterface(counters: [String: Counters], time: UInt64) -> NetworkInterface? {
+        if let details, time - details.time < detailsInterval { return details.interface }
         let interface = readActiveInterface(counters: counters)
-        details = (interface, uptime)
+        details = (interface, time)
         return interface
     }
 

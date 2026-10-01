@@ -30,8 +30,8 @@ public struct NetworkAppRow: Equatable, Sendable, Identifiable {
     public var canQuit: Bool
 }
 
-/// Chart and list building shared by the popover and window Network tabs.
-enum NetworkCharts {
+/// Charts, app rows, and labels shared by the popover and window Network tabs.
+enum NetworkFigures {
     /// Download and upload over `range` as `count` bars, scaled so the busiest bar is full height.
     @MainActor
     static func throughputBars(
@@ -113,30 +113,10 @@ enum NetworkCharts {
         }
     }
 
-    /// Download and upload totals since `start`.
-    @MainActor
-    static func sessionTotals(history: MetricsHistory, since start: Date, now: Date?) -> (down: String, up: String) {
-        guard let now else { return (Format.placeholder, Format.placeholder) }
-        func total(_ series: SeriesKey) -> String {
-            ((try? history.sum(series, from: start, to: now)) ?? nil).map(NetworkFormat.bytes) ?? Format.placeholder
-        }
-        return (total(.networkDownBytes), total(.networkUpBytes))
-    }
-
     /// e.g. "since 08:42", or "since 29 Sep 08:42" for a session that started on an earlier day.
     static func sessionStart(_ start: Date, now: Date?, calendar: Calendar) -> String {
         let sameDay = now.map { calendar.isDate(start, inSameDayAs: $0) } ?? true
         return "since " + format(start, sameDay ? "HH:mm" : "d MMM HH:mm", calendar)
-    }
-
-    /// The download and upload rates, or placeholders.
-    static func rates(_ snapshot: Snapshot?, units: NetworkUnits) -> (down: NetworkFormat.Rate, up: NetworkFormat.Rate) {
-        guard let network = snapshot?.network.value else {
-            let dash = NetworkFormat.Rate(value: Format.placeholder, unit: "")
-            return (dash, dash)
-        }
-        return (NetworkFormat.rate(network.downloadPerSecond, units: units),
-                NetworkFormat.rate(network.uploadPerSecond, units: units))
     }
 
     /// The smallest 1, 2, 2.5, or 5 × 10ⁿ at or above `value`.

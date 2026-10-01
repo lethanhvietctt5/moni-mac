@@ -98,7 +98,7 @@ enum NetworkMenuBar: MenuBarMetric {
     @MainActor
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         guard let now else { return Sparkline.empty }
-        return NetworkCharts.throughputBars(
+        return NetworkFigures.throughputBars(
             history: history, over: .oneMinute, endingAt: now, count: Sparkline.barCount
         ).map { $0.map { $0.down + $0.up } }
     }

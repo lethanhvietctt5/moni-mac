@@ -1,11 +1,7 @@
 import Foundation
 
-/// Everything the main window's Network tab shows.
-public struct NetworkDetail: Equatable, Sendable {
-    /// The live chart covers the last minute, one bar per 2-second sample.
-    public static let liveBarCount = 30
-    public static let topAppCount = 6
-
+/// The headline figures both Network tabs show: the connection, live rates, and session totals.
+public struct NetworkSummary: Equatable, Sendable {
     /// e.g. "Wi-Fi 6E · Studio-5G · 1.2 Gb/s link".
     public var interfaceLine: String
     public var download: NetworkFormat.Rate
@@ -15,6 +11,40 @@ public struct NetworkDetail: Equatable, Sendable {
     public var uploaded: String
     /// When the session totals started, e.g. "since 08:42".
     public var sessionStart: String
+}
+
+extension NetworkSummary {
+    @MainActor
+    static func make(
+        snapshot: Snapshot?, history: MetricsHistory, units: NetworkUnits, sessionStart: Date, calendar: Calendar
+    ) -> NetworkSummary {
+        let now = snapshot?.timestamp
+        let network = snapshot?.network.value
+        let dash = NetworkFormat.Rate(value: Format.placeholder, unit: "")
+        func total(_ series: SeriesKey) -> String {
+            guard let now, let bytes = (try? history.sum(series, from: sessionStart, to: now)) ?? nil else {
+                return Format.placeholder
+            }
+            return NetworkFormat.bytes(bytes)
+        }
+        return NetworkSummary(
+            interfaceLine: snapshot.map { NetworkFormat.interfaceLine($0.network) } ?? Format.placeholder,
+            download: network.map { NetworkFormat.rate($0.downloadPerSecond, units: units) } ?? dash,
+            upload: network.map { NetworkFormat.rate($0.uploadPerSecond, units: units) } ?? dash,
+            downloaded: total(.networkDownBytes),
+            uploaded: total(.networkUpBytes),
+            sessionStart: NetworkFigures.sessionStart(sessionStart, now: now, calendar: calendar)
+        )
+    }
+}
+
+/// Everything the main window's Network tab shows.
+public struct NetworkDetail: Equatable, Sendable {
+    /// The live chart covers the last minute, one bar per 2-second sample.
+    public static let liveBarCount = 30
+    public static let topAppCount = 6
+
+    public var summary: NetworkSummary
     /// The last 60 seconds, oldest first; nil where there's no data.
     public var live: [ThroughputBar?]
     public var lastWeek: DailyUsageChart
@@ -29,24 +59,18 @@ extension NetworkDetail {
         calendar: Calendar = .current
     ) -> NetworkDetail {
         let now = snapshot?.timestamp
-        let rates = NetworkCharts.rates(snapshot, units: units)
-        let totals = NetworkCharts.sessionTotals(history: history, since: sessionStart, now: now)
         func daily(_ days: Int) -> DailyUsageChart {
-            NetworkCharts.daily(history: history, days: days, endingAt: now ?? sessionStart, calendar: calendar)
+            NetworkFigures.daily(history: history, days: days, endingAt: now ?? sessionStart, calendar: calendar)
         }
         return NetworkDetail(
-            interfaceLine: snapshot.map { NetworkFormat.interfaceLine($0.network) } ?? Format.placeholder,
-            download: rates.down,
-            upload: rates.up,
-            downloaded: totals.down,
-            uploaded: totals.up,
-            sessionStart: NetworkCharts.sessionStart(sessionStart, now: now, calendar: calendar),
+            summary: .make(snapshot: snapshot, history: history, units: units, sessionStart: sessionStart,
+                           calendar: calendar),
             live: now.map {
-                NetworkCharts.throughputBars(history: history, over: .oneMinute, endingAt: $0, count: liveBarCount)
+                NetworkFigures.throughputBars(history: history, over: .oneMinute, endingAt: $0, count: liveBarCount)
             } ?? Array(repeating: nil, count: liveBarCount),
             lastWeek: daily(7),
             lastMonth: daily(30),
-            topApps: NetworkCharts.topApps(apps, count: topAppCount, units: units)
+            topApps: NetworkFigures.topApps(apps, count: topAppCount, units: units)
         )
     }
 }

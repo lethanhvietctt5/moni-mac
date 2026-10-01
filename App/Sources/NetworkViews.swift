@@ -50,13 +50,13 @@ private struct NetworkPopoverContent: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(panel.interfaceLine)
+            Text(panel.summary.interfaceLine)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.textSecondary)
                 .lineLimit(1)
             HStack(alignment: .bottom, spacing: 14) {
-                rate("arrow.down", panel.download, opacity: 1)
-                rate("arrow.up", panel.upload, opacity: 0.55)
+                rate("arrow.down", panel.summary.download, opacity: 1)
+                rate("arrow.up", panel.summary.upload, opacity: 0.55)
                 Spacer(minLength: 8)
                 SegmentedPicker(options: NetworkPanel.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 8)
                     .fixedSize()
@@ -84,12 +84,12 @@ private struct NetworkPopoverContent: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("This Session").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.textPrimary)
-                Text(panel.sessionStart).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
+                Text(panel.summary.sessionStart).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
             }
             Spacer()
             HStack(spacing: 16) {
-                total(panel.downloaded, "Downloaded")
-                total(panel.uploaded, "Uploaded")
+                total(panel.summary.downloaded, "Downloaded")
+                total(panel.summary.uploaded, "Uploaded")
             }
         }
         .padding(.horizontal, 12)
@@ -171,10 +171,11 @@ private struct NetworkWindowContent: View {
 
     private var summary: some View {
         HStack(alignment: .top, spacing: 24) {
-            rate("arrow.down", "Download", detail.download, opacity: 1)
-            rate("arrow.up", "Upload", detail.upload, opacity: 0.55)
-            total("Downloaded", detail.downloaded, caption: "This session · \(detail.sessionStart)")
-            total("Uploaded", detail.uploaded, caption: "This session")
+            rate("arrow.down", "Download", detail.summary.download, opacity: 1)
+            rate("arrow.up", "Upload", detail.summary.upload, opacity: 0.55)
+            total("Downloaded", detail.summary.downloaded, caption: "This session · \(detail.summary.sessionStart)",
+                  opacity: 1)
+            total("Uploaded", detail.summary.uploaded, caption: "This session", opacity: 0.45)
         }
     }
 
@@ -197,10 +198,10 @@ private struct NetworkWindowContent: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func total(_ label: String, _ value: String, caption: String) -> some View {
+    private func total(_ label: String, _ value: String, caption: String, opacity: Double) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Circle().fill(Palette.network.opacity(label == "Uploaded" ? 0.45 : 1)).frame(width: 8, height: 8)
+                Circle().fill(Palette.network.opacity(opacity)).frame(width: 8, height: 8)
                 Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.textSecondary)
             }
             Text(value).font(.system(size: 20, weight: .semibold).monospacedDigit()).foregroundStyle(Palette.textPrimary)
