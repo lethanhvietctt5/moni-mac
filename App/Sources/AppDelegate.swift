@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--show-window") {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
-                self?.mainWindow.show()
+                self?.mainWindow.show(tab: WindowTab(rawValue: Self.launchTab ?? ""))
             }
         }
         if CommandLine.arguments.contains("--show-popover") {
@@ -44,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
+    /// Development aid: `--tab <name>` (e.g. `--tab network`) picks the tab `--show-window` and
+    /// `--show-popover` open on.
+    static let launchTab: String? = CommandLine.arguments.firstIndex(of: "--tab")
+        .flatMap { CommandLine.arguments.dropFirst($0 + 1).first?.lowercased() }
 
     /// MoniMac shows no menu bar of its own, but key equivalents like ⌘W and ⌘Q still route through it.
     private static func makeMainMenu() -> NSMenu {

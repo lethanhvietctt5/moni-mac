@@ -25,7 +25,7 @@ struct PopoverView: View {
     let monitor: Monitor
     let openWindow: () -> Void
     let quit: () -> Void
-    @State private var tab: PopoverTab = .cpu
+    @State private var tab: PopoverTab = PopoverTab.allCases.first { $0.rawValue.lowercased() == AppDelegate.launchTab } ?? .cpu
     /// Each tab's chart range, so it survives switching tabs while the popover is open.
     @State private var ranges: [PopoverTab: TimeRange] = [:]
 
