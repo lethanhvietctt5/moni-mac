@@ -29,7 +29,7 @@ public struct GPUDetail: Equatable, Sendable {
     /// The highest sample in the last 24 hours, the app that caused it, and when.
     public var peak: Tile
     public var range: TimeRange
-    /// e.g. "Avg 14% · Peak 91%" over `range`, or nil with no history in it.
+    /// e.g. "Avg 14% · Peak 91% at 14:12" over `range`, or nil with no history in it.
     public var historySummary: String?
     /// `historyBarCount` utilization bars over `range` (0...1), oldest first; nil where there's no data.
     public var history: [Double?]
@@ -53,7 +53,7 @@ extension GPUDetail {
         let dash = Format.placeholder
         let day = now.flatMap { try? history.summary(.gpuUtilization, over: .twentyFourHours, endingAt: $0) }
         let shown = range == .twentyFourHours ? day : now.flatMap { try? history.summary(.gpuUtilization, over: range, endingAt: $0) }
-        let (top, note) = GPUFormat.topApps(apps, count: topAppCount)
+        let (rows, note) = GPUFormat.appRows(apps, count: topAppCount)
 
         func bars(_ series: SeriesKey, over window: TimeRange, normalized: Bool = false) -> [Double?] {
             guard let now else { return Array(repeating: nil, count: tileBarCount) }
@@ -73,7 +73,7 @@ extension GPUDetail {
                 value: gpu.map { Format.percent($0.utilization) } ?? dash,
                 caption: gpu.map {
                     "Renderer \($0.renderer.map(Format.percent) ?? dash) · Tiler \($0.tiler.map(Format.percent) ?? dash)"
-                } ?? GPUFormat.reason(snapshot?.gpu),
+                } ?? GPUFormat.reason(snapshot?.gpu) ?? "",
                 bars: bars(.gpuUtilization, over: liveTileWindow)
             ),
             memory: Tile(
@@ -101,18 +101,15 @@ extension GPUDetail {
             range: range,
             historySummary: shown.flatMap { summary in
                 guard let average = summary.average, let peak = summary.peak else { return nil }
-                return "Avg \(Format.percent(average)) · Peak \(Format.percent(peak.value))"
+                let time = Format.time(peak.time, within: range, timeZone: timeZone)
+                return "Avg \(Format.percent(average)) · Peak \(Format.percent(peak.value)) at \(time)"
             },
             history: GPUPanel.utilizationBars(history, range: range, endingAt: now, count: historyBarCount),
             yAxis: ["100%", "50%", "0%"],
             xAxis: CPUDetail.xAxis(range: range, endingAt: now, timeZone: timeZone),
-            topApps: top.map { app in
-                let share = app.resources.gpu ?? 0
-                return AppRow(id: app.id, name: app.name, bundlePath: app.bundlePath,
-                              value: GPUFormat.appShare(share), share: min(share, 1), canQuit: app.canQuit)
-            },
+            topApps: rows,
             topAppsNote: note,
-            unavailable: gpu == nil ? GPUFormat.reason(snapshot?.gpu) : nil
+            unavailable: GPUFormat.reason(snapshot?.gpu)
         )
     }
 

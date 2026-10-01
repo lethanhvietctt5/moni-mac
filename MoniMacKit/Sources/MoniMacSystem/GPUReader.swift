@@ -40,13 +40,14 @@ final class GPUReader {
             utilization: Double(device) / 100,
             renderer: share("Renderer Utilization %"),
             tiler: share("Tiler Utilization %"),
-            memoryInUse: (stats["In use system memory"] as? Int).map(UInt64.init),
+            memoryInUse: (stats["In use system memory"] as? Int).flatMap { UInt64(exactly: $0) },
             unifiedMemory: unifiedMemory
         ))
     }
 
     /// Adds each process's share of GPU time since the previous pass (`ResourceUse.gpu`).
-    /// Processes without GPU clients get zero; the first pass only takes a baseline.
+    /// Processes without GPU clients get zero. The first pass only takes a baseline; HostSampler's first
+    /// process list is still warming up then, so no list is shown without GPU figures.
     func annotate(_ processes: Reading<[ProcessSample]>) -> Reading<[ProcessSample]> {
         guard accelerator != 0 else { return processes }
         let wall = DispatchTime.now().uptimeNanoseconds

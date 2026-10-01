@@ -44,7 +44,7 @@ extension GPUPanel {
     static func make(snapshot: Snapshot?, apps: [AppUsage], history: MetricsHistory, range: TimeRange) -> GPUPanel {
         let gpu = snapshot?.gpu.value
         let dash = Format.placeholder
-        let (top, note) = GPUFormat.topApps(apps, count: topAppCount)
+        let (rows, note) = GPUFormat.appRows(apps, count: topAppCount)
         let memoryShare: Double? = gpu.flatMap { gpu in
             guard let used = gpu.memoryInUse, let total = gpu.unifiedMemory, total > 0 else { return nil }
             return Double(used) / Double(total)
@@ -60,13 +60,9 @@ extension GPUPanel {
             memory: gpu?.memoryInUse.map { GPUFormat.gigabytes($0) } ?? dash,
             memoryDetail: gpu?.unifiedMemory.map { "of \(GPUFormat.gigabytes($0, decimals: 0)) unified" } ?? "",
             memoryShare: memoryShare,
-            topApps: top.map { app in
-                let share = app.resources.gpu ?? 0
-                return AppRow(id: app.id, name: app.name, bundlePath: app.bundlePath,
-                              value: GPUFormat.appShare(share), share: min(share, 1), canQuit: app.canQuit)
-            },
+            topApps: rows,
             topAppsNote: note,
-            unavailable: gpu == nil ? GPUFormat.reason(snapshot?.gpu) : nil
+            unavailable: GPUFormat.reason(snapshot?.gpu)
         )
     }
 

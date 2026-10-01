@@ -28,12 +28,18 @@ struct GPUWindowTab: View {
 
 extension Palette {
     /// The design's `gpu` token.
-    static let gpu = Color(nsColor: NSColor(name: nil) { appearance in
-        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        return isDark
-            ? NSColor(srgbRed: 0xFF / 255, green: 0xB3 / 255, blue: 0x40 / 255, alpha: 1)
-            : NSColor(srgbRed: 0xFF / 255, green: 0x9F / 255, blue: 0x0A / 255, alpha: 1)
-    })
+    static let gpu = gpuColor(light: 0xFF9F0A, dark: 0xFFB340)
+
+    // Palette's own helper is private; this file keeps a copy rather than editing the shared palette.
+    private static func gpuColor(light: UInt32, dark: UInt32) -> Color {
+        func color(_ rgb: UInt32) -> NSColor {
+            NSColor(srgbRed: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                    blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
+        }
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? color(dark) : color(light)
+        })
+    }
 }
 
 // MARK: Popover

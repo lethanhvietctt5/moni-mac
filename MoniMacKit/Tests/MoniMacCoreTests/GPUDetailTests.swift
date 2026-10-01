@@ -103,8 +103,8 @@ struct GPUDetailTests {
 
         #expect(day.history.count == GPUDetail.historyBarCount)
         #expect(day.history.last == 0.1)
-        #expect(day.historySummary == "Avg 10% · Peak 10%")
-        #expect(week.historySummary == "Avg 50% · Peak 90%")
+        #expect(day.historySummary == "Avg 10% · Peak 10% at 09:41")
+        #expect(week.historySummary == "Avg 50% · Peak 90% at Mon 09:41")
         #expect(week.xAxis == ["Thu", "Sat", "Sun", "Tue", "Now"])
     }
 

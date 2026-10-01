@@ -68,8 +68,7 @@ enum GPUMenuBar: MenuBarMetric {
     @MainActor
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         guard let now else { return Sparkline.empty }
-        let points = (try? history.summary(.gpuUtilization, over: .oneMinute, endingAt: now).points) ?? []
-        return Sparkline.bars(points, endingAt: now)
+        return GPUPanel.utilizationBars(history, range: .oneMinute, endingAt: now, count: Sparkline.barCount)
     }
 }
 
@@ -97,18 +96,28 @@ enum GPUFormat {
         String(format: "%.\(decimals)f GB", Double(bytes) / 1_073_741_824)
     }
 
-    /// Why the GPU tab has no figures.
-    static func reason(_ reading: Reading<GPUReading>?) -> String {
+    /// Why the GPU tab has no figures, or nil while they're live.
+    static func reason(_ reading: Reading<GPUReading>?) -> String? {
         switch reading {
-        case nil, .value: "Waiting for the first sample"
-        case .unavailable(.warmingUp): "Waiting for the first sample"
+        case .value: nil
+        case nil, .unavailable(.warmingUp): "Waiting for the first sample"
         case .unavailable(.unsupported): "This Mac doesn't report GPU statistics"
         case .unavailable(.failed(let message)): "GPU statistics unavailable: \(message)"
         }
     }
 
-    /// Apps using the GPU, busiest first, and a note to show instead when there are none.
-    static func topApps(_ apps: [AppUsage], count: Int) -> (apps: [AppUsage], note: String?) {
+    /// Rows for the apps using the GPU, busiest first, and a note to show instead when there are none.
+    static func appRows(_ apps: [AppUsage], count: Int) -> (rows: [GPUPanel.AppRow], note: String?) {
+        let (top, note) = topApps(apps, count: count)
+        let rows = top.map { app in
+            let share = app.resources.gpu ?? 0
+            return GPUPanel.AppRow(id: app.id, name: app.name, bundlePath: app.bundlePath,
+                                   value: appShare(share), share: min(share, 1), canQuit: app.canQuit)
+        }
+        return (rows, note)
+    }
+
+    private static func topApps(_ apps: [AppUsage], count: Int) -> (apps: [AppUsage], note: String?) {
         // No apps yet means the process list is still warming up.
         if apps.isEmpty { return ([], nil) }
         guard apps.contains(where: { $0.resources.gpu != nil }) else {
@@ -126,7 +135,7 @@ enum GPUFormat {
     }
 
     /// A per-app share with one decimal, e.g. `"12.4%"`.
-    static func appShare(_ share: Double) -> String {
+    private static func appShare(_ share: Double) -> String {
         String(format: "%.1f%%", min(max(share, 0), 1) * 100)
     }
 }
