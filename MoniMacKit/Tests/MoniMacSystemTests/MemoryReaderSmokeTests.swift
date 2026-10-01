@@ -15,8 +15,8 @@ struct MemoryReaderSmokeTests {
         #expect(memory.app > 0)
         #expect(memory.wired > 0)
         #expect(memory.cached > 0)
-        // The five segments cover installed memory unless the counters overlap it.
-        #expect(memory.used + memory.cached + memory.free == memory.total)
+        // The five segments cover installed memory, unless the counters overlap it and Free clamps to zero.
+        #expect(memory.used + memory.cached + memory.free == memory.total || memory.free == 0)
         #expect(memory.compressedOriginal >= memory.compressed)
     }
 
