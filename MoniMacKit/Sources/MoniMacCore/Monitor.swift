@@ -63,6 +63,11 @@ public final class Monitor {
         CPUPanel.make(snapshot: latest, apps: apps, history: history, range: range, mode: preferences.cpuMode)
     }
 
+    /// The main window's CPU tab for the given chart range.
+    public func cpuDetail(range: TimeRange) -> CPUDetail {
+        CPUDetail.make(snapshot: latest, apps: apps, history: history, range: range, mode: preferences.cpuMode)
+    }
+
     // MARK: Intents
 
     public func setMenuBarStyle(_ style: MenuBarStyle, for metric: Metric) {

@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sampler: HostSampler(), history: makeHistory(), preferences: Preferences(), actions: WorkspaceActions()
     )
     private var statusBar: StatusBarController?
+    private lazy var mainWindow = MainWindowController(monitor: monitor)
     private var refresh: Task<Void, Never>?
 
     static func main() {
@@ -23,17 +24,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusBar = StatusBarController(monitor: monitor)
+        NSApp.mainMenu = Self.makeMainMenu()
+        statusBar = StatusBarController(monitor: monitor) { [weak self] in self?.mainWindow.show() }
         refresh = Task { [monitor] in
             await monitor.run(every: .seconds(2))
         }
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
+        // `--show-window` opens the main window on launch, for the same reason.
+        if CommandLine.arguments.contains("--show-window") {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(1))
+                self?.mainWindow.show()
+            }
+        }
         if CommandLine.arguments.contains("--show-popover") {
             Task { @MainActor [statusBar] in
                 try? await Task.sleep(for: .seconds(3))
                 statusBar?.showPopover()
             }
         }
+    }
+
+    /// MoniMac shows no menu bar of its own, but key equivalents like ⌘W and ⌘Q still route through it.
+    private static func makeMainMenu() -> NSMenu {
+        let main = NSMenu()
+        let appItem = NSMenuItem()
+        appItem.submenu = NSMenu()
+        appItem.submenu?.addItem(withTitle: "Quit MoniMac", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        main.addItem(appItem)
+        let windowItem = NSMenuItem()
+        windowItem.submenu = NSMenu(title: "Window")
+        windowItem.submenu?.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowItem.submenu?.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        main.addItem(windowItem)
+        return main
     }
 
     func applicationWillTerminate(_ notification: Notification) {

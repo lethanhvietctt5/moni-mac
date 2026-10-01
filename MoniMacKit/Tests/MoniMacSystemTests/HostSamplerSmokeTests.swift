@@ -30,6 +30,9 @@ struct HostSamplerSmokeTests {
         #expect(cores.filter { $0.kind == .efficiency }.count == snapshot.system.efficiencyCores)
         #expect(cores.allSatisfy { (0...1).contains($0.usage) })
         #expect(snapshot.loadAverage.value != nil)
+        let tasks = try #require(snapshot.taskCounts.value)
+        #expect(tasks.processes > 50)
+        #expect(tasks.threads > tasks.processes)
         #expect(snapshot.system.chipName.hasPrefix("Apple"))
         #expect(snapshot.system.bootTime.map { $0 < Date() } == true)
     }

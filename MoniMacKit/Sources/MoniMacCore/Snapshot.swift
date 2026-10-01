@@ -8,6 +8,7 @@ public struct Snapshot: Equatable, Sendable {
     /// Per logical core, in the kernel's CPU order.
     public var cores: Reading<[CoreUsage]>
     public var loadAverage: Reading<LoadAverage>
+    public var taskCounts: Reading<TaskCounts>
     public var processes: Reading<[ProcessSample]>
 
     public init(
@@ -16,6 +17,7 @@ public struct Snapshot: Equatable, Sendable {
         cpu: Reading<CPUUsage>,
         cores: Reading<[CoreUsage]> = .unavailable(.unsupported),
         loadAverage: Reading<LoadAverage> = .unavailable(.unsupported),
+        taskCounts: Reading<TaskCounts> = .unavailable(.unsupported),
         processes: Reading<[ProcessSample]> = .unavailable(.unsupported)
     ) {
         self.timestamp = timestamp
@@ -23,6 +25,7 @@ public struct Snapshot: Equatable, Sendable {
         self.cpu = cpu
         self.cores = cores
         self.loadAverage = loadAverage
+        self.taskCounts = taskCounts
         self.processes = processes
     }
 }
@@ -92,6 +95,17 @@ public struct LoadAverage: Equatable, Sendable {
         self.one = one
         self.five = five
         self.fifteen = fifteen
+    }
+}
+
+/// System-wide process and thread counts, including other users' processes.
+public struct TaskCounts: Equatable, Sendable {
+    public var processes: Int
+    public var threads: Int
+
+    public init(processes: Int, threads: Int) {
+        self.processes = processes
+        self.threads = threads
     }
 }
 

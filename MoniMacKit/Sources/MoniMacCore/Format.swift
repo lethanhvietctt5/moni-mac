@@ -20,11 +20,32 @@ public enum Format {
     }
 
     /// CPU use given as a share of the whole CPU (0...1), in the user's CPU mode.
-    public static func cpu(_ shareOfWholeCPU: Double, mode: CPUMode, logicalCores: Int) -> String {
-        switch mode {
-        case .system: percent(shareOfWholeCPU)
-        case .perCore: "\(Int((max(shareOfWholeCPU, 0) * Double(logicalCores) * 100).rounded()))%"
+    /// `decimals` adds precision for small per-app values, e.g. `"12.4%"`.
+    public static func cpu(_ shareOfWholeCPU: Double, mode: CPUMode, logicalCores: Int, decimals: Int = 0) -> String {
+        let share = max(shareOfWholeCPU, 0)
+        let percent = switch mode {
+        case .system: min(share, 1) * 100
+        case .perCore: share * Double(logicalCores) * 100
         }
+        return decimals == 0 ? "\(Int(percent.rounded()))%" : String(format: "%.\(decimals)f%%", percent)
+    }
+
+    /// Whole numbers with a thousands separator, e.g. `"4,212"`.
+    public static func count(_ value: Int) -> String {
+        value.formatted(.number.grouping(.automatic).locale(Locale(identifier: "en_US")))
+    }
+
+    /// Clock time for chart labels: `"14:12"` within a day, `"Tue 14:12"` within a week, else `"24 Sep"`.
+    public static func time(_ date: Date, within range: TimeRange, timeZone: TimeZone = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = switch range {
+        case .sevenDays: "EEE HH:mm"
+        case .thirtyDays: "d MMM"
+        default: "HH:mm"
+        }
+        return formatter.string(from: date)
     }
 
     /// e.g. `"3d 4h"`, `"4h 12m"`, `"12m"`.
