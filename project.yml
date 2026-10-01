@@ -1,0 +1,43 @@
+name: MoniMac
+options:
+  bundleIdPrefix: io.github.lethanhvietctt5
+  deploymentTarget:
+    macOS: "14.2"
+  createIntermediateGroups: true
+packages:
+  MoniMacKit:
+    path: MoniMacKit
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ARCHS: arm64
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  MoniMac:
+    type: application
+    platform: macOS
+    sources:
+      - App/Sources
+    dependencies:
+      - package: MoniMacKit
+        product: MoniMacCore
+      - package: MoniMacKit
+        product: MoniMacSystem
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: MoniMac
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.utilities
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSUIElement: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMac
+        PRODUCT_NAME: MoniMac
+        GENERATE_INFOPLIST_FILE: NO

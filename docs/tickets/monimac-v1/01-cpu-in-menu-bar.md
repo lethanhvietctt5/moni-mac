@@ -4,11 +4,11 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** in progress — only the signing criterion is open; it needs the maintainer to run `scripts/create-signing-cert.sh` (keychain password prompt) and set `Config/Local.xcconfig`
 
-- [ ] Launching the app shows no Dock icon and adds one MoniMac menu bar item showing CPU % (e.g. `32%`) that updates on each refresh
-- [ ] The menu bar text uses compact, fixed-width-feeling formatting so it doesn't jitter as values change
-- [ ] A fake SystemSampler and test clock exist; a test feeds a scripted snapshot sequence and asserts the menu bar item's displayed text
-- [ ] No module other than SystemSampler reads OS state
+- [x] Launching the app shows no Dock icon and adds one MoniMac menu bar item showing CPU % (e.g. `32%`) that updates on each refresh
+- [x] The menu bar text uses compact, fixed-width-feeling formatting so it doesn't jitter as values change
+- [x] A fake SystemSampler and test clock exist; a test feeds a scripted snapshot sequence and asserts the menu bar item's displayed text
+- [x] No module other than SystemSampler reads OS state
 - [ ] The app is signed with a stable self-signed identity, documented for contributors
-- [ ] CLAUDE.md lists the build, test, and run-one-test commands
+- [x] CLAUDE.md lists the build, test, and run-one-test commands

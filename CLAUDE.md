@@ -4,7 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-MoniMac is a free, open-source macOS system monitor (menu bar items, a popover, and a main window). The repo is **pre-code**: it holds only the v1 spec. There are no build, lint, or test commands yet. Add them here when the Xcode project lands.
+MoniMac is a free, open-source macOS system monitor (menu bar items, a popover, and a main window). Native Swift 6, Apple silicon, macOS 14.2+.
+
+## Commands
+
+```bash
+# Logic and tests (fast, no Xcode project needed)
+swift test --package-path MoniMacKit
+swift test --package-path MoniMacKit --filter MoniMacCoreTests.MenuBarTests   # one suite
+swift test --package-path MoniMacKit --filter "MenuBarTests/showsTotalCPUPercent()"   # one test
+
+# App (requires `brew install xcodegen`; the .xcodeproj is generated and gitignored)
+xcodegen generate
+xcodebuild -project MoniMac.xcodeproj -scheme MoniMac -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/MoniMac.app
+```
+
+Rerun `xcodegen generate` after adding or removing app source files or editing `project.yml`.
+
+## Layout
+
+- `MoniMacKit/`: Swift package with all logic.
+  - `MoniMacCore` is pure: Snapshot, the SystemSampler seam, math, formatting, and feature state (`Monitor`).
+  - `MoniMacSystem` holds the real sampler and is the **only** target allowed to read OS state.
+  - `MoniMacSystemTests` are smoke tests that run against the real Mac.
+- `App/`: thin AppKit shell (status items now, the popover and window later) that renders `Monitor`'s feature state. `project.yml` builds it.
+- **Signing:** `Config/Signing.xcconfig` defaults to ad-hoc. For a stable identity, so that granted permissions survive rebuilds, run `scripts/create-signing-cert.sh` once and set `CODE_SIGN_IDENTITY` in the gitignored `Config/Local.xcconfig`.
 
 ## Sources of truth
 
@@ -14,7 +39,7 @@ MoniMac is a free, open-source macOS system monitor (menu bar items, a popover, 
 - Numbers in the designs are sample data, not requirements. The spec's Further Notes lists the known inconsistencies.
 - New specs go in `docs/specs/` as markdown. There is no issue tracker.
 
-## Architecture (planned, from the spec)
+## Architecture (from the spec; built incrementally by the tickets)
 
 Native Swift: SwiftUI for the window and popover, AppKit where needed (status items, popover window, sheets). Apple silicon, macOS 14.2+.
 
