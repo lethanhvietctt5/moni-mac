@@ -158,6 +158,8 @@ extension Snapshot {
     /// Bytes each app wrote over the interval, only for apps that wrote. The process list refreshes
     /// less often than snapshots, so its rates are applied to the time since the previous sample:
     /// a reused rate then covers only the time it was reused for, and nothing is counted twice.
+    /// These are the bytes each process asked to write to any volume, so they needn't add up to the
+    /// internal drive's "Written Today".
     private func appWrites(over interval: TimeInterval, processes: [ProcessSample]) -> [SeriesSample] {
         guard interval > 0 else { return [] }
         let writers = processes.filter { ($0.resources.diskWritePerSecond ?? 0) > 0 }

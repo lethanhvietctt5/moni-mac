@@ -45,22 +45,25 @@ private struct DiskPopoverContent: View {
     }
 
     private var hero: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
+        // The volume line is long, so the picker sits beside it and the big number gets its own row.
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
                 Text(panel.volumeLine)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Palette.textSecondary)
                     .lineLimit(1)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(panel.free)
-                        .font(.system(size: 34, weight: .bold).monospacedDigit())
-                        .foregroundStyle(Palette.textPrimary)
-                    Text(panel.freeCaption).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.textSecondary)
-                }
+                Spacer()
+                SegmentedPicker(options: DiskPanel.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 8)
+                    .fixedSize()
             }
-            Spacer()
-            SegmentedPicker(options: DiskPanel.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 8)
-                .fixedSize()
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(panel.free)
+                    .font(.system(size: 34, weight: .bold).monospacedDigit())
+                    .foregroundStyle(Palette.textPrimary)
+                    .fixedSize()
+                Text(panel.freeCaption).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.textSecondary)
+                Spacer()
+            }
         }
     }
 
@@ -243,7 +246,8 @@ private struct DiskWindowContent: View {
                     }
                     .font(.system(size: 10))
                     .foregroundStyle(Palette.textTertiary)
-                    .frame(width: 36, alignment: .trailing)
+                    .lineLimit(1)
+                    .frame(width: 52, alignment: .trailing)
                     DiskBars(bars: detail.history, cornerRadius: 2, spacing: 2)
                         .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
                         .overlay(alignment: .bottom) { Rectangle().fill(Palette.separator).frame(height: 1) }
@@ -257,13 +261,13 @@ private struct DiskWindowContent: View {
                 }
                 .font(.system(size: 10))
                 .foregroundStyle(Palette.textTertiary)
-                .padding(.leading, 44)
+                .padding(.leading, 60)
             }
             HStack(spacing: 16) {
                 legend("Read", Palette.disk)
                 legend("Write", Palette.diskWrite)
             }
-            .padding(.leading, 44)
+            .padding(.leading, 60)
         }
         .frame(maxWidth: .infinity)
     }

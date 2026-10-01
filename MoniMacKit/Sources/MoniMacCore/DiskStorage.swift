@@ -9,7 +9,8 @@ import Foundation
 /// - **Documents:** everything else on the Data volume: your files, photos, mail, and app data.
 ///   It's what remains after the other categories, so protected folders (Documents, Desktop,
 ///   Downloads, other apps' containers) are never read and no privacy prompt appears. Docker
-///   Desktop's disk image lives in its container, so it counts here.
+///   Desktop's disk image lives in its container, so it counts here; its hint says "& other".
+///   After a capped scan it shows "≤", since Applications and Developer may be larger.
 /// - **macOS:** the System, Preboot, Recovery, VM (swap), and Update volumes.
 /// - **Purgeable:** caches and local snapshots macOS frees when space runs low.
 /// - **Free:** available now.
@@ -60,18 +61,23 @@ extension StorageBreakdown {
         let documents = capacity - free > known ? capacity - free - known : 0
         let topDeveloper = scan.developer.filter { $0.bytes > 0 }.sorted { $0.bytes > $1.bytes }.prefix(2).map(\.name)
 
-        func segment(_ category: Category, _ bytes: UInt64, _ hint: String, scanned: Bool = false) -> Segment {
+        // Shares are of the larger of the capacity and the total, so a clamped remainder can't
+        // push the bar past full.
+        let whole = Double(max(capacity, known + documents + free))
+        /// `bound` marks values a capped scan makes uncertain: scanned sizes are at least the
+        /// value, and the remainder at most.
+        func segment(_ category: Category, _ bytes: UInt64, _ hint: String, bound: String? = nil) -> Segment {
             let value = DiskFormat.bytes(bytes)
             return Segment(
-                category: category, bytes: bytes, share: capacity > 0 ? Double(bytes) / Double(capacity) : 0,
-                value: scanned && scan.isPartial ? "≥ \(value)" : value, hint: hint
+                category: category, bytes: bytes, share: whole > 0 ? Double(bytes) / whole : 0,
+                value: scan.isPartial ? bound.map { "\($0) \(value)" } ?? value : value, hint: hint
             )
         }
         return .value(StorageBreakdown(segments: [
-            segment(.applications, scan.applications, scan.appCount == 1 ? "1 app" : "\(scan.appCount) apps", scanned: true),
+            segment(.applications, scan.applications, scan.appCount == 1 ? "1 app" : "\(scan.appCount) apps", bound: "≥"),
             segment(.developer, developer, topDeveloper.isEmpty ? "None found" : topDeveloper.joined(separator: ", "),
-                    scanned: true),
-            segment(.documents, documents, "Your files & app data"),
+                    bound: "≥"),
+            segment(.documents, documents, "Files, app data & other", bound: "≤"),
             segment(.macOS, space.system, "System volumes"),
             segment(.purgeable, space.purgeable, "Caches, snapshots"),
             segment(.free, free, "Available now"),

@@ -59,7 +59,7 @@ struct DiskPanelTests {
         #expect(storage.segments.map(\.category) == StorageBreakdown.Category.allCases)
         #expect(storage.segments.map(\.value) == ["182 GB", "148 GB", "214 GB", "46 GB", "92 GB", "312 GB"])
         #expect(storage.segments.map(\.hint) == [
-            "214 apps", "Xcode, Simulators", "Your files & app data", "System volumes", "Caches, snapshots",
+            "214 apps", "Xcode, Simulators", "Files, app data & other", "System volumes", "Caches, snapshots",
             "Available now",
         ])
         #expect(storage.segments.reduce(0) { $0 + $1.bytes } == F.volume.capacity)
@@ -71,7 +71,7 @@ struct DiskPanelTests {
         scan.isPartial = true
         let storage = try #require(try panel([F.snapshot(at: F.now, space: .value(Self.space), scan: .value(scan))]).storage)
 
-        #expect(storage.segments.map(\.value).prefix(3) == ["≥ 182 GB", "≥ 148 GB", "214 GB"])
+        #expect(storage.segments.map(\.value).prefix(3) == ["≥ 182 GB", "≥ 148 GB", "≤ 214 GB"])
     }
 
     /// Inputs read at different times can overlap; Documents never goes negative.
@@ -80,6 +80,7 @@ struct DiskPanelTests {
         let storage = try #require(try panel([F.snapshot(at: F.now, space: .value(full), scan: .value(Self.scan))]).storage)
 
         #expect(storage.segments[2].bytes == 0)
+        #expect(abs(storage.segments.reduce(0) { $0 + $1.share } - 1) < 1e-9, "the bar never overflows")
     }
 }
 
