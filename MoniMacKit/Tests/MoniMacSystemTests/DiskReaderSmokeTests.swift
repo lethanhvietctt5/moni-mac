@@ -120,15 +120,16 @@ struct DiskStorageScannerSmokeTests {
         reader.refreshIfDue()
         #expect(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start < 5_000_000, "refreshIfDue returned within 5 ms")
 
-        var scan: StorageScan?
-        for _ in 0..<100 where scan == nil {
+        // The scan and the space/health read run separately; wait for both.
+        var latest = reader.latest()
+        for _ in 0..<100 where latest.scan == .unavailable(.warmingUp) || latest.health == .unavailable(.warmingUp) {
             try await Task.sleep(for: .milliseconds(50))
-            scan = reader.latest().scan.value
+            latest = reader.latest()
         }
-        let result = try #require(scan)
+        let result = try #require(latest.scan.value)
         #expect(result.appCount == 2)
         #expect(result.developer.map(\.name) == ["Tools"])
         #expect(result.developer[0].bytes >= 500_000)
-        #expect(reader.latest().health == .unavailable(.unsupported))
+        #expect(latest.health == .unavailable(.unsupported))
     }
 }
