@@ -16,6 +16,6 @@
 - Shared edits: `MetricsHistory.sums(prefix:from:to:)` and `peak(_:from:to:)`, and `CPUDetail.xAxis` made internal so Disk reuses it.
 
 - [x] The popover and window Disk tabs show live values (screenshots of both, Release and Debug builds)
-- [x] The storage breakdown appears after a background scan and doesn't slow the refresh loop ("Scanning storage…" then the bar; steady self-cost 0.43% vs 0.48% on main, popover closed)
+- [x] The storage breakdown appears after a background scan and doesn't slow the refresh loop ("Scanning storage…" then the bar. Release, popover closed: 0.43% over 60 s from t=85 s vs 0.48% on main; a 120 s window starting 15 s after the scan's log line read 0.83%. A profile shows disk code at ~0.02% of a core per tick)
 - [ ] Written Today and the per-app writes reset at local midnight (feature-state tests with a controlled clock, for both raw and bucketed history; not observed across a real midnight)
 - [ ] SSD health shows "unavailable" with a reason when it can't be read (feature-state tests for each reason; this Mac's SSD reports health, so not seen live)
