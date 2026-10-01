@@ -26,9 +26,10 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
 
 **Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Menu bar items can't be captured, so they're verified by tests.
 
-**Self-cost** (budget: under 1% CPU with the popover and window closed):
+**Self-cost** (budget: under 1% average CPU at a 2 s refresh with the popover closed):
 - **Build:** measure a **Release** build; Debug is several times slower.
-- **Wait:** start at least 60 s after launch. Startup work (SMC key discovery; the storage scan when no saved one is under 6 h old) isn't steady state.
+- **Wait:** start at least 60 s after launch, so SMC key discovery is done.
+- **Storage scan:** the scan (~10 s of CPU, about 0.05% averaged over its 6 h cadence) is excluded. Run it to completion first and check the log (`log show --last 5m --predicate 'subsystem == "io.github.lethanhvietctt5.MoniMac"' | grep "Storage scan"`) that none ran inside the window. One can start inside the window when the saved scan expires or free space moves a lot.
 - **Measure:** take the `ps -o cputime` delta over 120 s, or log it in 5 s windows to spot bursts.
 - **Compare:** run back to back against a `main` Release build on the same machine, since load from other work skews single readings.
 - **Popover:** if someone opens it during a run, SwiftUI re-renders every tick and the reading is invalid; check a `sample` profile for `statusItemClicked`.
@@ -53,7 +54,7 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
   Shared switches already route to all of these. Per-process memory, disk, and power (`ResourceUse`) come from `ProcessReader`.
 - **Metric-file names** are prefixed with the metric (`DiskFormat`, `SeriesKey.networkDown…`, `Palette` extensions), so files written in parallel never declare the same name.
 - **History for totals:** series that record an amount per sample (e.g. bytes since the previous sample) support `MetricsHistory.sum(from:to:)` for "since launch" (`Monitor.startedAt`) or "today", and `dailyTotals` for per-day charts.
-  - **Per-app series** use keys `<metric>.app:<id>`, recorded only when nonzero, and are read with `sums(prefix:from:to:)`. `peak(from:to:)` gives a peak since a time, e.g. midnight.
+  - **Per-app series** use keys `<metric>.app:<id>`, recorded only when nonzero, and are read with `sums(prefix:from:to:)`. `peak(_:from:to:)` gives a series' peak since a time, e.g. midnight.
   - **Past windows:** query them through a range whose tier still holds the data. The minute tier behind 24H is pruned after about 25 h, so "yesterday's 24H average" must come from the 7D (15-minute) tier.
   - **Worst level in a bucket:** buckets keep averages. To show a bucket's worst level (e.g. memory pressure), record 0/1 indicator series.
 - **Naming:** data types say *Thermal* (thermal state, sensors, fans). UI says *Temperature* (`Metric.temperature`, `TemperatureMenuBar`, the "Temperature & Fans" tab).
@@ -117,7 +118,7 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **Memory:** `host_statistics64` VM info, `vm.swapusage`, `kern.memorystatus_vm_pressure_level`. Sizes are binary (GB = 2³⁰); there's no cheap memory-type source, so it reads "unified memory".
   - **GPU:**
     - totals come from the IOAccelerator `PerformanceStatistics` dictionary
-    - per-app use comes from `AGXDeviceUserClient` `AppUsage.accumulatedGPUTime` (ns)
+    - per-app use comes from `AppUsage.accumulatedGPUTime` (ns) on the accelerator's user-client children
     - read single keys only, never whole property tables
   - **Network:**
     - totals sum the `en*` interfaces' 64-bit counters (`NET_RT_IFLIST2`), timed with a clock that runs through sleep
@@ -127,7 +128,8 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
     - read/write rates come from `IOBlockStorageDriver` statistics
     - SSD health comes from NVMe SMART through the NVMeSMARTLib plug-in
     - purgeable space is read every 5 min in the background
-    - the storage scan never reads Documents, Desktop, Downloads, or other apps' containers (Documents is a remainder, so no privacy prompt). It is saved in `StorageScan.json` and reused for 6 h.
+    - the storage scan never reads Documents, Desktop, Downloads, or other apps' containers (Documents is a remainder, so no privacy prompt)
+    - the app saves the scan to `StorageScan.json` and reuses it for 6 h, or until free space moves by more than max(5 GB, 2%). Surfaces show its age; tests never pass the real location.
     - sizes are decimal
   - **Battery:**
     - `IOPowerSources` plus the `AppleSmartBattery` registry; on macOS 27 temperature and capacity keys moved under `BatteryData`
@@ -137,5 +139,5 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **Thermal:**
     - SMC read-only calls, with sensor key tables per Apple silicon generation. Unknown keys are counted, never given guessed names.
     - IOHID is a fallback only
-    - chart times use 24-hour `HH:mm`
+- **Chart times** use 24-hour `HH:mm` everywhere (`Format.time`).
 - **Name:** the product is **MoniMac**; the repo is `moni-mac`. "Vitals" was its old name.

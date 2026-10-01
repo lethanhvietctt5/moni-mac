@@ -14,15 +14,17 @@ public final class HostSampler: SystemSampler {
     private let memory = MemoryReader()
     private let gpu = GPUReader()
     private let network = NetworkReader()
-    private let disk = DiskReader()
+    private let disk: DiskReader
     private let battery = BatteryReader()
     private let thermal = ThermalReader()
     /// The latest process list with GPU and network figures added. Annotation runs only when the
     /// process list is refreshed, so readers see the same cadence and can compute their own rates.
     private var annotatedProcesses: Reading<[ProcessSample]> = .unavailable(.warmingUp)
 
-    public init() {
+    /// `storageScanCache` keeps the storage scan across launches; the app passes `.standard`.
+    public init(storageScanCache: StorageScanCache? = nil) {
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
+        disk = DiskReader(storageScanCache: storageScanCache)
     }
 
     public func sample() -> Snapshot {

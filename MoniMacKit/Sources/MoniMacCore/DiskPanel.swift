@@ -24,6 +24,8 @@ public struct DiskPanel: Equatable, Sendable {
     public var writtenToday: DiskDetail.Stat
     public var storage: StorageBreakdown?
     public var storageStatus: String?
+    /// How old the breakdown is, e.g. "Scanned 2h 5m ago"; nil while it's recent.
+    public var storageAge: String?
     public var writesToday: [DiskDetail.AppRow]
 }
 
@@ -51,6 +53,7 @@ extension DiskPanel {
             writtenToday: today.written,
             storage: storage.value,
             storageStatus: DiskToday.storageStatus(storage),
+            storageAge: snapshot.flatMap { disk?.scan.value?.age(at: $0.timestamp) },
             writesToday: today.writers
         )
     }

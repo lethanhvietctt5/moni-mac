@@ -4,6 +4,8 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
+**Post-merge (perf/self-cost):** the storage scan is now saved and reused across relaunches for 6 h, or until free space moves by more than max(5 GB, 2%). Surfaces show "Scanned … ago" once it's 10 min old. The self-cost figures below predate this.
+
 **Status:** done pending a manual click-through (range switching and tooltips need clicks). Unchecked boxes are built and covered by tests but not observed live.
 
 **Notes:**
