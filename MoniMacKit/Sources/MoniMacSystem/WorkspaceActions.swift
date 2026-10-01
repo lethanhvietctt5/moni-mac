@@ -10,9 +10,41 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 public final class WorkspaceActions: SystemActions {
     public init() {}
 
-    public func quitApp(pid: Int32) {
-        // terminate() sends a normal quit request, so the app can save work or refuse.
-        NSRunningApplication(processIdentifier: pid)?.terminate()
+    public func quitApp(pid: Int32, reopenWindows: Bool) {
+        guard let app = NSRunningApplication(processIdentifier: pid) else { return }
+        // terminate() sends a normal quit request, so the app can save work or refuse. It can't say
+        // whether to keep windows, so that one case sends the quit event itself.
+        guard reopenWindows else {
+            app.terminate()
+            return
+        }
+        do {
+            try sendQuitKeepingWindows(to: pid)
+        } catch {
+            // e.g. -1743 if macOS withholds Apple events from MoniMac. Still quit, as asked; the app
+            // then follows its own window setting.
+            log.error("Quit and Keep Windows failed for pid \(pid): \(String(describing: error), privacy: .public)")
+            app.terminate()
+        }
+    }
+
+    /// Sends the quit Apple event that Quit and Keep Windows (⌥⌘Q) and logout's "Reopen windows when
+    /// logging back in" use: `kAEQuitApplication` with `kAEQuitPreserveState` = `kAEYes`. AppKit apps
+    /// then save their windows for restoration on next launch, whatever the system's "Close windows
+    /// when quitting an application" setting says. Apps that don't use macOS window restoration ignore it.
+    private func sendQuitKeepingWindows(to pid: Int32) throws {
+        let event = NSAppleEventDescriptor(
+            eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEQuitApplication),
+            targetDescriptor: NSAppleEventDescriptor(processIdentifier: pid),
+            returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID)
+        )
+        event.setParam(NSAppleEventDescriptor(enumCode: OSType(kAEYes)), forKeyword: AEKeyword(kAEQuitPreserveState))
+        // No reply: the app may show a save dialog and take as long as the user needs.
+        _ = try event.sendEvent(options: [.noReply], timeout: 5)
+    }
+
+    public func forceQuitApp(pid: Int32) {
+        NSRunningApplication(processIdentifier: pid)?.forceTerminate()
     }
 
     public func openActivityMonitor() {

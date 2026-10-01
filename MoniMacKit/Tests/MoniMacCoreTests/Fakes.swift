@@ -44,7 +44,8 @@ final class ScriptedSampler: SystemSampler {
 @MainActor
 final class RecordingActions: SystemActions {
     enum Action: Equatable {
-        case quitApp(pid: Int32)
+        case quitApp(pid: Int32, reopenWindows: Bool)
+        case forceQuitApp(pid: Int32)
         case openActivityMonitor
         case stopProcess(pid: Int32, startedAt: Date)
         case stopContainer(id: String)
@@ -54,7 +55,8 @@ final class RecordingActions: SystemActions {
 
     private(set) var recorded: [Action] = []
 
-    func quitApp(pid: Int32) { recorded.append(.quitApp(pid: pid)) }
+    func quitApp(pid: Int32, reopenWindows: Bool) { recorded.append(.quitApp(pid: pid, reopenWindows: reopenWindows)) }
+    func forceQuitApp(pid: Int32) { recorded.append(.forceQuitApp(pid: pid)) }
     func openActivityMonitor() { recorded.append(.openActivityMonitor) }
     func stopProcess(pid: Int32, startedAt: Date) { recorded.append(.stopProcess(pid: pid, startedAt: startedAt)) }
     func stopContainer(id: String) { recorded.append(.stopContainer(id: id)) }
