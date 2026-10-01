@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** ready-for-agent
+**Status:** done pending a manual look at the menu bar (macOS doesn't expose status items to the window-capture script). Unchecked boxes are built but not yet observed in the real app.
 
-- [ ] A Temperature menu bar item can be shown
-- [ ] Temperature cards and the sensor list show live values
-- [ ] The Fans card shows each fan's speed and has no controls
-- [ ] With a fake sampler reporting no fans, the Fans card is hidden
-- [ ] No code path writes to the SMC
+- [ ] A Temperature menu bar item can be shown (built and covered by `ThermalMenuBarTests`: `58°C`/`136°F`, 20–100 °C sparkline; not yet seen in the menu bar)
+- [x] Temperature cards and the sensor list show live values
+- [x] The Fans card shows each fan's speed and has no controls
+- [x] With a fake sampler reporting no fans, the Fans card is hidden (`ThermalDetailTests.fanlessMacHidesTheFansCard`)
+- [x] No code path writes to the SMC (`SMC.Command` has only read cases: read key, key at index, key info)
