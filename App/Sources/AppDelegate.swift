@@ -64,8 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let path = Self.launchValue("--export-share-card") {
             Task { @MainActor [monitor] in
-                // Wait for the first sample, so the card has the Mac's memory and battery.
-                try? await Task.sleep(for: .seconds(2))
+                // Wait for a few samples, so the card has the Mac's memory and battery and the process list
+                // (for the busiest app's icon) has warmed up.
+                try? await Task.sleep(for: .seconds(5))
                 let dark = CommandLine.arguments.contains("--dark")
                 if !ShareCardWindowController.export(monitor: monitor, to: path, dark: dark) {
                     log.error("Couldn't export the share card to \(path, privacy: .public)")
