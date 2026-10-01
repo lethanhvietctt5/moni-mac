@@ -46,7 +46,7 @@ public struct MemoryDetail: Equatable, Sendable {
     public struct PressureBar: Equatable, Sendable {
         /// Pressure, 0...1: the bar's height.
         public var value: Double
-        /// The kernel's level over the bar's span (the nearest to its average), which colors the bar Low/Med/High.
+        /// The worst kernel level over the bar's span, which colors the bar Low/Med/High.
         public var level: MemoryPressureLevel
     }
 
@@ -54,8 +54,6 @@ public struct MemoryDetail: Equatable, Sendable {
         public var id: String
         public var name: String
         public var bundlePath: String?
-        /// e.g. "6 processes".
-        public var detail: String
         /// e.g. "1.9 GB".
         public var value: String
         /// Bar length: share of installed memory, 0...1.
@@ -172,8 +170,9 @@ extension MemoryDetail {
         ]
     }
 
-    /// Pressure as `historyBarCount` bars over the range, each colored by the kernel's level. As in
-    /// Activity Monitor, color comes from the level, not the height: a Mac can sit at 50% and be fine.
+    /// Pressure as `historyBarCount` bars over the range, each colored by the worst kernel level in its span,
+    /// so a short spike still shows. As in Activity Monitor, color comes from the level, not the height:
+    /// a Mac can sit at 50% and be fine.
     @MainActor
     private static func pressureBars(_ history: MetricsHistory, range: TimeRange, endingAt now: Date?) -> [PressureBar?] {
         guard let now else { return Array(repeating: nil, count: historyBarCount) }
@@ -181,9 +180,11 @@ extension MemoryDetail {
             let points = (try? history.summary(series, over: range, endingAt: now).points) ?? []
             return Resample.bars(points, endingAt: now, window: range.duration, count: historyBarCount)
         }
-        return zip(bars(.memoryPressure), bars(.memoryPressureLevel)).map { pressure, level in
-            guard let pressure, let level else { return nil }
-            return PressureBar(value: min(max(pressure, 0), 1), level: MemoryPressureLevel(seriesValue: level))
+        let (pressure, warning, critical) = (bars(.memoryPressure), bars(.memoryPressureWarning), bars(.memoryPressureCritical))
+        return (0..<historyBarCount).map { index in
+            guard let value = pressure[index], let warning = warning[index], let critical = critical[index] else { return nil }
+            let level: MemoryPressureLevel = critical > 0 ? .critical : warning > 0 ? .warning : .normal
+            return PressureBar(value: min(max(value, 0), 1), level: level)
         }
     }
 
@@ -201,7 +202,6 @@ extension MemoryDetail {
                 let bytes = app.resources.memory ?? 0
                 return AppRow(
                     id: app.id, name: app.name, bundlePath: app.bundlePath,
-                    detail: app.processCount == 1 ? "1 process" : "\(app.processCount) processes",
                     value: Format.memorySize(bytes), share: min(Double(bytes) / total, 1), canQuit: app.canQuit
                 )
             }

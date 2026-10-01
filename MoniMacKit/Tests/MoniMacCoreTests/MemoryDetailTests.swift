@@ -135,24 +135,23 @@ struct MemoryDetailTests {
         #expect(bars.dropLast(5).allSatisfy { $0 == nil })
     }
 
-    /// A long-range bar averages its span; its color is the level nearest the average level.
-    @Test func pressureHistoryOverLongRangesUsesBucketAverages() throws {
+    /// A long-range bar averages the pressure over its span but shows the worst level in it, so a spike isn't lost.
+    @Test(arguments: [
+        ([MemoryPressureLevel.normal, .normal, .normal], MemoryPressureLevel.normal),
+        ([.normal, .warning, .normal], .warning),
+        ([.normal, .normal, .critical], .critical),
+        ([.warning, .critical, .warning], .critical),
+    ])
+    func longRangeBarsShowTheWorstLevel(levels: [MemoryPressureLevel], worst: MemoryPressureLevel) throws {
         // All within the minute before `now`, so one bucket.
-        let history = [
-            snapshot(at: now.addingTimeInterval(-30), memory: designMemory(pressureLevel: .normal, pressure: 0.6)),
-            snapshot(at: now.addingTimeInterval(-20), memory: designMemory(pressureLevel: .critical, pressure: 0.9)),
-            snapshot(at: now.addingTimeInterval(-10), memory: designMemory(pressureLevel: .critical, pressure: 0.9)),
-        ]
+        let history = zip([-30.0, -20, -10], zip(levels, [0.6, 0.9, 0.9])).map { offset, sample in
+            snapshot(at: now.addingTimeInterval(offset), memory: designMemory(pressureLevel: sample.0, pressure: sample.1))
+        }
 
         let last = try #require(try detail(history: history, latest: snapshot(at: now)).history.last ?? nil)
 
         #expect(abs(last.value - 0.8) < 1e-9)
-        #expect(last.level == .warning)  // average level 1.33
-    }
-
-    @Test(arguments: [(0.0, MemoryPressureLevel.normal), (0.49, .normal), (0.5, .warning), (1.49, .warning), (1.5, .critical)])
-    func averagedLevelsRoundToTheNearest(value: Double, level: MemoryPressureLevel) {
-        #expect(MemoryPressureLevel(seriesValue: value) == level)
+        #expect(last.level == worst)
     }
 
     @Test(arguments: [
@@ -179,7 +178,6 @@ struct MemoryDetailTests {
 
         #expect(rows.map(\.name) == ["Google Chrome", "Xcode", "WindowServer"])
         #expect(rows.map(\.value) == ["1.9 GB", "1 GB", "210 MB"])
-        #expect(rows.map(\.detail) == ["2 processes", "1 process", "1 process"])
         #expect(rows.map(\.canQuit) == [true, true, false])
         #expect(abs(rows[0].share - 1900.0 / 1024 / 18) < 1e-9)
     }

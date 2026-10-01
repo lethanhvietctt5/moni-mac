@@ -5,24 +5,6 @@ public enum MemoryPressureLevel: Equatable, Sendable {
     case normal
     case warning
     case critical
-
-    /// How `SeriesKey.memoryPressureLevel` records it: 0, 1, 2.
-    var seriesValue: Double {
-        switch self {
-        case .normal: 0
-        case .warning: 1
-        case .critical: 2
-        }
-    }
-
-    /// The nearest level to a recorded (possibly averaged) series value.
-    init(seriesValue: Double) {
-        switch seriesValue {
-        case ..<0.5: self = .normal
-        case ..<1.5: self = .warning
-        default: self = .critical
-        }
-    }
 }
 
 /// What SystemSampler reads for memory on each tick. Sizes are bytes.
@@ -94,8 +76,11 @@ extension SeriesKey {
     public static let memoryUsed = SeriesKey(rawValue: "memory.used")
     /// Memory pressure, 0...1.
     public static let memoryPressure = SeriesKey(rawValue: "memory.pressure")
-    /// The kernel's pressure level: 0 normal, 1 warning, 2 critical.
-    public static let memoryPressureLevel = SeriesKey(rawValue: "memory.pressureLevel")
+    /// 1 while the kernel's pressure level is warning or critical, else 0. History averages buckets, so a
+    /// bucket above 0 had at least one such sample: these indicators recover each bucket's worst level.
+    public static let memoryPressureWarning = SeriesKey(rawValue: "memory.pressureWarning")
+    /// 1 while the kernel's pressure level is critical, else 0.
+    public static let memoryPressureCritical = SeriesKey(rawValue: "memory.pressureCritical")
 }
 
 extension Snapshot {
@@ -108,7 +93,8 @@ extension Snapshot {
             samples.append(SeriesSample(.memoryPressure, pressure, contributor: biggest))
         }
         if let level = memory.pressureLevel {
-            samples.append(SeriesSample(.memoryPressureLevel, level.seriesValue))
+            samples.append(SeriesSample(.memoryPressureWarning, level == .normal ? 0 : 1))
+            samples.append(SeriesSample(.memoryPressureCritical, level == .critical ? 1 : 0))
         }
         return samples
     }

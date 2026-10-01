@@ -52,10 +52,11 @@ private struct MemoryPopoverContent: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Palette.textSecondary)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(detail.used) \(detail.usedUnit)")
+                    Text(detail.used)
                         .font(.system(size: 34, weight: .bold).monospacedDigit())
                         .foregroundStyle(Palette.textPrimary)
-                    Text("of \(detail.total)").font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.textSecondary)
+                    Text("\(detail.usedUnit) of \(detail.total)").font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Palette.textSecondary)
                 }
             }
             Spacer()
@@ -86,22 +87,22 @@ private struct MemoryPopoverContent: View {
 
     private var stats: some View {
         HStack(alignment: .top) {
-            stat(detail.pressure, short: "Pressure", level: detail.pressureLevel)
+            stat(detail.pressure, level: detail.pressureLevel)
             Spacer()
-            stat(detail.swap, short: "Swap")
+            stat(detail.swap)
             Spacer()
-            stat(detail.compression, short: "Compression")
+            stat(detail.compression)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
     }
 
-    private func stat(_ stat: MemoryDetail.Stat, short: String, level: MemoryPressureLevel? = nil) -> some View {
+    private func stat(_ stat: MemoryDetail.Stat, level: MemoryPressureLevel? = nil) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 5) {
                 if let level { Circle().fill(level.color).frame(width: 7, height: 7) }
-                Text(short).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.textSecondary)
+                Text(stat.label).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.textSecondary)
             }
             Text(stat.value).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(Palette.textPrimary)
             Text(stat.detail).font(.system(size: 10)).foregroundStyle(Palette.textTertiary).lineLimit(1)
