@@ -39,10 +39,23 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
 ## Sources of truth
 
 - **Spec:** `docs/specs/monimac-v1.md`. It is an umbrella spec: problem, user stories, architecture, testing decisions, and out of scope.
-- **Tickets:** `docs/tickets/monimac-v1/`, one file per vertical slice, numbered in dependency order. Each has "Blocked by", "Status", and acceptance criteria. Pick any ticket whose blockers are done, and tick its criteria and update its status as you finish.
+- **Tickets:** `docs/tickets/monimac-v1/`, one file per vertical slice, numbered in dependency order. Each has "Blocked by", "Status", and acceptance criteria. Pick any ticket whose blockers are done, and follow the workflow below.
 - **UI designs:** `/Users/mb/Documents/moni-mac-designs.pen`, which is outside the repo. Read and edit it only through the Pencil MCP tools (`mcp__pencil__*`). Never use Read or Grep on `.pen` files; they are encrypted. Top-level frames: Templates, MoniMac Screens (Menu Bar, Popover & Alerts · Main Window — System Metrics · Main Window — Devices, Developer & Settings), Components (reusable: Sidebar Item, App Row, Metric Tile, Segmented Control, Section Header, Toggle).
 - Numbers in the designs are sample data, not requirements. The spec's Further Notes lists the known inconsistencies.
 - New specs go in `docs/specs/` as markdown. There is no issue tracker.
+
+## Workflow per ticket
+
+1. Branch from an up-to-date `main` as `feat/NN-slug`, one branch per ticket.
+2. Build the slice: Core feature state and tests first, then the sampler, then the UI.
+3. Verify:
+   - `swift test` is green.
+   - The app builds with no warnings.
+   - Screenshots of the new UI match the Pencil design.
+   - Self-cost on a Release build stays under 1% CPU when the ticket adds sampling.
+4. **Review before merging.** Run the `mattpocock-skills:code-review` skill on the changes since the branch's merge-base with `main`. Fix what it finds and rerun the checks in step 3. Findings you deliberately don't fix go in the PR with the reason.
+5. Tick only the acceptance criteria you actually observed. Note anything built but not exercised (e.g. clicks automation can't make).
+6. Open the PR. Its body says what was verified, the review outcome, and what's still unverified. Merge with a merge commit and delete the branch.
 
 ## Architecture (from the spec; built incrementally by the tickets)
 
