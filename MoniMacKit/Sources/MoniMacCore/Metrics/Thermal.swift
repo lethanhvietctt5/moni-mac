@@ -10,13 +10,15 @@ public struct ThermalReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for thermal.
-    var thermalSeries: [(SeriesKey, Double)] { [] }
+    var thermalSeries: [SeriesSample] { [] }
 }
 
-/// The thermal menu bar item.
-enum ThermalMenuBar {
+/// The temperature menu bar item.
+enum TemperatureMenuBar: MenuBarMetric {
     /// The widest text the item can show; the item is sized for it.
-    static let widestText = "100°C"
+    static func widestText(preferences: Preferences) -> String {
+        "100°C"
+    }
 
     static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {
         Format.placeholder
@@ -27,4 +29,9 @@ enum ThermalMenuBar {
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         Sparkline.empty
     }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the Temperature & Fans tab, e.g. hardware details.
+    public var temperatureSubtitle: String? { nil }
 }

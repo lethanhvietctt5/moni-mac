@@ -10,5 +10,15 @@ public struct BatteryReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for battery.
-    var batterySeries: [(SeriesKey, Double)] { [] }
+    var batterySeries: [SeriesSample] { [] }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the Battery tab, e.g. hardware details.
+    public var batterySubtitle: String? { nil }
+}
+
+extension Monitor {
+    /// Whether this Mac has a battery. Every battery surface is hidden when it doesn't.
+    public var hasBattery: Bool { true }
 }

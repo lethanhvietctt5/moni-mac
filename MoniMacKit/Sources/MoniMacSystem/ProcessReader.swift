@@ -46,11 +46,13 @@ final class ProcessReader {
         self.interval = UInt64(interval * 1_000_000_000)
     }
 
-    func sample() -> Reading<[ProcessSample]> {
+    /// The process list, and whether it was refreshed by this call (false when the previous pass
+    /// is reused because the interval hasn't elapsed).
+    func sample() -> (processes: Reading<[ProcessSample]>, refreshed: Bool) {
         others.refreshIfDue()
         let wall = DispatchTime.now().uptimeNanoseconds
         if let previousWall, wall - previousWall < interval, lastResult.value != nil {
-            return lastResult
+            return (lastResult, false)
         }
         let elapsed = previousWall.map { Double(wall - $0) }
 
@@ -71,16 +73,16 @@ final class ProcessReader {
             let identity = identity(of: pid, start: counters.start)
             var sample = ProcessSample(
                 pid: pid, responsiblePID: identity.responsiblePID, name: identity.name, path: identity.path,
-                cpu: 0, isRegularApp: regularApps.contains(pid), memory: usage.ri_phys_footprint
+                cpu: 0, isRegularApp: regularApps.contains(pid), resources: ResourceUse(memory: usage.ri_phys_footprint)
             )
-            if let elapsed, let previous = previous[pid], previous.start == counters.start {
+            if let elapsed, let before = previous[pid], before.start == counters.start {
                 let seconds = elapsed / 1_000_000_000
-                func rate(_ now: UInt64, _ before: UInt64) -> Double { now >= before ? Double(now - before) / seconds : 0 }
-                sample.cpu = rate(counters.cpuNanoseconds, previous.cpuNanoseconds) / 1_000_000_000
-                sample.diskReadPerSecond = rate(counters.diskRead, previous.diskRead)
-                sample.diskWritePerSecond = rate(counters.diskWritten, previous.diskWritten)
+                func rate(_ now: UInt64, _ then: UInt64) -> Double { now >= then ? Double(now - then) / seconds : 0 }
+                sample.cpu = rate(counters.cpuNanoseconds, before.cpuNanoseconds) / 1_000_000_000
+                sample.resources.diskReadPerSecond = rate(counters.diskRead, before.diskRead)
+                sample.resources.diskWritePerSecond = rate(counters.diskWritten, before.diskWritten)
                 // Nanojoules per second → watts.
-                sample.power = rate(counters.energyNanojoules, previous.energyNanojoules) / 1_000_000_000
+                sample.resources.power = rate(counters.energyNanojoules, before.energyNanojoules) / 1_000_000_000
             }
             samples.append(sample)
         }
@@ -90,9 +92,9 @@ final class ProcessReader {
         }
         previous = current
         defer { previousWall = wall }
-        guard elapsed != nil else { return .unavailable(.warmingUp) }
+        guard elapsed != nil else { return (.unavailable(.warmingUp), true) }
         lastResult = .value(samples + others.latest())
-        return lastResult
+        return (lastResult, true)
     }
 
     private func listPIDs() -> ArraySlice<pid_t> {

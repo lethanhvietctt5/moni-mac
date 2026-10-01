@@ -53,9 +53,9 @@ struct HostSamplerSmokeTests {
         let yes = try #require(processes.first { $0.pid == busy.processIdentifier })
         #expect((0.8...1.1).contains(yes.cpu), "yes used \(yes.cpu) cores")
         #expect(yes.path == "/usr/bin/yes")
-        #expect((yes.memory ?? 0) > 0)
-        #expect(yes.diskReadPerSecond != nil)
-        #expect((yes.power ?? 0) > 0, "a busy process draws power")
+        #expect((yes.resources.memory ?? 0) > 0)
+        #expect(yes.resources.diskReadPerSecond != nil)
+        #expect((yes.resources.power ?? 0) > 0, "a busy process draws power")
         #expect(processes.contains { $0.pid == getpid() })
     }
 

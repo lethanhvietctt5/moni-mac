@@ -7,11 +7,8 @@ import SwiftUI
 /// The main window's Temperature & Fans tab.
 struct TemperatureWindowTab: View {
     let monitor: Monitor
-
-    /// The toolbar subtitle for this tab, e.g. hardware details.
-    static func subtitle(_ monitor: Monitor) -> String? {
-        nil
-    }
+    /// The tab's chart range, kept by the window so it survives switching tabs.
+    @Binding var range: TimeRange
 
     var body: some View {
         ComingSoon(title: "Temperature & Fans")

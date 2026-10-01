@@ -25,10 +25,14 @@ public final class Monitor {
     @ObservationIgnored let preferences: Preferences
     @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
+    /// When this Monitor started, e.g. for "this session" totals.
+    public let startedAt: Date
 
     public init(
-        sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences, actions: any SystemActions
+        sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences, actions: any SystemActions,
+        startedAt: Date = Date()
     ) {
+        self.startedAt = startedAt
         self.sampler = sampler
         self.history = history
         self.preferences = preferences
@@ -106,40 +110,19 @@ public final class Monitor {
     // MARK: Menu bar
 
     private func rebuildMenuBarItems() {
-        menuBarItems = Metric.allCases.filter(preferences.isMenuBarItemEnabled).map { metric in
+        var shown = Metric.allCases.filter(preferences.isMenuBarItemEnabled)
+        // Never leave the app without a menu bar item, even if settings were edited by hand.
+        if shown.isEmpty { shown = [.cpu] }
+        menuBarItems = shown.map { metric in
             let style = preferences.menuBarStyle(for: metric)
+            let source = metric.menuBar
             return MenuBarItem(
                 metric: metric,
                 style: style,
-                text: text(for: metric),
-                bars: style == .value ? [] : bars(for: metric)
+                text: source.text(latest, preferences: preferences),
+                bars: style == .value ? [] : source.bars(history: history, endingAt: latest?.timestamp),
+                widestText: source.widestText(preferences: preferences)
             )
-        }
-    }
-
-    private func text(for metric: Metric) -> String {
-        switch metric {
-        case .cpu:
-            guard let latest, let cpu = latest.cpu.value else { return Format.placeholder }
-            return Format.cpu(cpu.total, mode: preferences.cpuMode, logicalCores: latest.system.logicalCores)
-        case .memory: return MemoryMenuBar.text(latest, preferences: preferences)
-        case .network: return NetworkMenuBar.text(latest, preferences: preferences)
-        case .gpu: return GPUMenuBar.text(latest, preferences: preferences)
-        case .temperature: return ThermalMenuBar.text(latest, preferences: preferences)
-        }
-    }
-
-    private func bars(for metric: Metric) -> [Double?] {
-        let now = latest?.timestamp
-        switch metric {
-        case .cpu:
-            guard let now else { return Sparkline.empty }
-            let points = (try? history.summary(.cpuTotal, over: .oneMinute, endingAt: now).points) ?? []
-            return Sparkline.bars(points, endingAt: now)
-        case .memory: return MemoryMenuBar.bars(history: history, endingAt: now)
-        case .network: return NetworkMenuBar.bars(history: history, endingAt: now)
-        case .gpu: return GPUMenuBar.bars(history: history, endingAt: now)
-        case .temperature: return ThermalMenuBar.bars(history: history, endingAt: now)
         }
     }
 }

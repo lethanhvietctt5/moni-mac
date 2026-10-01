@@ -17,6 +17,9 @@ public final class HostSampler: SystemSampler {
     private let disk = DiskReader()
     private let battery = BatteryReader()
     private let thermal = ThermalReader()
+    /// The latest process list with GPU and network figures added. Annotation runs only when the
+    /// process list is refreshed, so readers see the same cadence and can compute their own rates.
+    private var annotatedProcesses: Reading<[ProcessSample]> = .unavailable(.warmingUp)
 
     public init() {
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
@@ -30,7 +33,7 @@ public final class HostSampler: SystemSampler {
             cores: cores.sample(),
             loadAverage: sampleLoadAverage(),
             taskCounts: sampleTaskCounts(),
-            processes: network.annotate(gpu.annotate(processes.sample())),
+            processes: sampleProcesses(),
             memory: memory.sample(),
             gpu: gpu.sample(),
             network: network.sample(),
@@ -38,6 +41,14 @@ public final class HostSampler: SystemSampler {
             battery: battery.sample(),
             thermal: thermal.sample()
         )
+    }
+
+    private func sampleProcesses() -> Reading<[ProcessSample]> {
+        let (list, refreshed) = processes.sample()
+        if refreshed {
+            annotatedProcesses = network.annotate(gpu.annotate(list))
+        }
+        return annotatedProcesses
     }
 
     private func sampleCPU() -> Reading<CPUUsage> {

@@ -10,13 +10,15 @@ public struct NetworkReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for network.
-    var networkSeries: [(SeriesKey, Double)] { [] }
+    var networkSeries: [SeriesSample] { [] }
 }
 
 /// The network menu bar item.
-enum NetworkMenuBar {
+enum NetworkMenuBar: MenuBarMetric {
     /// The widest text the item can show; the item is sized for it.
-    static let widestText = "999 KB/s"
+    static func widestText(preferences: Preferences) -> String {
+        "999 KB/s"
+    }
 
     static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {
         Format.placeholder
@@ -27,4 +29,9 @@ enum NetworkMenuBar {
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         Sparkline.empty
     }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the Network tab, e.g. hardware details.
+    public var networkSubtitle: String? { nil }
 }

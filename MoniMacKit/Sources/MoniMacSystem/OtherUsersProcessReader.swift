@@ -63,7 +63,7 @@ final class OtherUsersProcessReader: Sendable {
                         pid: row.pid, name: (row.command as NSString).lastPathComponent,
                         path: row.command.hasPrefix("/") ? row.command : nil,
                         cpu: (row.cpuSeconds - previous.cpuSeconds) / elapsed,
-                        memory: row.residentBytes
+                        resources: ResourceUse(memory: row.residentBytes)
                     ))
                 }
                 state.previous = next

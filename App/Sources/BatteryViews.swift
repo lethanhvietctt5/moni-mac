@@ -7,6 +7,8 @@ import SwiftUI
 /// The popover's Battery tab.
 struct BatteryPopoverTab: View {
     let monitor: Monitor
+    /// The tab's chart range, kept by the popover so it survives switching tabs.
+    @Binding var range: TimeRange
 
     var body: some View {
         ComingSoon(title: "Battery")
@@ -16,11 +18,8 @@ struct BatteryPopoverTab: View {
 /// The main window's Battery tab.
 struct BatteryWindowTab: View {
     let monitor: Monitor
-
-    /// The toolbar subtitle for this tab, e.g. hardware details.
-    static func subtitle(_ monitor: Monitor) -> String? {
-        nil
-    }
+    /// The tab's chart range, kept by the window so it survives switching tabs.
+    @Binding var range: TimeRange
 
     var body: some View {
         ComingSoon(title: "Battery")

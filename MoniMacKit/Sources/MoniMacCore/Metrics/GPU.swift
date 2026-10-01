@@ -10,13 +10,15 @@ public struct GPUReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for gpu.
-    var gpuSeries: [(SeriesKey, Double)] { [] }
+    var gpuSeries: [SeriesSample] { [] }
 }
 
 /// The gpu menu bar item.
-enum GPUMenuBar {
+enum GPUMenuBar: MenuBarMetric {
     /// The widest text the item can show; the item is sized for it.
-    static let widestText = "100%"
+    static func widestText(preferences: Preferences) -> String {
+        "100%"
+    }
 
     static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {
         Format.placeholder
@@ -27,4 +29,9 @@ enum GPUMenuBar {
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         Sparkline.empty
     }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the GPU tab, e.g. hardware details.
+    public var gpuSubtitle: String? { nil }
 }

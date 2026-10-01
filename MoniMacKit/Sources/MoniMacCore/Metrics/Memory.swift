@@ -10,13 +10,15 @@ public struct MemoryReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for memory.
-    var memorySeries: [(SeriesKey, Double)] { [] }
+    var memorySeries: [SeriesSample] { [] }
 }
 
 /// The memory menu bar item.
-enum MemoryMenuBar {
+enum MemoryMenuBar: MenuBarMetric {
     /// The widest text the item can show; the item is sized for it.
-    static let widestText = "11.2 GB"
+    static func widestText(preferences: Preferences) -> String {
+        "11.2 GB"
+    }
 
     static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {
         Format.placeholder
@@ -27,4 +29,9 @@ enum MemoryMenuBar {
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         Sparkline.empty
     }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the Memory tab, e.g. hardware details.
+    public var memorySubtitle: String? { nil }
 }

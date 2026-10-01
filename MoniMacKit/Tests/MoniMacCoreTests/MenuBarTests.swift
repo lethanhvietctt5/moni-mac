@@ -142,6 +142,20 @@ struct MenuBarTests {
         #expect(try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)]).menuBarItems.map(\.metric) == [.memory, .network])
     }
 
+    @Test func cpuShowsIfEveryItemWasDisabledByHand() throws {
+        for metric in Metric.allCases { preferences.setMenuBarItemEnabled(false, for: metric) }
+
+        let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
+
+        #expect(monitor.menuBarItems.map(\.metric) == [.cpu])
+    }
+
+    @Test func itemsCarryTheirWidestText() throws {
+        let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
+
+        #expect(monitor.menuBarItems.first?.widestText == "100%")
+    }
+
     @Test func theLastItemCannotBeHidden() throws {
         let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
 

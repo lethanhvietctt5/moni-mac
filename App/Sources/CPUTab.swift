@@ -4,7 +4,7 @@ import SwiftUI
 /// The popover's CPU tab. Renders `CPUPanel`; holds no logic.
 struct CPUTab: View {
     let monitor: Monitor
-    @State private var range: TimeRange = .fiveMinutes
+    @Binding var range: TimeRange
 
     var body: some View {
         // Built once per render: building it queries history.

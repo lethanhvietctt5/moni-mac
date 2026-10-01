@@ -10,5 +10,10 @@ public struct DiskReading: Equatable, Sendable {
 
 extension Snapshot {
     /// Values MetricsHistory records for disk.
-    var diskSeries: [(SeriesKey, Double)] { [] }
+    var diskSeries: [SeriesSample] { [] }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the Disk tab, e.g. hardware details.
+    public var diskSubtitle: String? { nil }
 }

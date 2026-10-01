@@ -140,7 +140,27 @@ public struct ProcessSample: Equatable, Sendable {
     public var cpu: Double
     /// Whether this is a running app with a Dock presence (the only kind MoniMac offers to quit).
     public var isRegularApp: Bool
-    /// Physical memory footprint in bytes.
+    /// Everything besides CPU; each figure is nil when it couldn't be read.
+    public var resources: ResourceUse
+
+    public init(
+        pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false,
+        resources: ResourceUse = ResourceUse()
+    ) {
+        self.pid = pid
+        self.responsiblePID = responsiblePID
+        self.name = name
+        self.path = path
+        self.cpu = cpu
+        self.isRegularApp = isRegularApp
+        self.resources = resources
+    }
+}
+
+/// What a process (or an app's processes together) uses besides CPU. Nil means not readable.
+public struct ResourceUse: Equatable, Sendable {
+    /// Memory in bytes: the physical footprint for the user's own processes; for other users'
+    /// processes, where the footprint isn't readable, the resident size from `ps`.
     public var memory: UInt64?
     /// Share of the GPU, 0...1.
     public var gpu: Double?
@@ -152,21 +172,29 @@ public struct ProcessSample: Equatable, Sendable {
     public var power: Double?
 
     public init(
-        pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false,
         memory: UInt64? = nil, gpu: Double? = nil, network: Double? = nil,
         diskReadPerSecond: Double? = nil, diskWritePerSecond: Double? = nil, power: Double? = nil
     ) {
-        self.pid = pid
-        self.responsiblePID = responsiblePID
-        self.name = name
-        self.path = path
-        self.cpu = cpu
-        self.isRegularApp = isRegularApp
         self.memory = memory
         self.gpu = gpu
         self.network = network
         self.diskReadPerSecond = diskReadPerSecond
         self.diskWritePerSecond = diskWritePerSecond
         self.power = power
+    }
+
+    /// Field-wise sum; a figure stays nil only if it's nil on both sides.
+    public static func + (lhs: ResourceUse, rhs: ResourceUse) -> ResourceUse {
+        func add<T: AdditiveArithmetic>(_ a: T?, _ b: T?) -> T? {
+            switch (a, b) {
+            case (nil, nil): nil
+            default: (a ?? .zero) + (b ?? .zero)
+            }
+        }
+        return ResourceUse(
+            memory: add(lhs.memory, rhs.memory), gpu: add(lhs.gpu, rhs.gpu), network: add(lhs.network, rhs.network),
+            diskReadPerSecond: add(lhs.diskReadPerSecond, rhs.diskReadPerSecond),
+            diskWritePerSecond: add(lhs.diskWritePerSecond, rhs.diskWritePerSecond), power: add(lhs.power, rhs.power)
+        )
     }
 }

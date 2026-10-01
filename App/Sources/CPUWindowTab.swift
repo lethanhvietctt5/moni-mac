@@ -4,11 +4,7 @@ import SwiftUI
 /// The main window's CPU tab. Renders `CPUDetail`; holds no logic.
 struct CPUWindowTab: View {
     let monitor: Monitor
-    @State private var range: TimeRange = .twentyFourHours
-
-    static func subtitle(_ monitor: Monitor) -> String? {
-        monitor.latest.map { CPUDetail.subtitle(for: $0.system) }
-    }
+    @Binding var range: TimeRange
 
     var body: some View {
         // Built once per render: building it queries history.

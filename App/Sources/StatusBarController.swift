@@ -74,7 +74,7 @@ final class StatusBarController: NSObject {
                 sizedStyles[item.metric] = item.style
             }
             apply(item, text: item.text, to: button)
-            updateChecks(in: menus[item.metric], selected: item.style)
+            refreshMenuStates(in: menus[item.metric], style: item.style)
         }
     }
 
@@ -148,10 +148,11 @@ final class StatusBarController: NSObject {
         return menu
     }
 
-    private func updateChecks(in menu: NSMenu?, selected: MenuBarStyle) {
+    /// Checks the item's current style and every metric currently shown in the menu bar.
+    private func refreshMenuStates(in menu: NSMenu?, style: MenuBarStyle) {
         for item in menu?.items ?? [] {
             if let choice = item.representedObject as? StyleChoice {
-                item.state = choice.style == selected ? .on : .off
+                item.state = choice.style == style ? .on : .off
             }
             for subitem in item.submenu?.items ?? [] {
                 guard let choice = subitem.representedObject as? MetricChoice else { continue }

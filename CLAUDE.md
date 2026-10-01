@@ -33,12 +33,19 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
   - `MoniMacSystem` holds the real sampler and is the **only** target allowed to read OS state.
   - `MoniMacSystemTests` are smoke tests that run against the real Mac.
 - **History:** `MetricsHistory` is SQLite (system `SQLite3`) at `~/Library/Application Support/MoniMac/History.sqlite`. Tests use `.inMemory`. Preferences are UserDefaults (`io.github.lethanhvietctt5.MoniMac`), so `defaults write` can switch settings while developing.
-- **Per-metric files:** each metric (Memory, GPU, Network, Disk, Battery, Thermal/Temperature) has its own files, so tickets don't edit shared code:
-  - `MoniMacCore/Metrics/<Metric>.swift`: the reading type, its history series, and menu bar hooks. Feature state goes here too, as `Monitor` extensions.
-  - `MoniMacSystem/<Metric>Reader.swift`: the sampler.
-  - `App/Sources/<Metric>Views.swift`: the popover and window tabs.
+- **Per-metric files:** each metric (Memory, GPU, Network, Disk, Battery, Thermal) has its own files, so tickets don't edit shared code:
+  - **`MoniMacCore/Metrics/<Metric>.swift`** holds:
+    - the reading type
+    - `Snapshot.<metric>Series` (`[SeriesSample]`; a sample can carry a `contributor`, e.g. the busiest app, which peaks report)
+    - a `MenuBarMetric` (text, sparkline bars, and widest text that follows units)
+    - `Monitor.<metric>Subtitle`, plus feature state as further `Monitor` extensions (e.g. `hasBattery`)
+    - metric-specific settings, as `Preferences` extensions keyed `"<metric>.…"`
+  - **`MoniMacSystem/<Metric>Reader.swift`** is the sampler. GPU and Network also have an `annotate` hook that adds per-process figures, called only when the process list refreshes.
+  - **`App/Sources/<Metric>Views.swift`** holds the popover and window tabs. They get a `range` binding kept by the popover or window.
 
-  Shared switches (`Snapshot`, `HostSampler`, `Monitor` menu bar dispatch, `PopoverView`, `MainWindowView`) already route to them. Per-process memory, disk, and power come from `ProcessReader`. Per-process GPU and network come from the readers' `annotate` hooks.
+  Shared switches already route to all of these. Per-process memory, disk, and power (`ResourceUse`) come from `ProcessReader`.
+- **History for totals:** series that record an amount per sample (e.g. bytes since the previous sample) support `MetricsHistory.sum(from:to:)` for "since launch" (`Monitor.startedAt`) or "today", and `dailyTotals` for per-day charts.
+- **Naming:** data types say *Thermal* (thermal state, sensors, fans). UI says *Temperature* (`Metric.temperature`, `TemperatureMenuBar`, the "Temperature & Fans" tab).
 - `App/`: thin AppKit shell (status items now, the popover and window later) that renders `Monitor`'s feature state. `project.yml` builds it.
 - **Signing:** `Config/Signing.xcconfig` defaults to ad-hoc. For a stable identity, so that granted permissions survive rebuilds, run `scripts/create-signing-cert.sh` once and set `CODE_SIGN_IDENTITY` in the gitignored `Config/Local.xcconfig`.
 

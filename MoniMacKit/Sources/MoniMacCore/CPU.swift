@@ -1,3 +1,5 @@
+import Foundation
+
 /// Share of total CPU time over one interval, each in 0...1. `user + system + idle == 1`.
 public struct CPUUsage: Equatable, Sendable {
     public var user: Double
@@ -44,8 +46,39 @@ extension CPUUsage {
 
 extension Snapshot {
     /// Values MetricsHistory records for CPU.
-    var cpuSeries: [(SeriesKey, Double)] {
+    var cpuSeries: [SeriesSample] {
         guard let cpu = cpu.value else { return [] }
-        return [(.cpuTotal, cpu.total), (.cpuUser, cpu.user), (.cpuSystem, cpu.system)]
+        let busiest = AppGrouping.busiestApp(in: processes.value ?? [], by: \.cpu)
+        return [
+            SeriesSample(.cpuTotal, cpu.total, contributor: busiest),
+            SeriesSample(.cpuUser, cpu.user),
+            SeriesSample(.cpuSystem, cpu.system),
+        ]
+    }
+}
+
+/// The CPU menu bar item.
+enum CPUMenuBar: MenuBarMetric {
+    static func widestText(preferences: Preferences) -> String {
+        "100%"
+    }
+
+    static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {
+        guard let snapshot, let cpu = snapshot.cpu.value else { return Format.placeholder }
+        return Format.cpu(cpu.total, mode: preferences.cpuMode, logicalCores: snapshot.system.logicalCores)
+    }
+
+    @MainActor
+    static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
+        guard let now else { return Sparkline.empty }
+        let points = (try? history.summary(.cpuTotal, over: .oneMinute, endingAt: now).points) ?? []
+        return Sparkline.bars(points, endingAt: now)
+    }
+}
+
+extension Monitor {
+    /// The main window toolbar subtitle for the CPU tab.
+    public var cpuSubtitle: String? {
+        latest.map { CPUDetail.subtitle(for: $0.system) }
     }
 }

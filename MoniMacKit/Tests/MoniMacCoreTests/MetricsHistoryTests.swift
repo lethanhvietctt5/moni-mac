@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import MoniMacCore
+@testable import MoniMacCore
 
 @MainActor
 struct MetricsHistoryTests {
@@ -123,6 +123,71 @@ struct MetricsHistoryTests {
 
         let month = try history.summary(.cpuTotal, over: .thirtyDays, endingAt: clock.now)
         #expect(month.peak?.value == 0.2)
+    }
+
+    @Test func peaksKeepTheirContributorInEveryTier() throws {
+        let history = try MetricsHistory(.inMemory)
+        let busy = Snapshot(timestamp: clock.now, cpu: .cpu(user: 0.9, system: 0), processes: .value([
+            ProcessSample(pid: 1, name: "Xcode", path: "/Applications/Xcode.app/Contents/MacOS/Xcode", cpu: 4),
+        ]))
+        try history.record(busy)
+        clock.advance(by: 2)
+        try record([0.1], every: 2, into: history)
+
+        let minute = try history.summary(.cpuTotal, over: .oneMinute, endingAt: clock.now)
+        let day = try history.summary(.cpuTotal, over: .twentyFourHours, endingAt: clock.now)
+        let week = try history.summary(.cpuTotal, over: .sevenDays, endingAt: clock.now)
+        #expect([minute, day, week].map(\.peak?.contributor) == ["Xcode", "Xcode", "Xcode"])
+    }
+
+    @Test func sumsRecordedAmountsOverAnyRange() throws {
+        let history = try MetricsHistory(.inMemory)
+        let start = clock.now
+        try record([0.2, 0.3, 0.5], every: 2, into: history)
+
+        #expect(abs(try history.sum(.cpuTotal, from: start.addingTimeInterval(-1), to: clock.now)! - 1.0) < 1e-9)
+        #expect(abs(try history.sum(.cpuTotal, from: start.addingTimeInterval(1), to: clock.now)! - 0.8) < 1e-9)
+        #expect(try history.sum(.cpuUser, from: clock.now, to: clock.now.addingTimeInterval(10)) == nil)
+    }
+
+    @Test func dailyTotalsSplitAtLocalMidnight() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let history = try MetricsHistory(.inMemory)
+        // Start 30 minutes before a UTC midnight: two samples on day 1, one on day 2.
+        let midnight = calendar.startOfDay(for: clock.now).addingTimeInterval(86400)
+        clock.advance(by: midnight.timeIntervalSince(clock.now) - 1800)
+        try record([0.25, 0.25], every: 900, into: history)
+        try record([0.5], every: 900, into: history)
+
+        let totals = try history.dailyTotals(.cpuTotal, days: 3, endingAt: midnight.addingTimeInterval(3600), calendar: calendar)
+
+        #expect(totals.map(\.day) == [midnight.addingTimeInterval(-2 * 86400), midnight.addingTimeInterval(-86400), midnight])
+        #expect(totals.map(\.total) == [nil, 0.5, 0.5])
+    }
+
+    @Test func addsContributorColumnsToOlderDatabases() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("monimac-tests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("History.sqlite")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        do {
+            // The schema before contributors existed.
+            let old = try Database(.file(url))
+            try old.execute("""
+                CREATE TABLE raw (series TEXT NOT NULL, t REAL NOT NULL, v REAL NOT NULL);
+                CREATE TABLE buckets (
+                    tier INTEGER NOT NULL, series TEXT NOT NULL, start REAL NOT NULL,
+                    sum REAL NOT NULL, count INTEGER NOT NULL, max REAL NOT NULL, max_t REAL NOT NULL,
+                    PRIMARY KEY (tier, series, start)
+                ) WITHOUT ROWID;
+                """)
+        }
+
+        let history = try MetricsHistory(.file(url))
+        try record([0.4], every: 2, into: history)
+
+        #expect(try history.summary(.cpuTotal, over: .oneMinute, endingAt: clock.now).points.map(\.value) == [0.4])
     }
 
     @Test func historySurvivesReopening() throws {

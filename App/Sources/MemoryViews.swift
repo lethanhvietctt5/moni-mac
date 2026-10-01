@@ -7,6 +7,8 @@ import SwiftUI
 /// The popover's Memory tab.
 struct MemoryPopoverTab: View {
     let monitor: Monitor
+    /// The tab's chart range, kept by the popover so it survives switching tabs.
+    @Binding var range: TimeRange
 
     var body: some View {
         ComingSoon(title: "Memory")
@@ -16,11 +18,8 @@ struct MemoryPopoverTab: View {
 /// The main window's Memory tab.
 struct MemoryWindowTab: View {
     let monitor: Monitor
-
-    /// The toolbar subtitle for this tab, e.g. hardware details.
-    static func subtitle(_ monitor: Monitor) -> String? {
-        nil
-    }
+    /// The tab's chart range, kept by the window so it survives switching tabs.
+    @Binding var range: TimeRange
 
     var body: some View {
         ComingSoon(title: "Memory")

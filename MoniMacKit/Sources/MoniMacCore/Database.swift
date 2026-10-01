@@ -76,6 +76,7 @@ final class Database {
         case double(Double)
         case int(Int)
         case text(String)
+        case null
     }
 
     struct Cursor {
@@ -83,6 +84,9 @@ final class Database {
 
         func double(_ column: Int32) -> Double { sqlite3_column_double(statement, column) }
         func isNull(_ column: Int32) -> Bool { sqlite3_column_type(statement, column) == SQLITE_NULL }
+        func text(_ column: Int32) -> String {
+            sqlite3_column_text(statement, column).map { String(cString: $0) } ?? ""
+        }
     }
 
     private func prepared(_ sql: String, _ values: [Value]) throws -> OpaquePointer {
@@ -104,6 +108,7 @@ final class Database {
             case .double(let double): sqlite3_bind_double(statement, index, double)
             case .int(let int): sqlite3_bind_int64(statement, index, Int64(int))
             case .text(let text): sqlite3_bind_text(statement, index, text, -1, transient)
+            case .null: sqlite3_bind_null(statement, index)
             }
         }
         return statement

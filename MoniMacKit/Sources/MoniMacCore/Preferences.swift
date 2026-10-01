@@ -11,8 +11,11 @@ public enum MenuBarStyle: String, CaseIterable, Sendable {
 }
 
 /// Every user setting, persisted in UserDefaults.
+///
+/// Metric-specific settings (e.g. units) can live in that metric's file as an extension;
+/// prefix their keys with the metric, e.g. "network.units".
 public final class Preferences {
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
