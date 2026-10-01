@@ -32,3 +32,4 @@
 - **Units are binary**, as macOS shows them: "24 GB", not "25.8 GB". `Format.memorySize` shows one decimal below 100 GB and drops a trailing ".0", so the menu bar item is sized for `88.8 GB`.
 - **Top Apps by Memory** sorts the grouped `AppUsage.resources.memory`. That's the footprint for your own processes and the `ps` resident size for other users' processes. The window shows 8 apps; the popover shows 4, with quit.
 - **Warning and danger colors** aren't in `Palette` yet, so they're kept private in `MemoryViews.swift`.
+- **Self-cost** (Release, popover closed, measured while five other ticket builds ran on the same Mac): about 0.5–0.6% CPU with the Memory item shown, the same as without it. The two early outliers (2.2% and 1.6%) didn't reproduce. Sampling memory is one `host_statistics64` and three sysctls per tick.
