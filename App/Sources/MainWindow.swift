@@ -3,32 +3,7 @@ import MoniMacCore
 import Observation
 import SwiftUI
 
-/// The main window's tabs, in sidebar order.
-enum WindowTab: String, CaseIterable, Identifiable {
-    case overview, cpu, memory, gpu, network, disk
-    case battery, bluetooth, sound, temperature
-    case projects
-    case settings
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .overview: "Overview"
-        case .cpu: "CPU"
-        case .memory: "Memory"
-        case .gpu: "GPU"
-        case .network: "Network"
-        case .disk: "Disk"
-        case .battery: "Battery"
-        case .bluetooth: "Bluetooth"
-        case .sound: "Sound"
-        case .temperature: "Temperature & Fans"
-        case .projects: "Projects"
-        case .settings: "Settings"
-        }
-    }
-
+extension WindowTab {
     var symbol: String {
         switch self {
         case .overview: "square.grid.2x2"
@@ -46,18 +21,6 @@ enum WindowTab: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Tabs for hardware this Mac lacks are hidden.
-    @MainActor
-    func isShown(on monitor: Monitor) -> Bool {
-        self == .battery ? monitor.hasBattery : true
-    }
-
-    /// Sidebar groups; Settings sits alone at the bottom.
-    static let groups: [(title: String, tabs: [WindowTab])] = [
-        ("Monitor", [.overview, .cpu, .memory, .gpu, .network, .disk]),
-        ("Devices", [.battery, .bluetooth, .sound, .temperature]),
-        ("Developer", [.projects]),
-    ]
 }
 
 @MainActor
@@ -143,7 +106,7 @@ struct MainWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            Sidebar(selection: $state.tab, isShown: { $0.isShown(on: monitor) })
+            Sidebar(selection: $state.tab, monitor: monitor)
                 .frame(width: 232)
             VStack(spacing: 0) {
                 toolbar
@@ -154,6 +117,7 @@ struct MainWindowView: View {
                 } else {
                     ScrollView {
                         content.padding(24)
+                            .environment(\.sectionArranger, SectionArranger(monitor: monitor, tab: state.tab))
                     }
                 }
             }
@@ -174,7 +138,8 @@ struct MainWindowView: View {
         case .temperature: monitor.temperatureSubtitle
         case .overview: monitor.overviewSubtitle
         case .projects: monitor.projectsSubtitle
-        case .bluetooth, .sound, .settings: nil
+        case .settings: SettingsWindowTab.subtitle
+        case .bluetooth, .sound: nil
         }
     }
 
@@ -218,27 +183,35 @@ struct MainWindowView: View {
         case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
         case .overview: OverviewWindowTab(monitor: monitor)
         case .projects: ProjectsWindowTab(monitor: monitor)
-        case .bluetooth, .sound, .settings: ComingSoon(title: state.tab.title)
+        case .settings: SettingsWindowTab(monitor: monitor)
+        case .bluetooth, .sound: ComingSoon(title: state.tab.title)
         }
     }
 }
 
+/// Tabs can be dragged to reorder them within their group; the order persists.
 private struct Sidebar: View {
     @Binding var selection: WindowTab
-    let isShown: (WindowTab) -> Bool
+    let monitor: Monitor
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             // Room for the window's traffic lights.
             Spacer().frame(height: 36)
-            ForEach(WindowTab.groups, id: \.title) { group in
+            ForEach(monitor.sidebarGroups, id: \.title) { group in
                 Text(group.title)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Palette.textTertiary)
                     .padding(.horizontal, 10)
                     .padding(.top, 10)
                     .padding(.bottom, 4)
-                ForEach(group.tabs.filter(isShown)) { item($0) }
+                ForEach(group.tabs) { tab in
+                    item(tab)
+                        .draggable(ReorderPayload.tab.payload(tab.rawValue))
+                        .reorderDropTarget(.tab, cornerRadius: 6) { dropped in
+                            WindowTab(rawValue: dropped).map { monitor.moveTab($0, onto: tab) }
+                        }
+                }
             }
             Spacer()
             item(.settings)

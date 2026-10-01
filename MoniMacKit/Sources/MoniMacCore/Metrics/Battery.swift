@@ -108,6 +108,7 @@ extension Monitor {
 
     /// The Battery tab for the given chart range: `.window` for the main window, `.popover` for the popover.
     public func batteryDetail(range: TimeRange, layout: BatteryDetail.Layout) -> BatteryDetail {
-        BatteryDetail.make(snapshot: latest, apps: apps, history: history, range: range, layout: layout)
+        BatteryDetail.make(snapshot: latest, apps: apps, history: history, range: range, layout: layout,
+                           unit: preferences.temperatureUnit)
     }
 }

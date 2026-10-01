@@ -155,18 +155,27 @@ private struct NetworkPopoverContent: View {
 
 // MARK: Window
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum NetworkSection: String, WindowSection {
+    case summary, live, lastWeek, lastMonth, topApps
+
+    var width: SectionWidth {
+        self == .lastWeek || self == .lastMonth ? .half : .full
+    }
+}
+
 private struct NetworkWindowContent: View {
     let detail: NetworkDetail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            summary
-            live
-            HStack(alignment: .top, spacing: 32) {
-                DailyChartView(title: "Last 7 Days", chart: detail.lastWeek, spacing: 10)
-                DailyChartView(title: "Last 30 Days", chart: detail.lastMonth, spacing: 3)
+        ReorderableSections { (section: NetworkSection) in
+            switch section {
+            case .summary: summary
+            case .live: live
+            case .lastWeek: DailyChartView(title: "Last 7 Days", chart: detail.lastWeek, spacing: 10)
+            case .lastMonth: DailyChartView(title: "Last 30 Days", chart: detail.lastMonth, spacing: 3)
+            case .topApps: topApps
             }
-            topApps
         }
     }
 

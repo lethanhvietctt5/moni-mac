@@ -59,8 +59,9 @@ extension Snapshot {
 
 /// The CPU menu bar item.
 enum CPUMenuBar: MenuBarMetric {
+    /// Per-core reaches four digits, e.g. "1200%" on 12 cores.
     static func widestText(preferences: Preferences) -> String {
-        "100%"
+        preferences.cpuMode == .system ? "100%" : "1000%"
     }
 
     static func text(_ snapshot: Snapshot?, preferences: Preferences) -> String {

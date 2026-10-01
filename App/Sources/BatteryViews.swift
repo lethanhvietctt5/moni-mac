@@ -143,16 +143,25 @@ private struct QuitButton: View {
 
 // MARK: Window
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum BatterySection: String, WindowSection {
+    case hero, history, energy
+
+    var width: SectionWidth {
+        self == .history || self == .energy ? .half : .full
+    }
+}
+
 private struct BatteryWindowContent: View {
     let detail: BatteryDetail
     @Binding var range: TimeRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            hero
-            HStack(alignment: .top, spacing: 24) {
-                history
-                energy.frame(width: 360)
+        ReorderableSections(columnSpacing: 24) { (section: BatterySection) in
+            switch section {
+            case .hero: hero
+            case .history: history
+            case .energy: energy.frame(width: 360)
             }
         }
     }

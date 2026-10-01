@@ -152,17 +152,26 @@ private struct DiskPopoverContent: View {
     }
 }
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum DiskSection: String, WindowSection {
+    case summary, breakdown, history, writers
+
+    var width: SectionWidth {
+        self == .history || self == .writers ? .half : .full
+    }
+}
+
 private struct DiskWindowContent: View {
     let detail: DiskDetail
     @Binding var range: TimeRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            summary
-            breakdown
-            HStack(alignment: .top, spacing: 32) {
-                history
-                writers
+        ReorderableSections { (section: DiskSection) in
+            switch section {
+            case .summary: summary
+            case .breakdown: breakdown
+            case .history: history
+            case .writers: writers
             }
         }
     }

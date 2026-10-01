@@ -1,6 +1,7 @@
 import AppKit
 import MoniMacCore
 import MoniMacSystem
+import Observation
 import os
 
 private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", category: "App")
@@ -16,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var quitSheet = QuitSheetPresenter(monitor: monitor)
     private lazy var mainWindow = MainWindowController(monitor: monitor, quitSheet: quitSheet)
     private var refresh: Task<Void, Never>?
+    /// The interval the refresh loop runs at; the loop restarts when the setting changes.
+    private var refreshInterval: RefreshInterval?
     /// Development aid: `--tab <name>` or `--tab=<name>` (e.g. `--tab battery`) picks the tab the window
     /// or popover opens on. Names are the tabs' raw values, case-insensitive.
     static let launchTab: String? = {
@@ -36,10 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = Self.makeMainMenu()
-        statusBar = StatusBarController(monitor: monitor, quitSheet: quitSheet) { [weak self] in self?.mainWindow.show() }
-        refresh = Task { [monitor] in
-            await monitor.run(every: .seconds(2))
-        }
+        statusBar = StatusBarController(
+            monitor: monitor,
+            quitSheet: quitSheet,
+            openWindow: { [weak self] in self?.mainWindow.show() },
+            openSettings: { [weak self] in self?.mainWindow.show(tab: .settings) }
+        )
+        observeSettings()
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
         // `--show-window` opens the main window on launch, for the same reason; `--tab` picks its tab,
         // `--overview-list` shows Overview as a List, and `--expand <app name>` opens that app's group.
@@ -96,6 +102,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return arguments.firstIndex(of: flag).flatMap {
             arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil
         }
+    }
+
+    /// Applies the settings that live outside SwiftUI (refresh interval, Dock icon) now and whenever they change.
+    private func observeSettings() {
+        withObservationTracking {
+            apply(interval: monitor.refreshInterval, showsDockIcon: monitor.showsDockIcon)
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.observeSettings() }
+        }
+    }
+
+    private func apply(interval: RefreshInterval, showsDockIcon: Bool) {
+        if interval != refreshInterval {
+            // Restart rather than wait out the current sleep, so a faster interval applies at once.
+            refresh?.cancel()
+            refreshInterval = interval
+            refresh = Task { [monitor] in
+                await monitor.run(every: interval.duration)
+            }
+            log.notice("Refreshing every \(interval.title, privacy: .public)")
+        }
+        let policy: NSApplication.ActivationPolicy = showsDockIcon ? .regular : .accessory
+        if NSApp.activationPolicy() != policy {
+            NSApp.setActivationPolicy(policy)
+        }
+    }
+
+    /// With the Dock icon shown, clicking it opens the main window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows { mainWindow.show() }
+        return true
     }
 
     /// MoniMac shows no menu bar of its own, but key equivalents like ⌘W and ⌘Q still route through it.

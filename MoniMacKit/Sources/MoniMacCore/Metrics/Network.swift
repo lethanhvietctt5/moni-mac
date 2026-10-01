@@ -69,12 +69,15 @@ public enum NetworkUnits: String, CaseIterable, Sendable {
     case bytes
     /// Bits per second, as ISPs advertise, e.g. `19 Mbps`.
     case bits
+
+    /// "MB/s" or "Mbps", for Settings.
+    public var title: String { self == .bytes ? "MB/s" : "Mbps" }
 }
 
 extension Preferences {
     public var networkUnits: NetworkUnits {
         get { defaults.string(forKey: "network.units").flatMap(NetworkUnits.init(rawValue:)) ?? .bytes }
-        set { defaults.set(newValue.rawValue, forKey: "network.units") }
+        set { set(newValue.rawValue, forKey: "network.units") }
     }
 }
 

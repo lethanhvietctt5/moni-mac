@@ -51,6 +51,7 @@ final class RecordingActions: SystemActions {
         case stopContainer(id: String)
         case openURL(URL)
         case revealInFinder(path: String)
+        case setLaunchAtLogin(Bool)
     }
 
     private(set) var recorded: [Action] = []
@@ -62,6 +63,13 @@ final class RecordingActions: SystemActions {
     func stopContainer(id: String) { recorded.append(.stopContainer(id: id)) }
     func openURL(_ url: URL) { recorded.append(.openURL(url)) }
     func revealInFinder(path: String) { recorded.append(.revealInFinder(path: path)) }
+    /// Starts off; follows what was last set, or waits for approval when `loginNeedsApproval`.
+    var launchAtLogin = LaunchAtLogin.off
+    var loginNeedsApproval = false
+    func setLaunchAtLogin(_ enabled: Bool) {
+        recorded.append(.setLaunchAtLogin(enabled))
+        launchAtLogin = enabled ? (loginNeedsApproval ? .needsApproval : .on) : .off
+    }
 }
 
 extension Reading<CPUUsage> {

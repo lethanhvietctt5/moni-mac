@@ -22,6 +22,7 @@ struct PopoverView: View {
     let monitor: Monitor
     let openWindow: () -> Void
     let quit: () -> Void
+    let openSettings: () -> Void
     @State private var tab = PopoverTab.allCases.first { $0.rawValue.lowercased() == AppDelegate.launchTab } ?? .overview
     /// Each tab's chart range, so it survives switching tabs while the popover is open.
     @State private var ranges: [PopoverTab: TimeRange] = [:]
@@ -62,8 +63,7 @@ struct PopoverView: View {
             Spacer()
             HStack(spacing: 12) {
                 headerButton("macwindow", help: "Open MoniMac", action: openWindow)
-                // Wired up by Settings (ticket 13).
-                headerButton("gearshape", help: "Settings (coming soon)", action: nil)
+                headerButton("gearshape", help: "Settings", action: openSettings)
             }
         }
         .padding(.horizontal, 14)

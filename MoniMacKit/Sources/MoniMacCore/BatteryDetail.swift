@@ -79,7 +79,7 @@ extension BatteryDetail {
     @MainActor
     static func make(
         snapshot: Snapshot?, apps: [AppUsage], history: MetricsHistory, range requested: TimeRange, layout: Layout,
-        timeZone: TimeZone = .current
+        unit: TemperatureUnit = .celsius, timeZone: TimeZone = .current
     ) -> BatteryDetail {
         let reading = snapshot?.battery ?? .unavailable(.warmingUp)
         let battery = reading.value
@@ -95,7 +95,7 @@ extension BatteryDetail {
             isCharging: battery?.isCharging ?? false,
             source: battery.map(source) ?? Format.placeholder,
             status: status(for: reading),
-            stats: stats(battery),
+            stats: stats(battery, unit: unit),
             range: range,
             ranges: layout.ranges,
             history: now.map {
@@ -161,7 +161,7 @@ extension BatteryDetail {
         return battery.adapterWatts.map { "Power Adapter · \(Int($0.rounded())) W" } ?? "Power Adapter"
     }
 
-    private static func stats(_ battery: BatteryReading?) -> [Stat] {
+    private static func stats(_ battery: BatteryReading?, unit: TemperatureUnit) -> [Stat] {
         let dash = Format.placeholder
         let health = battery?.health
         let temperature = battery?.temperature
@@ -181,7 +181,7 @@ extension BatteryDetail {
                      "of \(Format.count($0.ratedCycles ?? BatteryReading.appleSiliconRatedCycles)) rated cycles"
                  } ?? dash,
                  help: nil),
-            Stat(kind: .temperature, label: "Temperature", value: temperature.map { String(format: "%.1f °C", $0) } ?? dash,
+            Stat(kind: .temperature, label: "Temperature", value: temperature.map(unit.precise) ?? dash,
                  caption: temperature.map(temperatureNote) ?? dash, help: nil),
         ]
     }

@@ -156,6 +156,15 @@ private struct GPUPopoverContent: View {
 
 // MARK: Window
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum GPUSection: String, WindowSection {
+    case tiles, history, topApps
+
+    var width: SectionWidth {
+        .full
+    }
+}
+
 private struct GPUWindowContent: View {
     let detail: GPUDetail
     @Binding var range: TimeRange
@@ -165,14 +174,19 @@ private struct GPUWindowContent: View {
             if let unavailable = detail.unavailable {
                 GPUNote(text: unavailable)
             }
-            HStack(spacing: 16) {
-                GPUTile(tile: detail.utilization, symbol: "cpu")
-                GPUTile(tile: detail.memory, symbol: "memorychip")
-                GPUTile(tile: detail.average, symbol: "waveform.path.ecg")
-                GPUTile(tile: detail.peak, symbol: "chart.line.uptrend.xyaxis")
+            ReorderableSections { (section: GPUSection) in
+                switch section {
+                case .tiles:
+                    HStack(spacing: 16) {
+                        GPUTile(tile: detail.utilization, symbol: "cpu")
+                        GPUTile(tile: detail.memory, symbol: "memorychip")
+                        GPUTile(tile: detail.average, symbol: "waveform.path.ecg")
+                        GPUTile(tile: detail.peak, symbol: "chart.line.uptrend.xyaxis")
+                    }
+                case .history: history
+                case .topApps: topApps
+                }
             }
-            history
-            topApps
         }
     }
 

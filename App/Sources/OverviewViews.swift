@@ -88,17 +88,29 @@ extension AppKind {
 
 // MARK: Window
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum OverviewSection: String, WindowSection {
+    case tiles, busiest
+
+    var width: SectionWidth {
+        .full
+    }
+}
+
 private struct OverviewWindowContent: View {
     let tiles: OverviewTiles
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top), count: 4)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(tiles.metricTiles) { MetricTile(tile: $0) }
-                ProcessesTile(processes: tiles.processes)
+        ReorderableSections { (section: OverviewSection) in
+            switch section {
+            case .tiles:
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(tiles.metricTiles) { MetricTile(tile: $0) }
+                    ProcessesTile(processes: tiles.processes)
+                }
+            case .busiest: busiest
             }
-            busiest
         }
     }
 

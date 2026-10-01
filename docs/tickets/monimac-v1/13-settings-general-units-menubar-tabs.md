@@ -11,12 +11,14 @@ Sidebar tabs can be dragged to reorder them, and sections inside each tab can be
 
 **Blocked by:** 11 — Overview: Tiles and popover Overview
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through (automation can't click or drag: the switches, segmented controls, chips, the Keep history popup, sidebar and section dragging, the popover gear, and the right-click menu are built and their intents covered by `SettingsTests` and `LayoutTests`, but not clicked). Settings were set with `defaults write` before launch and read back on screen.
 
-- [ ] Changing the refresh interval changes the sampling rate
-- [ ] Switching CPU mode changes CPU values in the menu bar, popover, window, and list consistently
-- [ ] Unit switches apply everywhere temperatures and network speeds appear
-- [ ] Hiding a window tab removes it from the sidebar; the chip shows + and can add it back
-- [ ] Sidebar order and section order persist across relaunches
-- [ ] Changing Keep history prunes data beyond the new limit
-- [ ] Launch at login and the Dock icon toggle take effect
+**Notes:** the Menu Bar Items drag handles are drawn as in the design but do nothing: the menu bar's order is the system's ⌘-drag, and the list's order isn't used anywhere. Sidebar tabs reorder within their group. Notifications (ticket 14) and Check for Updates (ticket 20) are shown disabled.
+
+- [x] Changing the refresh interval changes the sampling rate (CPU samples recorded over 30 s: 29 at 1 s, 15 at 2 s, 6 at 5 s; the switch itself wasn't clicked, and a live change restarts the loop, covered by an Observation test)
+- [x] Switching CPU mode changes CPU values in the menu bar, popover, window, and list consistently (tests across all surfaces; Per-core seen on Overview tiles, the popover CPU tab, and the List footer and rows)
+- [x] Unit switches apply everywhere temperatures and network speeds appear (tests; °F and Mbps seen on Overview, Temperature & Fans, and the List)
+- [ ] Hiding a window tab removes it from the sidebar; the chip shows + and can add it back (hidden tabs drop out of the sidebar and their chips show +, seen with a stored setting; clicking a chip to add it back is tested, not clicked)
+- [x] Sidebar order and section order persist across relaunches (a stored custom sidebar order and CPU section order are applied after relaunch; dragging itself is unverified)
+- [ ] Changing Keep history prunes data beyond the new limit (tested against an in-memory history, including 90 days keeping 60-day-old data; not exercised on the real history, which it would delete)
+- [ ] Launch at login and the Dock icon toggle take effect (Dock: `lsappinfo` reports Foreground with the setting on and UIElement by default. Launch at login is only tested through `RecordingActions`, never registered on the dev Mac)
