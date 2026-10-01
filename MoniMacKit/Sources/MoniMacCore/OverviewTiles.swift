@@ -37,19 +37,23 @@ public struct OverviewTiles: Equatable, Sendable {
         public var id: OverviewMetric { metric }
     }
 
-    /// The Processes tile: app groups split by kind, and system-wide process and thread counts.
+    /// The Processes tile: apps split by kind, and system-wide process and thread counts.
+    ///
+    /// Only groups with an `.app` bundle count as apps here (Safari, a menu bar app, ControlCenter).
+    /// macOS runs hundreds of bare daemons (trustd, mds_stores, …), each its own group; counting them
+    /// would bury the split, so they're covered by the process and thread counts instead.
     public struct Processes: Equatable, Sendable {
         public struct Group: Equatable, Sendable, Identifiable {
             public var kind: AppKind
             /// e.g. "38 apps", "17 agents", "6 system".
             public var label: String
-            /// Share of all app groups, 0...1, for the stacked bar.
+            /// Share of all apps, 0...1, for the stacked bar.
             public var share: Double
 
             public var id: AppKind { kind }
         }
 
-        /// e.g. "61 apps": every app group, whatever its kind.
+        /// e.g. "61 apps": every bundled app, whatever its kind.
         public var value: String
         /// Apps, agents, then system. Empty until the process list is read.
         public var groups: [Group]
@@ -62,7 +66,7 @@ public struct OverviewTiles: Equatable, Sendable {
     public var processes: Processes
     /// Two columns of five, busiest first, filling the left column first.
     public var busiest: [OverviewBusyApp]
-    /// e.g. "Show All 61 Apps".
+    /// e.g. "Show All 61 Apps", counted like the Processes tile.
     public var showAll: String
 }
 
@@ -84,7 +88,7 @@ extension OverviewTiles {
             processes: processes(apps: apps, counts: snapshot?.taskCounts),
             busiest: OverviewBusiest.rows(apps, snapshot: snapshot, mode: preferences.cpuMode,
                                           units: preferences.networkUnits, count: busiestCount),
-            showAll: "Show All \(Format.count(apps.count)) Apps"
+            showAll: "Show All \(Format.count(bundled(apps).count)) Apps"
         )
     }
 
@@ -155,7 +159,9 @@ extension OverviewTiles {
             let source = groups.cpu != nil ? "CPU die" : "Hottest sensor"
             guard let fans = thermal.fans.value, !fans.isEmpty else { return source }
             let rpm = Int((fans.map(\.rpm).reduce(0, +) / Double(fans.count)).rounded())
-            return "\(source) · \(fans.count == 1 ? "Fan" : "Fans") \(Format.count(rpm)) rpm"
+            let noun = fans.count == 1 ? "Fan" : "Fans"
+            // Apple silicon fans stop when the Mac is cool.
+            return "\(source) · \(noun) \(rpm == 0 ? "off" : "\(Format.count(rpm)) rpm")"
         }
     }
 
@@ -194,7 +200,12 @@ extension OverviewTiles {
         }
     }
 
-    static func processes(apps: [AppUsage], counts: Reading<TaskCounts>?) -> Processes {
+    /// The groups the Processes tile counts as apps.
+    static func bundled(_ apps: [AppUsage]) -> [AppUsage] {
+        apps.filter { $0.bundlePath != nil }
+    }
+
+    static func processes(apps all: [AppUsage], counts: Reading<TaskCounts>?) -> Processes {
         func label(_ kind: AppKind, _ count: Int) -> String {
             let noun = switch kind {
             case .app: count == 1 ? "app" : "apps"
@@ -206,8 +217,9 @@ extension OverviewTiles {
         let caption = counts?.value.map {
             "\(Format.count($0.processes)) processes · \(Format.count($0.threads)) threads"
         } ?? Format.placeholder
+        let apps = bundled(all)
         // No groups yet means the process list is still warming up.
-        guard !apps.isEmpty else { return Processes(value: Format.placeholder, groups: [], caption: caption) }
+        guard !all.isEmpty, !apps.isEmpty else { return Processes(value: Format.placeholder, groups: [], caption: caption) }
         return Processes(
             value: "\(Format.count(apps.count)) \(apps.count == 1 ? "app" : "apps")",
             groups: AppKind.allCases.map { kind in

@@ -4,9 +4,9 @@
 
 **Blocked by:** 05 — Memory end to end; 06 — GPU end to end; 07 — Network end to end; 08 — Disk end to end; 09 — Battery end to end; 10 — Temperature & Fans (read-only)
 
-**Status:** ready-for-agent
+**Status:** in review. Seen in the running app (window and popover screenshots). Clicks automation can't make are not yet exercised: the popover's "Open MoniMac" link, the Overview tab buttons, and the Tiles/List toggle (List is ticket 12 and is disabled).
 
-- [ ] The window Overview Tiles view shows all 8 tiles with live values and sparklines
-- [ ] Busiest Right Now labels each app by the resource it uses most
-- [ ] The popover Overview tab shows every metric row and the busiest apps
-- [ ] The Processes tile counts apps, agents, and system processes, plus total processes and threads
+- [x] The window Overview Tiles view shows all 8 tiles with live values and sparklines (the Processes tile shows the design's apps / agents / system bar in the sparkline's place)
+- [x] Busiest Right Now labels each app by the resource it uses most
+- [x] The popover Overview tab shows every metric row and the busiest apps
+- [x] The Processes tile counts apps, agents, and system processes, plus total processes and threads

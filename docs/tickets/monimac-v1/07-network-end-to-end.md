@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** in review
+**Status:** done pending a manual click-through (merged as PR #14; automation can't click the status item, tabs, or range buttons). Unchecked boxes are built but not yet exercised.
 
 - [ ] A Network menu bar item can be shown
 - [x] Session totals reset on app launch and show their start time

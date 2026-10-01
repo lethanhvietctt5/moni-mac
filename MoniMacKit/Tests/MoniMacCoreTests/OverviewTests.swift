@@ -40,6 +40,8 @@ struct OverviewTests {
             process(6, windowServer, cpu: 0.36, otherUser: true, ResourceUse(memory: 100 << 20)),
             process(7, "/Applications/Rectangle.app/Contents/MacOS/Rectangle", ResourceUse(memory: 30 << 20)),
             process(8, "/usr/libexec/trustd", ResourceUse(memory: 10 << 20)),
+            process(9, "/System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter",
+                    ResourceUse(memory: 40 << 20)),
         ]
     }
 
@@ -152,11 +154,17 @@ struct OverviewTests {
         #expect(monitor.overviewPanel().rows.first { $0.metric == .battery }?.value == row)
     }
 
-    @Test func fanlessMacsShowOnlyTheSensor() throws {
-        let monitor = try monitor([snapshot(fans: .unavailable(.unsupported))])
+    @Test(arguments: [
+        (Reading<[Fan]>.unavailable(.unsupported), "CPU die"),
+        (.value([Fan(rpm: 0, minimumRPM: 0, maximumRPM: 6550)]), "CPU die · Fan off"),
+        (.value([Fan(rpm: 2000, minimumRPM: 1200, maximumRPM: 6550), Fan(rpm: 2200, minimumRPM: 1200, maximumRPM: 6550)]),
+         "CPU die · Fans 2,100 rpm"),
+    ])
+    func temperatureCaptionDescribesTheFans(fans: Reading<[Fan]>, caption: String) throws {
+        let monitor = try monitor([snapshot(fans: fans)])
         monitor.tick()
 
-        #expect(tile(.temperature, in: monitor.overviewTiles())?.caption == "CPU die")
+        #expect(tile(.temperature, in: monitor.overviewTiles())?.caption == caption)
     }
 
     @Test func missingFiguresArePlaceholdersNotZero() throws {
@@ -205,12 +213,14 @@ struct OverviewTests {
 
         let processes = monitor.overviewTiles().processes
 
-        // Xcode, Chrome, Final Cut, Safari; Rectangle; backupd, WindowServer, trustd.
-        #expect(processes.value == "8 apps")
-        #expect(processes.groups.map(\.label) == ["4 apps", "1 agent", "3 system"])
-        #expect(processes.groups.map(\.share) == [0.5, 0.125, 0.375])
+        // Xcode, Chrome, Final Cut, Safari; Rectangle; ControlCenter. Bare daemons (backupd, WindowServer,
+        // trustd) count only as processes.
+        #expect(processes.value == "6 apps")
+        #expect(processes.groups.map(\.label) == ["4 apps", "1 agent", "1 system"])
+        let shares: [Double] = [4.0 / 6, 1.0 / 6, 1.0 / 6]
+        #expect(processes.groups.map(\.share) == shares)
         #expect(processes.caption == "1,048 processes · 4,212 threads")
-        #expect(monitor.overviewTiles().showAll == "Show All 8 Apps")
+        #expect(monitor.overviewTiles().showAll == "Show All 6 Apps")
     }
 
     // MARK: Busiest Right Now
