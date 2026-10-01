@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Main window with CPU tab
 
-**Status:** in-review
+**Status:** done pending a manual click-through (Stop, Stop All, open port, and reveal are verified through the recording fake; Docker containers untested because Docker isn't running on the dev Mac).
 
 **Note from ticket 03:** AppGrouping attributes processes to their *responsible* app, so dev servers started from Terminal or iTerm roll up under that terminal app in Top Apps and the Overview list. Projects must group by working directory and project root, not by AppUsage.
 
