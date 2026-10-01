@@ -167,12 +167,12 @@ final class StatusBarController: NSObject {
             if let choice = item.representedObject as? StyleChoice {
                 item.state = choice.style == style ? .on : .off
             }
+            let rows = monitor.menuBarRows
             for subitem in item.submenu?.items ?? [] {
-                guard let choice = subitem.representedObject as? MetricChoice else { continue }
-                let shown = monitor.menuBarItems.map(\.metric)
-                subitem.state = shown.contains(choice.metric) ? .on : .off
-                // The last item can't be hidden; Settings shows its checkbox disabled too.
-                subitem.isEnabled = shown != [choice.metric]
+                guard let choice = subitem.representedObject as? MetricChoice,
+                      let row = rows.first(where: { $0.metric == choice.metric }) else { continue }
+                subitem.state = row.isEnabled ? .on : .off
+                subitem.isEnabled = row.canToggle
             }
         }
     }
@@ -182,8 +182,9 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func toggleItem(_ sender: NSMenuItem) {
-        guard let choice = sender.representedObject as? MetricChoice else { return }
-        monitor.setMenuBarItemEnabled(!monitor.isMenuBarItemEnabled(choice.metric), for: choice.metric)
+        guard let choice = sender.representedObject as? MetricChoice,
+              let row = monitor.menuBarRows.first(where: { $0.metric == choice.metric }) else { return }
+        monitor.setMenuBarItemEnabled(!row.isEnabled, for: choice.metric)
     }
 
     @objc private func selectStyle(_ sender: NSMenuItem) {

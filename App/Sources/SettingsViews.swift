@@ -8,10 +8,12 @@ struct SettingsWindowTab: View {
     /// The app's marketing version, e.g. "1.4.2".
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     /// The toolbar subtitle, e.g. "MoniMac 1.4.2".
-    static var subtitle: String { "MoniMac \(version)" }
+    static var subtitle: String { SettingsPanel.about(version: version) }
 
     var body: some View {
         SettingsContent(panel: monitor.settingsPanel(version: Self.version), monitor: monitor)
+            // Login items can also change in System Settings.
+            .onAppear(perform: monitor.refreshLaunchAtLogin)
     }
 }
 
@@ -40,7 +42,10 @@ private struct SettingsContent: View {
 
     private var general: some View {
         SettingsGroup(title: "General") {
-            SettingsRow(label: "Launch at login") {
+            SettingsRow(label: "Launch at login", description: panel.launchAtLoginNote) {
+                if panel.launchAtLoginNote != nil {
+                    Button("Open…", action: monitor.openLoginItemsSettings).controlSize(.small)
+                }
                 SettingsSwitch(isOn: panel.launchesAtLogin, set: monitor.setLaunchAtLogin)
             }
             SettingsRow(label: "Refresh interval") {
@@ -129,6 +134,8 @@ private struct SettingsContent: View {
                 .fixedSize()
             }
             SettingsRow(label: panel.about, description: "Free and open source", isLast: true) {
+                Button("Source", action: monitor.openSourceCode).buttonStyle(.link).font(.system(size: 12))
+                Button("Release Notes", action: monitor.openReleaseNotes).buttonStyle(.link).font(.system(size: 12))
                 // Update checks arrive with ticket 20.
                 Button("Check for Updates…") {}
                     .controlSize(.small)
@@ -188,7 +195,14 @@ private struct SettingsRow<Control: View>: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .overlay(alignment: .bottom) {
+        .rowSeparator(isLast: isLast)
+    }
+}
+
+extension View {
+    /// The line between rows of a Settings box; the last row has none.
+    fileprivate func rowSeparator(isLast: Bool) -> some View {
+        overlay(alignment: .bottom) {
             if !isLast { Rectangle().fill(Palette.separator).frame(height: 1) }
         }
     }
@@ -259,9 +273,7 @@ private struct MenuBarItemRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .overlay(alignment: .bottom) {
-            if !isLast { Rectangle().fill(Palette.separator).frame(height: 1) }
-        }
+        .rowSeparator(isLast: isLast)
     }
 }
 
@@ -346,17 +358,5 @@ private struct ChipFlow: Layout {
             }
         }
         return rows
-    }
-}
-
-extension Metric {
-    var color: Color {
-        switch self {
-        case .cpu: Palette.cpu
-        case .memory: Palette.memory
-        case .network: Palette.network
-        case .gpu: Palette.gpu
-        case .temperature: TemperaturePalette.temp
-        }
     }
 }

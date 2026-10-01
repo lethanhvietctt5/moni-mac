@@ -19,7 +19,7 @@ public final class Monitor {
     }
     public private(set) var menuBarItems: [MenuBarItem] = []
     /// Whether MoniMac opens at login, as the system last reported it.
-    public internal(set) var launchesAtLogin: Bool
+    public internal(set) var launchAtLogin: LaunchAtLogin
 
     // Internal, not private: each metric's feature state lives in its own file as a Monitor extension.
     @ObservationIgnored private let sampler: any SystemSampler
@@ -41,7 +41,7 @@ public final class Monitor {
         self.preferences = preferences
         self.actions = actions
         projectActivity = ProjectActivity(preferences: preferences)
-        launchesAtLogin = actions.launchesAtLogin
+        launchAtLogin = actions.launchAtLogin
         let retention = preferences.keepHistory.duration
         if history.retention != retention { history.retention = retention }
         rebuildMenuBarItems()

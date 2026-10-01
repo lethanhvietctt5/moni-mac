@@ -197,8 +197,41 @@ struct SettingsTests {
         #expect(monitor.settingsPanel(version: "1.0").launchesAtLogin)
     }
 
-    @Test func aboutShowsTheVersion() throws {
-        #expect(try monitor().settingsPanel(version: "1.4.2").about == "MoniMac 1.4.2")
+    @Test func launchAtLoginWaitingForApprovalSaysWhereToAllowIt() throws {
+        actions.loginNeedsApproval = true
+        let monitor = try monitor()
+        #expect(monitor.settingsPanel(version: "1.0").launchAtLoginNote == nil)
+
+        monitor.setLaunchAtLogin(true)
+        monitor.openLoginItemsSettings()
+
+        let panel = monitor.settingsPanel(version: "1.0")
+        #expect(panel.launchesAtLogin)
+        #expect(panel.launchAtLoginNote == "Allow MoniMac in System Settings › Login Items")
+        #expect(actions.recorded.last == .openURL(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!))
+    }
+
+    @Test func launchAtLoginChangedInSystemSettingsShowsOnReturn() throws {
+        let monitor = try monitor()
+        actions.launchAtLogin = .on
+
+        monitor.refreshLaunchAtLogin()
+
+        #expect(monitor.settingsPanel(version: "1.0").launchesAtLogin)
+        #expect(actions.recorded.isEmpty)
+    }
+
+    @Test func aboutShowsTheVersionAndLinks() throws {
+        let monitor = try monitor()
+        #expect(monitor.settingsPanel(version: "1.4.2").about == "MoniMac 1.4.2")
+
+        monitor.openSourceCode()
+        monitor.openReleaseNotes()
+
+        #expect(actions.recorded == [
+            .openURL(URL(string: "https://github.com/lethanhvietctt5/moni-mac")!),
+            .openURL(URL(string: "https://github.com/lethanhvietctt5/moni-mac/releases")!),
+        ])
     }
 
     // MARK: Menu bar items

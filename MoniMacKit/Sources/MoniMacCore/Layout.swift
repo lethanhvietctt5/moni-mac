@@ -122,15 +122,14 @@ public enum SectionLayout {
 }
 
 extension Monitor {
-    /// The sidebar: the user's tab order, without hidden tabs or tabs for hardware this Mac lacks.
-    /// Settings isn't in a group; it always sits at the bottom.
+    /// The sidebar: the user's tab order, without hidden tabs, tabs for hardware this Mac lacks, or
+    /// groups left empty. Settings isn't in a group; it always sits at the bottom.
     public var sidebarGroups: [SidebarGroup] {
         let order = tabOrder
         let hidden = preferences.hiddenTabs
-        return WindowTab.groups.map { group in
-            SidebarGroup(title: group.title, tabs: order.filter { tab in
-                group.tabs.contains(tab) && isAvailable(tab) && !(tab.canHide && hidden.contains(tab.rawValue))
-            })
+        return WindowTab.groups.compactMap { group in
+            let tabs = order.filter { group.tabs.contains($0) && isAvailable($0) && !isHidden($0, in: hidden) }
+            return tabs.isEmpty ? nil : SidebarGroup(title: group.title, tabs: tabs)
         }
     }
 
@@ -138,8 +137,7 @@ extension Monitor {
     public var windowTabChips: [WindowTabChip] {
         let hidden = preferences.hiddenTabs
         return WindowTab.allCases.filter { $0 != .settings && isAvailable($0) }.map { tab in
-            WindowTabChip(tab: tab, title: tab.shortTitle, isShown: !(tab.canHide && hidden.contains(tab.rawValue)),
-                          canToggle: tab.canHide)
+            WindowTabChip(tab: tab, title: tab.shortTitle, isShown: !isHidden(tab, in: hidden), canToggle: tab.canHide)
         }
     }
 
@@ -171,6 +169,11 @@ extension Monitor {
 
     private var tabOrder: [WindowTab] {
         LayoutOrder.arranged(WindowTab.allCases, saved: preferences.tabOrder.compactMap(WindowTab.init(rawValue:)))
+    }
+
+    /// Tabs that can't be hidden never are, even if settings were edited by hand.
+    private func isHidden(_ tab: WindowTab, in hidden: Set<String>) -> Bool {
+        tab.canHide && hidden.contains(tab.rawValue)
     }
 
     private func isAvailable(_ tab: WindowTab) -> Bool {

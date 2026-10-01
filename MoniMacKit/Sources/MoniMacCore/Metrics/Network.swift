@@ -69,6 +69,9 @@ public enum NetworkUnits: String, CaseIterable, Sendable {
     case bytes
     /// Bits per second, as ISPs advertise, e.g. `19 Mbps`.
     case bits
+
+    /// "MB/s" or "Mbps", for Settings.
+    public var title: String { self == .bytes ? "MB/s" : "Mbps" }
 }
 
 extension Preferences {

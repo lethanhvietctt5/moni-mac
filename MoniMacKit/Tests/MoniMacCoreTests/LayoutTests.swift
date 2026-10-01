@@ -123,24 +123,32 @@ struct LayoutTests {
         #expect(sidebar(monitor)[0] == [.overview, .network, .cpu, .memory, .gpu, .disk])
     }
 
+    @Test func aGroupWithEveryTabHiddenDisappears() throws {
+        let monitor = try launch()
+
+        monitor.setTabShown(false, .projects)
+
+        #expect(monitor.sidebarGroups.map(\.title) == ["Monitor", "Devices"])
+    }
+
     // MARK: Sections
 
     @Test func sectionOrderPersistsPerTab() throws {
-        let sections = ["summary", "history", "cores", "apps"]
-        try launch().moveSection("apps", onto: "summary", in: .cpu, defaults: sections)
+        let sections = ["summary", "history", "perCore", "topApps"]
+        try launch().moveSection("topApps", onto: "summary", in: .cpu, defaults: sections)
 
         let relaunched = try launch()
 
-        #expect(relaunched.sectionOrder(in: .cpu, defaults: sections) == ["apps", "summary", "history", "cores"])
+        #expect(relaunched.sectionOrder(in: .cpu, defaults: sections) == ["topApps", "summary", "history", "perCore"])
         #expect(relaunched.sectionOrder(in: .memory, defaults: sections) == sections)
     }
 
     @Test func sectionsAddedLaterAppearInTheirDefaultPlace() throws {
         try launch().moveSection("history", onto: "summary", in: .cpu, defaults: ["summary", "history"])
 
-        let order = try launch().sectionOrder(in: .cpu, defaults: ["summary", "history", "cores"])
+        let order = try launch().sectionOrder(in: .cpu, defaults: ["summary", "history", "perCore"])
 
-        #expect(order == ["history", "cores", "summary"])
+        #expect(order == ["history", "perCore", "summary"])
     }
 
     @Test func halfWidthSectionsPairUpInRows() {

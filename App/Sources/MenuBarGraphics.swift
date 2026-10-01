@@ -1,5 +1,6 @@
 import AppKit
 import MoniMacCore
+import SwiftUI
 
 /// Template images for menu bar items. Template images adapt to light, dark, and highlighted menu bars.
 @MainActor
@@ -71,6 +72,17 @@ extension Metric {
         case .network: "Network"
         case .gpu: "GPU"
         case .temperature: "Temperature"
+        }
+    }
+
+    /// The metric's accent, as on the Overview tiles.
+    var color: Color {
+        switch self {
+        case .cpu: Palette.cpu
+        case .memory: Palette.memory
+        case .network: Palette.network
+        case .gpu: Palette.gpu
+        case .temperature: TemperaturePalette.temp
         }
     }
 

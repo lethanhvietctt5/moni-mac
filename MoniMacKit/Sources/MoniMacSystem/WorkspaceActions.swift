@@ -60,8 +60,12 @@ public final class WorkspaceActions: SystemActions {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 
-    public var launchesAtLogin: Bool {
-        SMAppService.mainApp.status == .enabled
+    public var launchAtLogin: LaunchAtLogin {
+        switch SMAppService.mainApp.status {
+        case .enabled: .on
+        case .requiresApproval: .needsApproval
+        default: .off
+        }
     }
 
     public func setLaunchAtLogin(_ enabled: Bool) {

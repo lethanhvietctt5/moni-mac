@@ -6,6 +6,9 @@ public enum CPUMode: String, CaseIterable, Sendable {
     case system
     /// Share of one core: up to 100% × core count (e.g. 1200% on 12 cores).
     case perCore
+
+    /// "System" or "Per-core", for Settings.
+    public var title: String { self == .system ? "System" : "Per-core" }
 }
 
 /// Compact display strings shared by every surface.

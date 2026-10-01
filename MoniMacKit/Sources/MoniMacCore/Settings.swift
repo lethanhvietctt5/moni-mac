@@ -22,14 +22,11 @@ public enum HistoryRetention: Int, CaseIterable, Sendable {
     public var title: String { "\(rawValue) days" }
 }
 
-extension CPUMode {
-    /// "System" or "Per-core".
-    public var title: String { self == .system ? "System" : "Per-core" }
-}
-
-extension NetworkUnits {
-    /// "MB/s" or "Mbps".
-    public var title: String { self == .bytes ? "MB/s" : "Mbps" }
+/// Whether MoniMac opens at login, as the system reports it.
+public enum LaunchAtLogin: Sendable {
+    case off, on
+    /// Registered, but the user must allow it in System Settings › Login Items.
+    case needsApproval
 }
 
 extension MenuBarStyle {
@@ -56,7 +53,10 @@ public struct SettingsPanel: Equatable, Sendable {
         public var id: Metric { metric }
     }
 
+    /// On while registered, including while waiting for approval.
     public var launchesAtLogin: Bool
+    /// e.g. "Allow MoniMac in System Settings › Login Items", or nil when nothing's pending.
+    public var launchAtLoginNote: String?
     public var refreshInterval: RefreshInterval
     public var showsDockIcon: Bool
     public var temperatureUnit: TemperatureUnit
@@ -69,15 +69,23 @@ public struct SettingsPanel: Equatable, Sendable {
     public var keepHistory: HistoryRetention
     /// e.g. "MoniMac 1.4.2".
     public var about: String
+
+    /// The window toolbar subtitle and the About row, e.g. "MoniMac 1.4.2".
+    public static func about(version: String) -> String { "MoniMac \(version)" }
+
+    static let sourceCode = URL(string: "https://github.com/lethanhvietctt5/moni-mac")!
+    static let releaseNotes = URL(string: "https://github.com/lethanhvietctt5/moni-mac/releases")!
+    static let loginItems = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
 }
 
 extension Monitor {
     /// Settings, with `version` the app's marketing version, e.g. "1.4.2".
     public func settingsPanel(version: String) -> SettingsPanel {
         let cores = latest?.system.logicalCores ?? 0
-        let enabled = menuBarItems.map(\.metric)
         return SettingsPanel(
-            launchesAtLogin: launchesAtLogin,
+            launchesAtLogin: launchAtLogin != .off,
+            launchAtLoginNote: launchAtLogin == .needsApproval
+                ? "Allow MoniMac in System Settings › Login Items" : nil,
             refreshInterval: preferences.refreshInterval,
             showsDockIcon: preferences.showsDockIcon,
             temperatureUnit: preferences.temperatureUnit,
@@ -86,18 +94,24 @@ extension Monitor {
             cpuModeNote: cores > 0
                 ? "Per-core shows up to \(cores * 100)% on \(cores) cores"
                 : "Per-core counts each core as 100%",
-            menuBarRows: Metric.allCases.map { metric in
-                SettingsPanel.MenuBarRow(
-                    metric: metric,
-                    isEnabled: enabled.contains(metric),
-                    canToggle: enabled != [metric],
-                    style: preferences.menuBarStyle(for: metric)
-                )
-            },
+            menuBarRows: menuBarRows,
             windowTabs: windowTabChips,
             keepHistory: preferences.keepHistory,
-            about: "MoniMac \(version)"
+            about: SettingsPanel.about(version: version)
         )
+    }
+
+    /// Every metric with its menu bar state, for Settings and the right-click menu alike.
+    public var menuBarRows: [SettingsPanel.MenuBarRow] {
+        let shown = menuBarItems.map(\.metric)
+        return Metric.allCases.map { metric in
+            SettingsPanel.MenuBarRow(
+                metric: metric,
+                isEnabled: shown.contains(metric),
+                canToggle: shown != [metric],
+                style: preferences.menuBarStyle(for: metric)
+            )
+        }
     }
 
     /// How often the refresh loop samples. The app restarts its loop when this changes.
@@ -119,7 +133,25 @@ extension Monitor {
     public func setLaunchAtLogin(_ enabled: Bool) {
         actions.setLaunchAtLogin(enabled)
         // Registration can fail or need approval; show what the system actually did.
-        launchesAtLogin = actions.launchesAtLogin
+        refreshLaunchAtLogin()
+    }
+
+    /// Re-reads the login item, which the user can also change in System Settings. Settings calls it on appear.
+    public func refreshLaunchAtLogin() {
+        let current = actions.launchAtLogin
+        if current != launchAtLogin { launchAtLogin = current }
+    }
+
+    public func openLoginItemsSettings() {
+        actions.openURL(SettingsPanel.loginItems)
+    }
+
+    public func openSourceCode() {
+        actions.openURL(SettingsPanel.sourceCode)
+    }
+
+    public func openReleaseNotes() {
+        actions.openURL(SettingsPanel.releaseNotes)
     }
 
     public func setTemperatureUnit(_ unit: TemperatureUnit) {

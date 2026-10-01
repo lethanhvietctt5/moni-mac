@@ -16,8 +16,9 @@ public protocol SystemActions: AnyObject {
     func openURL(_ url: URL)
     /// Shows the folder selected in Finder.
     func revealInFinder(path: String)
-    /// Whether MoniMac is registered to open at login. Reading it changes nothing.
-    var launchesAtLogin: Bool { get }
+    /// Whether MoniMac is registered to open at login. Reading it changes nothing; it sits here,
+    /// beside the only action that changes it, rather than in every snapshot.
+    var launchAtLogin: LaunchAtLogin { get }
     /// Adds MoniMac to, or removes it from, the user's login items.
     func setLaunchAtLogin(_ enabled: Bool)
 }

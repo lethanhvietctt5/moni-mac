@@ -143,6 +143,16 @@ public enum TemperatureUnit: String, CaseIterable, Sendable {
 
     /// Spaced, e.g. "58 °C"; for lists and captions.
     public func format(_ celsius: Double) -> String { "\(degrees(celsius)) \(symbol)" }
+
+    /// With one decimal, e.g. "31.4 °C" or "88.5 °F"; for readings that change slowly, like the battery.
+    public func precise(_ celsius: Double) -> String {
+        String(format: "%.1f %@", converted(celsius), symbol)
+    }
+
+    /// A Celsius temperature in this unit, unrounded.
+    public func converted(_ celsius: Double) -> Double {
+        self == .celsius ? celsius : celsius * 9 / 5 + 32
+    }
 }
 
 extension Preferences {

@@ -75,14 +75,13 @@ extension EnvironmentValues {
 /// Hovering a section shows a grip in the margin to its left; dragging the grip onto another section
 /// puts it in that section's place. The order persists in Preferences.
 struct ReorderableSections<Section: WindowSection, Content: View>: View {
-    var spacing: CGFloat = 20
     var columnSpacing: CGFloat = 32
     @ViewBuilder let content: (Section) -> Content
     @Environment(\.sectionArranger) private var arranger
 
     var body: some View {
         let order = arranger?.order(Section.self) ?? Section.allCases
-        VStack(alignment: .leading, spacing: spacing) {
+        VStack(alignment: .leading, spacing: 20) {
             ForEach(SectionLayout.rows(order, width: \.width), id: \.self) { row in
                 HStack(alignment: .top, spacing: columnSpacing) {
                     ForEach(row, id: \.self) { section in
