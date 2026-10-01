@@ -24,6 +24,7 @@ public final class Monitor {
     @ObservationIgnored let history: MetricsHistory
     @ObservationIgnored let preferences: Preferences
     @ObservationIgnored let actions: any SystemActions
+    @ObservationIgnored let projectActivity: ProjectActivity
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
     /// When this Monitor started, e.g. for "this session" totals.
     public let startedAt: Date
@@ -37,6 +38,7 @@ public final class Monitor {
         self.history = history
         self.preferences = preferences
         self.actions = actions
+        projectActivity = ProjectActivity(preferences: preferences)
         rebuildMenuBarItems()
     }
 
@@ -44,6 +46,7 @@ public final class Monitor {
     public func tick() {
         let snapshot = sampler.sample()
         latest = snapshot
+        observeProjects(snapshot)
         do {
             try history.record(snapshot)
         } catch {

@@ -145,7 +145,8 @@ struct MainWindowView: View {
         case .battery: monitor.batterySubtitle
         case .temperature: monitor.temperatureSubtitle
         case .overview: monitor.overviewSubtitle
-        case .bluetooth, .sound, .projects, .settings: nil
+        case .projects: monitor.projectsSubtitle
+        case .bluetooth, .sound, .settings: nil
         }
     }
 
@@ -187,7 +188,8 @@ struct MainWindowView: View {
         case .battery: BatteryWindowTab(monitor: monitor, range: range)
         case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
         case .overview: OverviewWindowTab(monitor: monitor)
-        case .bluetooth, .sound, .projects, .settings: ComingSoon(title: state.tab.title)
+        case .projects: ProjectsWindowTab(monitor: monitor)
+        case .bluetooth, .sound, .settings: ComingSoon(title: state.tab.title)
         }
     }
 }
