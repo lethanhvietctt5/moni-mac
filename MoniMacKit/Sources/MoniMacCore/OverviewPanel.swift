@@ -111,11 +111,10 @@ extension OverviewPanel {
 }
 
 extension Monitor {
-    /// The main window toolbar subtitle for Overview, e.g. "Apple M3 Pro · 18 GB".
+    /// The main window toolbar subtitle for Overview, e.g. "MacBook Pro · M3 Pro · 18 GB".
     public var overviewSubtitle: String? {
         guard let latest else { return nil }
-        let memory = latest.memory.value.map { Format.memorySize($0.total) }
-        return ([latest.system.chipName] + [memory].compactMap { $0 }).joined(separator: " · ")
+        return latest.system.deviceLine(memory: latest.memory.value?.total)
     }
 
     /// The main window's Overview tab, Tiles view.

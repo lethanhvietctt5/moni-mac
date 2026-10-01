@@ -22,6 +22,9 @@ public enum ThermalState: String, CaseIterable, Sendable {
     case nominal, fair, serious, critical
 
     public var title: String { rawValue.capitalized }
+
+    /// Whether macOS is reducing performance to cool down: Apple documents this from `serious` up.
+    public var isThrottling: Bool { self == .serious || self == .critical }
 }
 
 /// One temperature reading.
@@ -58,6 +61,9 @@ extension SeriesKey {
     public static let thermalGPU = SeriesKey(rawValue: "thermal.gpu")
     public static let thermalSSD = SeriesKey(rawValue: "thermal.ssd")
     public static let thermalBattery = SeriesKey(rawValue: "thermal.battery")
+    /// 1 while the thermal state is throttling (serious or critical), else 0. History averages buckets, so a
+    /// bucket above 0 had at least one throttled sample.
+    public static let thermalThrottled = SeriesKey(rawValue: "thermal.throttled")
 }
 
 /// The parts with a card in the Temperature & Fans tab, each with a history series.
@@ -109,15 +115,17 @@ extension Snapshot {
         thermal.value?.sensors.value.map { ThermalGroups($0, chip: system.chipName) }
     }
 
-    /// Values MetricsHistory records for thermal: the card temperatures, in °C.
+    /// Values MetricsHistory records for thermal: the card temperatures, in °C, and whether the Mac is
+    /// throttling. Throttling comes from the thermal state, so it's recorded even without sensors.
     var thermalSeries: [SeriesSample] {
-        guard let groups = thermalGroups else { return [] }
+        let throttled = thermal.value?.state.map { SeriesSample(.thermalThrottled, $0.isThrottling ? 1 : 0) }
+        guard let groups = thermalGroups else { return [throttled].compactMap { $0 } }
         return ThermalCard.allCases.compactMap { card in
             card.celsius(in: groups).map { celsius in
                 let busiest = card == .cpu ? AppGrouping.busiestApp(in: processes.value ?? [], by: \.cpu) : nil
                 return SeriesSample(card.series, celsius, contributor: busiest)
             }
-        }
+        } + [throttled].compactMap { $0 }
     }
 
     /// The menu bar's temperature: the CPU, or the hottest known sensor when the CPU isn't reported.

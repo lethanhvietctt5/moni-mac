@@ -23,16 +23,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let inline = arguments.first(where: { $0.hasPrefix("--tab=") }) {
             return String(inline.dropFirst("--tab=".count)).lowercased()
         }
-        return value(after: "--tab")?.lowercased()
+        return launchValue("--tab")?.lowercased()
     }()
-
-    /// The argument after `flag`, e.g. `--show-quit-sheet Safari` → "Safari".
-    static func value(after flag: String) -> String? {
-        let arguments = CommandLine.arguments
-        return arguments.firstIndex(of: flag).flatMap {
-            arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil
-        }
-    }
 
     static func main() {
         let app = NSApplication.shared
@@ -56,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self else { return }
                 var expanded: AppUsage.ID?
-                if let name = Self.value(after: "--expand") { expanded = await self.appID(named: name) }
+                if let name = Self.launchValue("--expand") { expanded = await self.appID(named: name) }
                 self.mainWindow.show(tab: Self.launchTab.flatMap(WindowTab.init(rawValue:)),
                                      layout: CommandLine.arguments.contains("--overview-list") ? .list : nil,
                                      expanding: expanded.map { [$0] } ?? [])
@@ -64,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Development aid: `--show-quit-sheet <app name>` opens the quit sheet for that app on launch,
         // standalone as from the popover, so it can be screenshotted. It never presses a button.
-        if let name = Self.value(after: "--show-quit-sheet") {
+        if let name = Self.launchValue("--show-quit-sheet") {
             Task { @MainActor [weak self] in
                 guard let self, let id = await self.appID(named: name) else { return }
                 self.quitSheet.present(appID: id)
@@ -75,6 +67,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try? await Task.sleep(for: .seconds(3))
                 statusBar?.showPopover()
             }
+        }
+        // `--show-share-card` opens the share card preview. `--export-share-card <path> [--dark]` renders the
+        // card to a PNG and quits, so its size and look can be checked without clicking.
+        if CommandLine.arguments.contains("--show-share-card") {
+            Task { @MainActor [monitor] in
+                try? await Task.sleep(for: .seconds(2))
+                ShareCardWindowController.shared.show(monitor: monitor)
+            }
+        }
+        if let path = Self.launchValue("--export-share-card") {
+            Task { @MainActor [monitor] in
+                // Wait for a few samples, so the card has the Mac's memory and battery and the process list
+                // (for the busiest app's icon) has warmed up.
+                try? await Task.sleep(for: .seconds(5))
+                let dark = CommandLine.arguments.contains("--dark")
+                if !ShareCardWindowController.export(monitor: monitor, to: path, dark: dark) {
+                    log.error("Couldn't export the share card to \(path, privacy: .public)")
+                }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    /// The value after a development flag, e.g. the path in `--export-share-card <path>`.
+    private static func launchValue(_ flag: String) -> String? {
+        let arguments = CommandLine.arguments
+        return arguments.firstIndex(of: flag).flatMap {
+            arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil
         }
     }
 
