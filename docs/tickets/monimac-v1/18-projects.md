@@ -6,6 +6,8 @@
 
 **Status:** ready-for-agent
 
+**Note from ticket 03:** AppGrouping attributes processes to their *responsible* app, so dev servers started from Terminal or iTerm roll up under that terminal app in Top Apps and the Overview list. Projects must group by working directory and project root, not by AppUsage.
+
 - [ ] Running dev servers and containers appear grouped under the right project
 - [ ] Server types are detected from the command line and ports
 - [ ] Idle status follows the definition, verified with scripted connection and CPU histories

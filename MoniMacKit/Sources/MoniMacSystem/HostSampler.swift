@@ -2,25 +2,46 @@ import Darwin
 import Foundation
 import MoniMacCore
 
-/// The real SystemSampler, backed by Mach host statistics.
+/// The real SystemSampler. Composes one reader per data source.
+@MainActor
 public final class HostSampler: SystemSampler {
     private let host = mach_host_self()
+    private let system = SystemInfoReader.read()
     private var previousTicks: CPUTicks?
+    private var lastCPU: CPUUsage?
+    private let cores: CoreLoadReader
+    private let processes = ProcessReader()
 
-    public init() {}
+    public init() {
+        cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
+    }
 
     public func sample() -> Snapshot {
-        Snapshot(timestamp: Date(), cpu: sampleCPU())
+        Snapshot(
+            timestamp: Date(),
+            system: system,
+            cpu: sampleCPU(),
+            cores: cores.sample(),
+            loadAverage: sampleLoadAverage(),
+            processes: processes.sample()
+        )
     }
 
     private func sampleCPU() -> Reading<CPUUsage> {
         guard let ticks = readCPUTicks() else {
             return .unavailable(.failed("host_statistics(HOST_CPU_LOAD_INFO) failed"))
         }
-        defer { previousTicks = ticks }
-        guard let previousTicks, let usage = CPUUsage(from: previousTicks, to: ticks) else {
+        guard let previousTicks else {
+            previousTicks = ticks
             return .unavailable(.warmingUp)
         }
+        // The kernel can publish tick counters lazily; if none elapsed, keep the baseline and
+        // repeat the last value rather than flashing a placeholder.
+        guard let usage = CPUUsage(from: previousTicks, to: ticks) else {
+            return lastCPU.map(Reading.value) ?? .unavailable(.warmingUp)
+        }
+        self.previousTicks = ticks
+        lastCPU = usage
         return .value(usage)
     }
 
@@ -42,5 +63,11 @@ public final class HostSampler: SystemSampler {
             idle: ticks.2,  // CPU_STATE_IDLE
             nice: ticks.3  // CPU_STATE_NICE
         )
+    }
+
+    private func sampleLoadAverage() -> Reading<LoadAverage> {
+        var loads = [Double](repeating: 0, count: 3)
+        guard getloadavg(&loads, 3) == 3 else { return .unavailable(.failed("getloadavg failed")) }
+        return .value(LoadAverage(one: loads[0], five: loads[1], fifteen: loads[2]))
     }
 }

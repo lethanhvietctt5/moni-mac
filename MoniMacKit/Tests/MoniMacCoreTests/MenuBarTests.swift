@@ -11,7 +11,8 @@ struct MenuBarTests {
         Monitor(
             sampler: ScriptedSampler(clock: clock, cpu: cpu),
             history: try MetricsHistory(.inMemory),
-            preferences: preferences
+            preferences: preferences,
+            actions: RecordingActions()
         )
     }
 
@@ -106,6 +107,21 @@ struct MenuBarTests {
 
         #expect(cpuItem(monitor)?.style == .both)
         #expect(try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)]).menuBarItems.first?.style == .both)
+    }
+
+    @Test func perCoreModeScalesByCoreCount() throws {
+        let sampler = ScriptedSampler(clock: clock, script: [Snapshot(
+            timestamp: clock.now,
+            system: SystemInfo(chipName: "Apple M3 Pro", performanceCores: 6, efficiencyCores: 6, bootTime: nil),
+            cpu: .cpu(user: 0.25, system: 0.10)
+        )])
+        preferences.cpuMode = .perCore
+        let monitor = Monitor(sampler: sampler, history: try MetricsHistory(.inMemory),
+                              preferences: preferences, actions: RecordingActions())
+
+        monitor.tick()
+
+        #expect(cpuItem(monitor)?.text == "420%")
     }
 
     @Test(arguments: [

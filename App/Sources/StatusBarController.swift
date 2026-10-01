@@ -1,6 +1,7 @@
 import AppKit
 import MoniMacCore
 import Observation
+import SwiftUI
 
 /// Owns the menu bar items and re-renders them whenever the monitor's feature state changes.
 @MainActor
@@ -9,11 +10,31 @@ final class StatusBarController: NSObject {
     private var items: [Metric: NSStatusItem] = [:]
     /// The style each item was last sized for; the item is resized only when this changes.
     private var sizedStyles: [Metric: MenuBarStyle] = [:]
+    private var menus: [Metric: NSMenu] = [:]
+    private let popover = NSPopover()
 
     init(monitor: Monitor) {
         self.monitor = monitor
         super.init()
+        popover.behavior = .transient
+        popover.delegate = self
         observe()
+    }
+
+    /// Opens the popover under the first menu bar item.
+    func showPopover() {
+        guard let button = items[.cpu]?.button else { return }
+        show(from: button)
+    }
+
+    /// The SwiftUI content exists only while the popover is open, so a closed popover costs nothing.
+    private func show(from button: NSStatusBarButton) {
+        guard !popover.isShown else { return }
+        let content = NSHostingController(rootView: PopoverView(monitor: monitor, quit: { NSApp.terminate(nil) }))
+        content.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = content
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     private func observe() {
@@ -37,7 +58,7 @@ final class StatusBarController: NSObject {
                 sizedStyles[item.metric] = item.style
             }
             apply(item, text: item.text, to: button)
-            updateStyleChecks(in: statusItem.menu, selected: item.style)
+            updateStyleChecks(in: menus[item.metric], selected: item.style)
         }
     }
 
@@ -59,12 +80,34 @@ final class StatusBarController: NSObject {
     private func makeStatusItem(for metric: Metric) -> NSStatusItem {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.autosaveName = "MoniMac.\(metric.rawValue)"
-        statusItem.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        statusItem.menu = makeMenu(for: metric)
+        if let button = statusItem.button {
+            button.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+            button.target = self
+            button.action = #selector(statusItemClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.identifier = NSUserInterfaceItemIdentifier(metric.rawValue)
+        }
+        menus[metric] = makeMenu(for: metric)
         return statusItem
     }
 
-    // Temporary until the popover (ticket 03) and Settings (ticket 13): style picker and Quit.
+    /// Left click toggles the popover; right click shows the item's menu.
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        guard let metric = sender.identifier.flatMap({ Metric(rawValue: $0.rawValue) }),
+              let statusItem = items[metric] else { return }
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            popover.performClose(nil)
+            statusItem.menu = menus[metric]
+            sender.performClick(nil)
+            statusItem.menu = nil
+        } else if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            show(from: sender)
+        }
+    }
+
+    // Right-click menu, temporary until Settings (ticket 13): style picker and Quit.
     private func makeMenu(for metric: Metric) -> NSMenu {
         let menu = NSMenu()
         for style in MenuBarStyle.allCases {
@@ -88,6 +131,12 @@ final class StatusBarController: NSObject {
     @objc private func selectStyle(_ sender: NSMenuItem) {
         guard let choice = sender.representedObject as? StyleChoice else { return }
         monitor.setMenuBarStyle(choice.style, for: choice.metric)
+    }
+}
+
+extension StatusBarController: NSPopoverDelegate {
+    func popoverDidClose(_ notification: Notification) {
+        popover.contentViewController = nil
     }
 }
 

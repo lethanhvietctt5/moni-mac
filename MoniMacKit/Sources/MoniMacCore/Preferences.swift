@@ -26,6 +26,11 @@ public final class Preferences {
         defaults.set(style.rawValue, forKey: Self.styleKey(metric))
     }
 
+    public var cpuMode: CPUMode {
+        get { defaults.string(forKey: "cpu.mode").flatMap(CPUMode.init(rawValue:)) ?? .system }
+        set { defaults.set(newValue.rawValue, forKey: "cpu.mode") }
+    }
+
     private static func styleKey(_ metric: Metric) -> String {
         "menuBar.\(metric.rawValue).style"
     }

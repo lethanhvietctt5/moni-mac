@@ -9,16 +9,29 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 @Observable
 public final class Monitor {
     public private(set) var latest: Snapshot?
+    /// Running apps with their helpers rolled up, busiest first. Grouped on demand, once per snapshot.
+    public var apps: [AppUsage] {
+        guard let latest else { return [] }
+        if let cached = appsCache, cached.timestamp == latest.timestamp { return cached.apps }
+        let apps = AppGrouping.apps(from: latest.processes.value ?? [])
+        appsCache = (latest.timestamp, apps)
+        return apps
+    }
     public private(set) var menuBarItems: [MenuBarItem] = []
 
     @ObservationIgnored private let sampler: any SystemSampler
     @ObservationIgnored private let history: MetricsHistory
     @ObservationIgnored private let preferences: Preferences
+    @ObservationIgnored private let actions: any SystemActions
+    @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
 
-    public init(sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences) {
+    public init(
+        sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences, actions: any SystemActions
+    ) {
         self.sampler = sampler
         self.history = history
         self.preferences = preferences
+        self.actions = actions
         rebuildMenuBarItems()
     }
 
@@ -43,10 +56,31 @@ public final class Monitor {
         }
     }
 
+    // MARK: Feature state
+
+    /// The popover CPU tab for the given chart range.
+    public func cpuPanel(range: TimeRange) -> CPUPanel {
+        CPUPanel.make(snapshot: latest, apps: apps, history: history, range: range, mode: preferences.cpuMode)
+    }
+
+    // MARK: Intents
+
     public func setMenuBarStyle(_ style: MenuBarStyle, for metric: Metric) {
         preferences.setMenuBarStyle(style, for: metric)
         rebuildMenuBarItems()
     }
+
+    /// Asks the app with this id to quit normally. Does nothing for groups that can't be quit.
+    public func quitApp(id: AppUsage.ID) {
+        guard let pid = apps.first(where: { $0.id == id })?.quitPID else { return }
+        actions.quitApp(pid: pid)
+    }
+
+    public func openActivityMonitor() {
+        actions.openActivityMonitor()
+    }
+
+    // MARK: Menu bar
 
     private func rebuildMenuBarItems() {
         menuBarItems = Metric.allCases.map { metric in
@@ -62,7 +96,9 @@ public final class Monitor {
 
     private func text(for metric: Metric) -> String {
         switch metric {
-        case .cpu: latest?.cpu.value.map { Format.percent($0.total) } ?? Format.placeholder
+        case .cpu:
+            guard let latest, let cpu = latest.cpu.value else { return Format.placeholder }
+            return Format.cpu(cpu.total, mode: preferences.cpuMode, logicalCores: latest.system.logicalCores)
         }
     }
 
