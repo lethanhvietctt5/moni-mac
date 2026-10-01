@@ -23,6 +23,9 @@ public struct BatteryDetail: Equatable, Sendable {
     }
 
     public struct Stat: Equatable, Sendable {
+        public enum Kind: Sendable { case power, health, cycles, temperature }
+
+        public var kind: Kind
         public var label: String
         public var value: String
         public var caption: String
@@ -145,20 +148,20 @@ extension BatteryDetail {
         let health = battery?.health
         let temperature = battery?.temperature
         return [
-            Stat(label: "Power Draw", value: battery?.batteryPower.map { watts(abs($0)) } ?? dash,
+            Stat(kind: .power, label: "Power Draw", value: battery?.batteryPower.map { watts(abs($0)) } ?? dash,
                  caption: battery?.systemPower.map { "System using \(watts($0))" } ?? "System power unavailable",
                  help: "Power flowing into or out of the battery, and the whole Mac's use. " + estimateHelp),
-            Stat(label: "Health", value: health.map { Format.percent($0) } ?? dash,
+            Stat(kind: .health, label: "Health", value: health.map { Format.percent($0) } ?? dash,
                  caption: health.map { health in
                      let condition = health >= 0.8 ? "Normal" : "Service recommended"
                      guard let max = battery?.maxCapacity, let design = battery?.designCapacity else { return condition }
                      return "\(condition) · \(Format.count(max)) of \(Format.count(design)) mAh"
                  } ?? dash,
                  help: "Current full-charge capacity compared with the battery's design capacity."),
-            Stat(label: "Cycle Count", value: battery?.cycleCount.map(Format.count) ?? dash,
+            Stat(kind: .cycles, label: "Cycle Count", value: battery?.cycleCount.map(Format.count) ?? dash,
                  caption: battery?.ratedCycles.map { "of \(Format.count($0)) rated cycles" } ?? dash,
                  help: nil),
-            Stat(label: "Temperature", value: temperature.map { String(format: "%.1f °C", $0) } ?? dash,
+            Stat(kind: .temperature, label: "Temperature", value: temperature.map { String(format: "%.1f °C", $0) } ?? dash,
                  caption: temperature.map(temperatureNote) ?? dash, help: nil),
         ]
     }
@@ -184,7 +187,9 @@ extension BatteryDetail {
     }
 
     private static func energyApps(_ apps: [AppUsage], count: Int) -> [EnergyApp] {
-        let ranked = apps.compactMap { app in app.resources.power.flatMap { $0 > 0 ? (app, $0) : nil } }
+        let ranked = apps.compactMap { app in
+            app.resources.power.flatMap { $0 >= significantPower ? (app, $0) : nil }
+        }
             .sorted { $0.1 > $1.1 }
             .prefix(count)
         let top = ranked.first?.1 ?? 0
@@ -193,6 +198,9 @@ extension BatteryDetail {
                       share: top > 0 ? power / top : 0, canQuit: app.canQuit)
         }
     }
+
+    /// Apps below this draw would read "0.0 W", so they aren't listed.
+    static let significantPower = 0.05
 
     /// e.g. "4.8 W".
     static func watts(_ value: Double) -> String {

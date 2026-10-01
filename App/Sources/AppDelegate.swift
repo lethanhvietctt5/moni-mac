@@ -14,6 +14,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBar: StatusBarController?
     private lazy var mainWindow = MainWindowController(monitor: monitor)
     private var refresh: Task<Void, Never>?
+    /// Development aid: `--tab <name>` (e.g. `--tab battery`) picks the tab the window or popover opens on.
+    static let launchTab = CommandLine.arguments.firstIndex(of: "--tab").flatMap {
+        CommandLine.arguments.indices.contains($0 + 1) ? CommandLine.arguments[$0 + 1].lowercased() : nil
+    }
 
     static func main() {
         let app = NSApplication.shared
@@ -34,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--show-window") {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
-                self?.mainWindow.show()
+                self?.mainWindow.show(tab: Self.launchTab.flatMap(WindowTab.init(rawValue:)))
             }
         }
         if CommandLine.arguments.contains("--show-popover") {

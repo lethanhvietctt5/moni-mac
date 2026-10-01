@@ -209,7 +209,7 @@ struct BatteryDetailTests {
             ProcessSample(pid: 3, responsiblePID: 2, name: "Helper",
                           path: "/Applications/Google Chrome.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper",
                           cpu: 0.1, resources: ResourceUse(power: 1.8)),
-            ProcessSample(pid: 4, name: "idle", path: "/usr/bin/idle", cpu: 0, resources: ResourceUse(power: 0)),
+            ProcessSample(pid: 4, name: "sipper", path: "/usr/bin/sipper", cpu: 0, resources: ResourceUse(power: 0.04)),
             ProcessSample(pid: 5, name: "rootd", path: "/usr/sbin/rootd", cpu: 0.3),
         ]
         let apps = try detail(snapshot(.value(charging), processes: processes)).energyApps
