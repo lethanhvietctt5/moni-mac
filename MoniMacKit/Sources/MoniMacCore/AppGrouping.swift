@@ -12,8 +12,23 @@ public struct AppUsage: Equatable, Sendable, Identifiable {
     public var quitPID: Int32?
     /// Summed over the group's processes.
     public var resources = ResourceUse()
+    /// What sort of software the group is. See `AppKind`.
+    public var kind = AppKind.agent
 
     public var canQuit: Bool { quitPID != nil }
+}
+
+/// What sort of software an app group is, for the Processes tile's apps / agents / system split.
+public enum AppKind: CaseIterable, Sendable {
+    /// A regular app: at least one of its processes has a Dock presence (Safari, Xcode, Finder).
+    case app
+    /// The user's own background software: menu bar apps, launch agents, and helpers outside any
+    /// regular app, e.g. a menu bar utility in /Applications or a tool in ~/Library or /opt/homebrew.
+    case agent
+    /// The operating system: groups whose processes all belong to other users (root daemons,
+    /// WindowServer, kernel_task), and the user's own processes that ship with macOS, i.e. whose
+    /// bundle or executable lives under /System, /usr (but not /usr/local), /bin, /sbin, or /Library/Apple.
+    case system
 }
 
 /// Rolls helper processes up into the app responsible for them.
@@ -27,6 +42,8 @@ public enum AppGrouping {
         let byPID = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
         var groups: [String: AppUsage] = [:]
         var order: [String] = []
+        var hasRegularApp: Set<String> = []
+        var hasOwnProcess: Set<String> = []
 
         for process in processes {
             let (id, name, bundle) = owner(of: process, byPID: byPID)
@@ -40,6 +57,17 @@ public enum AppGrouping {
             groups[id]!.resources = groups[id]!.resources + process.resources
             if process.isRegularApp, let bundle, outermostAppBundle(in: process.path) == bundle {
                 groups[id]!.quitPID = process.pid
+            }
+            if process.isRegularApp { hasRegularApp.insert(id) }
+            if !process.isOtherUser { hasOwnProcess.insert(id) }
+        }
+        for id in order {
+            groups[id]!.kind = if hasRegularApp.contains(id) {
+                .app
+            } else if !hasOwnProcess.contains(id) || isSystemLocation(groups[id]!.bundlePath ?? id) {
+                .system
+            } else {
+                .agent
             }
         }
         // Stable for equal CPU: first seen first.
@@ -65,6 +93,14 @@ public enum AppGrouping {
               (measure(busiest) ?? 0) > 0 else { return nil }
         let responsible = busiest.responsiblePID.flatMap { pid in processes.first { $0.pid == pid } }
         return owner(of: busiest, byPID: responsible.map { [$0.pid: $0] } ?? [:]).name
+    }
+
+    /// Where macOS keeps its own software. Groups without a readable path have their name as id, which
+    /// never starts with "/", so an own-user process with an unreadable path counts as an agent.
+    /// /usr/local is where users install their own tools, so it isn't macOS.
+    static func isSystemLocation(_ path: String) -> Bool {
+        guard !path.hasPrefix("/usr/local/") else { return false }
+        return ["/System/", "/usr/", "/bin/", "/sbin/", "/Library/Apple/"].contains { path.hasPrefix($0) }
     }
 
     /// `/Applications/Google Chrome.app/Contents/.../Helper.app/Contents/MacOS/Helper` → `/Applications/Google Chrome.app`.
