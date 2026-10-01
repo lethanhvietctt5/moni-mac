@@ -8,15 +8,18 @@ import SwiftUI
 final class StatusBarController: NSObject {
     private let monitor: Monitor
     private var items: [Metric: NSStatusItem] = [:]
-    /// The style each item was last sized for; the item is resized only when this changes.
-    private var sizedStyles: [Metric: MenuBarStyle] = [:]
+    /// The style and widest text each item was last sized for; the item is resized only when these change
+    /// (a new style, or new units or CPU mode).
+    private var sizedFor: [Metric: Sizing] = [:]
     private var menus: [Metric: NSMenu] = [:]
     private let popover = NSPopover()
     private let openWindow: () -> Void
+    private let openSettings: () -> Void
 
-    init(monitor: Monitor, openWindow: @escaping () -> Void) {
+    init(monitor: Monitor, openWindow: @escaping () -> Void, openSettings: @escaping () -> Void) {
         self.monitor = monitor
         self.openWindow = openWindow
+        self.openSettings = openSettings
         super.init()
         popover.behavior = .transient
         popover.delegate = self
@@ -38,7 +41,11 @@ final class StatusBarController: NSObject {
                 self?.popover.performClose(nil)
                 self?.openWindow()
             },
-            quit: { NSApp.terminate(nil) }
+            quit: { NSApp.terminate(nil) },
+            openSettings: { [weak self] in
+                self?.popover.performClose(nil)
+                self?.openSettings()
+            }
         ))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
@@ -59,7 +66,7 @@ final class StatusBarController: NSObject {
         for (metric, statusItem) in items where !shown.contains(metric) {
             NSStatusBar.system.removeStatusItem(statusItem)
             items[metric] = nil
-            sizedStyles[metric] = nil
+            sizedFor[metric] = nil
             menus[metric] = nil
         }
         for item in menuBarItems {
@@ -67,11 +74,12 @@ final class StatusBarController: NSObject {
             items[item.metric] = statusItem
             guard let button = statusItem.button else { continue }
 
-            if sizedStyles[item.metric] != item.style {
+            let sizing = Sizing(style: item.style, widestText: item.widestText)
+            if sizedFor[item.metric] != sizing {
                 // Size for the widest possible value so the item never changes width as values change.
                 apply(item, text: item.widestText, to: button)
                 statusItem.length = button.fittingSize.width
-                sizedStyles[item.metric] = item.style
+                sizedFor[item.metric] = sizing
             }
             apply(item, text: item.text, to: button)
             refreshMenuStates(in: menus[item.metric], style: item.style)
@@ -123,17 +131,19 @@ final class StatusBarController: NSObject {
         }
     }
 
-    // Right-click menu, temporary until Settings (ticket 13): style picker and Quit.
+    /// Right-click menu: style picker, the items shown (the same state as Settings › Menu Bar Items),
+    /// Settings, and Quit.
     private func makeMenu(for metric: Metric) -> NSMenu {
         let menu = NSMenu()
         for style in MenuBarStyle.allCases {
-            let item = NSMenuItem(title: style.title, action: #selector(selectStyle(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: style.menuTitle, action: #selector(selectStyle(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = StyleChoice(metric: metric, style: style)
             menu.addItem(item)
         }
         menu.addItem(.separator())
         let itemsMenu = NSMenu()
+        itemsMenu.autoenablesItems = false
         for other in Metric.allCases {
             let item = NSMenuItem(title: other.title, action: #selector(toggleItem(_:)), keyEquivalent: "")
             item.target = self
@@ -143,6 +153,9 @@ final class StatusBarController: NSObject {
         let itemsEntry = NSMenuItem(title: "Menu Bar Items", action: nil, keyEquivalent: "")
         itemsEntry.submenu = itemsMenu
         menu.addItem(itemsEntry)
+        let settings = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit MoniMac", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return menu
@@ -156,9 +169,16 @@ final class StatusBarController: NSObject {
             }
             for subitem in item.submenu?.items ?? [] {
                 guard let choice = subitem.representedObject as? MetricChoice else { continue }
-                subitem.state = monitor.isMenuBarItemEnabled(choice.metric) ? .on : .off
+                let shown = monitor.menuBarItems.map(\.metric)
+                subitem.state = shown.contains(choice.metric) ? .on : .off
+                // The last item can't be hidden; Settings shows its checkbox disabled too.
+                subitem.isEnabled = shown != [choice.metric]
             }
         }
+    }
+
+    @objc private func showSettings() {
+        openSettings()
     }
 
     @objc private func toggleItem(_ sender: NSMenuItem) {
@@ -196,8 +216,13 @@ private final class StyleChoice: NSObject {
     }
 }
 
+private struct Sizing: Equatable {
+    var style: MenuBarStyle
+    var widestText: String
+}
+
 private extension MenuBarStyle {
-    var title: String {
+    var menuTitle: String {
         switch self {
         case .value: "Show Value"
         case .graph: "Show Graph"
