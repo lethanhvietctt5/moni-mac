@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through (merged as PR #13; automation can't click the status item, tabs, or range buttons). Unchecked boxes are built but not yet exercised.
 
 - [x] The popover and window Battery tabs show live values
 - [ ] The charge history chart distinguishes charging from on-battery periods (built and covered by `BatteryDetailTests`/`BatteryHistoryTests`; not seen on screen because this Mac stayed plugged in)

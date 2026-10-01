@@ -8,9 +8,11 @@ struct AppGroupingTests {
     let webContent = "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
     let windowServer = "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer"
 
-    private func process(_ pid: Int32, _ path: String?, cpu: Double, responsible: Int32? = nil, regular: Bool = false) -> ProcessSample {
+    private func process(
+        _ pid: Int32, _ path: String?, cpu: Double, responsible: Int32? = nil, regular: Bool = false, otherUser: Bool = false
+    ) -> ProcessSample {
         ProcessSample(pid: pid, responsiblePID: responsible, name: path.map { String($0.split(separator: "/").last!) } ?? "proc\(pid)",
-                      path: path, cpu: cpu, isRegularApp: regular)
+                      path: path, cpu: cpu, isRegularApp: regular, isOtherUser: otherUser)
     }
 
     @Test func helpersRollUpUnderTheirResponsibleApp() {
@@ -94,5 +96,59 @@ struct AppGroupingTests {
     ] as [(String?, String?)])
     func findsTheOutermostAppBundle(path: String?, bundle: String?) {
         #expect(AppGrouping.outermostAppBundle(in: path) == bundle)
+    }
+
+    // MARK: Kind
+
+    private func kinds(_ processes: [ProcessSample]) -> [String: AppKind] {
+        Dictionary(uniqueKeysWithValues: AppGrouping.apps(from: processes).map { ($0.name, $0.kind) })
+    }
+
+    @Test func aGroupWithADockAppIsAnApp() {
+        let kinds = kinds([
+            process(10, safari, cpu: 0, regular: true),
+            process(11, webContent, cpu: 0, responsible: 10),
+            // Finder ships with macOS but is a regular app.
+            process(12, "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder", cpu: 0, regular: true),
+        ])
+
+        #expect(kinds == ["Safari": .app, "Finder": .app])
+    }
+
+    @Test func aRegularAppWithARootHelperIsStillAnApp() {
+        let kinds = kinds([
+            process(20, "/Applications/Docker.app/Contents/MacOS/Docker Desktop.app/Contents/MacOS/Docker Desktop",
+                    cpu: 0, regular: true),
+            process(21, "/Applications/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd", cpu: 0, otherUser: true),
+        ])
+
+        #expect(kinds == ["Docker": .app])
+    }
+
+    @Test func ownBackgroundSoftwareOutsideMacOSIsAnAgent() {
+        let kinds = kinds([
+            process(30, "/Applications/Rectangle.app/Contents/MacOS/Rectangle", cpu: 0),
+            process(31, "/opt/homebrew/bin/postgres", cpu: 0),
+            process(32, "/usr/local/bin/node", cpu: 0),
+            process(33, nil, cpu: 0),
+        ])
+
+        #expect(kinds == ["Rectangle": .agent, "postgres": .agent, "node": .agent, "proc33": .agent])
+    }
+
+    @Test func otherUsersProcessesAndOwnMacOSProcessesAreSystem() {
+        let kinds = kinds([
+            process(40, windowServer, cpu: 0, otherUser: true),
+            process(41, nil, cpu: 0, otherUser: true),
+            process(42, "/Applications/Some Daemon.app/Contents/MacOS/daemon", cpu: 0, otherUser: true),
+            process(43, "/System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter", cpu: 0),
+            process(44, "/usr/libexec/trustd", cpu: 0),
+            process(45, "/sbin/launchd", cpu: 0),
+        ])
+
+        #expect(kinds == [
+            "WindowServer": .system, "proc41": .system, "Some Daemon": .system, "ControlCenter": .system,
+            "trustd": .system, "launchd": .system,
+        ])
     }
 }
