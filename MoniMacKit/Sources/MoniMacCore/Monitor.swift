@@ -18,6 +18,8 @@ public final class Monitor {
         return apps
     }
     public private(set) var menuBarItems: [MenuBarItem] = []
+    /// Whether MoniMac opens at login, as the system last reported it.
+    public internal(set) var launchesAtLogin: Bool
 
     // Internal, not private: each metric's feature state lives in its own file as a Monitor extension.
     @ObservationIgnored private let sampler: any SystemSampler
@@ -39,6 +41,9 @@ public final class Monitor {
         self.preferences = preferences
         self.actions = actions
         projectActivity = ProjectActivity(preferences: preferences)
+        launchesAtLogin = actions.launchesAtLogin
+        let retention = preferences.keepHistory.duration
+        if history.retention != retention { history.retention = retention }
         rebuildMenuBarItems()
     }
 
@@ -112,7 +117,7 @@ public final class Monitor {
 
     // MARK: Menu bar
 
-    private func rebuildMenuBarItems() {
+    func rebuildMenuBarItems() {
         var shown = Metric.allCases.filter(preferences.isMenuBarItemEnabled)
         // Never leave the app without a menu bar item, even if settings were edited by hand.
         if shown.isEmpty { shown = [.cpu] }

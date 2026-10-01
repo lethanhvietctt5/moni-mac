@@ -2,6 +2,7 @@ import AppKit
 import Darwin
 import MoniMacCore
 import os
+import ServiceManagement
 
 private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", category: "Actions")
 
@@ -57,5 +58,21 @@ public final class WorkspaceActions: SystemActions {
 
     public func revealInFinder(path: String) {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    public var launchesAtLogin: Bool {
+        SMAppService.mainApp.status == .enabled
+    }
+
+    public func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            log.error("Launch at login \(enabled ? "on" : "off", privacy: .public) failed: \(String(describing: error), privacy: .public)")
+        }
     }
 }

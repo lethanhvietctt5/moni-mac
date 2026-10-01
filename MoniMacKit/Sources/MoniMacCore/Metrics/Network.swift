@@ -74,7 +74,7 @@ public enum NetworkUnits: String, CaseIterable, Sendable {
 extension Preferences {
     public var networkUnits: NetworkUnits {
         get { defaults.string(forKey: "network.units").flatMap(NetworkUnits.init(rawValue:)) ?? .bytes }
-        set { defaults.set(newValue.rawValue, forKey: "network.units") }
+        set { set(newValue.rawValue, forKey: "network.units") }
     }
 }
 

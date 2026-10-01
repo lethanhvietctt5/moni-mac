@@ -135,8 +135,7 @@ public enum TemperatureUnit: String, CaseIterable, Sendable {
 
     /// A Celsius temperature in this unit, rounded to a whole degree.
     public func degrees(_ celsius: Double) -> Int {
-        let value = self == .celsius ? celsius : celsius * 9 / 5 + 32
-        return Int(value.rounded())
+        Int(converted(celsius).rounded())
     }
 
     /// Compact, e.g. "58°C"; for the menu bar.
@@ -147,10 +146,10 @@ public enum TemperatureUnit: String, CaseIterable, Sendable {
 }
 
 extension Preferences {
-    /// °C or °F. Settings (ticket 13) offers the choice.
+    /// °C or °F, chosen in Settings.
     public var temperatureUnit: TemperatureUnit {
         get { defaults.string(forKey: "temperature.unit").flatMap(TemperatureUnit.init(rawValue:)) ?? .celsius }
-        set { defaults.set(newValue.rawValue, forKey: "temperature.unit") }
+        set { set(newValue.rawValue, forKey: "temperature.unit") }
     }
 }
 
