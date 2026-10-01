@@ -22,7 +22,12 @@ open build/Build/Products/Debug/MoniMac.app
 
 Rerun `xcodegen generate` after adding or removing app source files or editing `project.yml`.
 
-`--show-popover` and `--show-window` open the popover or main window on launch. Add `--tab <name>` (or `--tab=<name>`, a tab's raw value, e.g. `--tab gpu`) to choose its tab, e.g. `open …/MoniMac.app --args --show-window --tab disk`. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI.
+`--show-popover` and `--show-window` open the popover or main window on launch. Add `--tab <name>` (or `--tab=<name>`, a tab's raw value, e.g. `--tab gpu`) to choose its tab, e.g. `open …/MoniMac.app --args --show-window --tab disk`. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI. More dev flags:
+- **Overview:** `--overview-list` opens the List view; `--expand <app>` expands that app's group.
+- **Quit sheet:** `--show-quit-sheet <app>` opens it without pressing a button.
+- **Share card:** `--show-share-card` opens the preview; `--export-share-card <path> [--dark]` writes the 1200×630 PNG.
+
+**Settings you can't click:** `defaults write io.github.lethanhvietctt5.MoniMac <key> …`, launch, screenshot, then `defaults delete` the key.
 
 **Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Menu bar items can't be captured, so they're verified by tests.
 
@@ -143,7 +148,19 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **app:** at least one process in the group is a Dock (regular) app.
   - **system:** every process belongs to another user, or the bundle or executable is under `/System`, `/usr` (not `/usr/local`), `/bin`, `/sbin`, or `/Library/Apple`.
   - **agent:** everything else.
-  - The Processes tile counts only groups with an `.app` bundle; bare daemons count only toward the process and thread totals.
+  - The Processes tile and the List footer's "apps" count only groups with an `.app` bundle; bare daemons count only toward the process and thread totals.
+- **Quitting** always goes through `resolveQuit` and the quit sheet (`QuitSheetPresenter.present(appID:over:)`; `over: nil` shows a floating panel, e.g. from the popover or a notification), and it targets the responsible app, never a helper. "Reopen windows" sends the ⌥⌘Q quit event, which macOS gates behind Automation consent. MoniMac only checks for consent without prompting, and without it the app quits normally.
+- **Settings:**
+  - `Preferences` is `@Observable`. Settings written through `set(_:forKey:)` repaint every surface; bookkeeping (e.g. Projects state) writes `defaults` directly.
+  - Views change settings only through `Monitor` intents.
+  - Layout keys are `layout.tabs.order`, `layout.tabs.hidden`, and `layout.sections.<tab>`. Each window tab lists its sections as a private enum conforming to `WindowSection` and renders them in `ReorderableSections`.
+  - Tabs reorder within their sidebar group. Overview and Settings can't be hidden.
+  - Launch at login goes through `SystemActions` (`SMAppService`); never register it on the dev Mac.
+- **Share card (`WeeklySummary`):**
+  - The busiest app is the one most often behind the hourly CPU peaks (peak contributors), not total CPU time, because a per-app CPU series would add per-tick cost.
+  - Throttling comes from the `thermal.throttled` 0/1 series (thermal state serious or critical).
+  - Uptime counts 15-minute buckets that have a sample. A "full week" means history older than the window exists; otherwise the card states the range covered.
+  - Images rendered off screen don't follow dynamic colors, so the card uses fixed light and dark palettes.
 - **Projects:**
   - **Where it looks:** project folders are looked up only for processes that listen on a port or watch files. Folders under Documents, Desktop, Downloads, iCloud Drive, or `/Volumes` are read only after the Projects tab has appeared (`projects.protectedFoldersAllowed`), so no privacy prompt fires at launch.
   - **Process cache:** cached details are keyed by pid, start time, and name, because `exec` (e.g. `env` → `python3`) keeps the pid and start time. Framework Python runs as `Python.app` inside `Python.framework`, so the app-bundle exclusion skips `.framework/` paths.
