@@ -212,6 +212,46 @@ public final class MetricsHistory {
         return row.sum
     }
 
+    /// `sum` for every series whose key starts with `prefix`, e.g. per-app totals recorded under
+    /// "disk.written.app:<app id>". Series with nothing recorded in `(from, to]` are left out.
+    public func sums(prefix: String, from: Date, to: Date) throws -> [SeriesKey: Double] {
+        let (start, end) = (from.timeIntervalSinceReferenceDate, to.timeIntervalSinceReferenceDate)
+        let age = (lastRecorded?.timeIntervalSinceReferenceDate ?? end) - start
+        let tier = Tier.covering(age: age, retention: retention)
+        // A key range rather than LIKE, so the (series, time) indexes apply. U+10FFFF sorts after
+        // every other character in SQLite's binary (UTF-8) collation.
+        let upper = prefix + "\u{10FFFF}"
+        let sql = tier == .raw
+            ? "SELECT series, SUM(v) FROM raw WHERE series >= ? AND series < ? AND t > ? AND t <= ? GROUP BY series"
+            : """
+              SELECT series, SUM(sum) FROM buckets WHERE tier = \(tier.rawValue) AND series >= ? AND series < ?
+              AND start >= ? AND start <= ? GROUP BY series
+              """
+        let rows = try database.query(
+            sql, .text(prefix), .text(upper), .double(tier == .raw ? start : tier.bucketStart(start)), .double(end)
+        ) { (key: SeriesKey(rawValue: $0.text(0)), sum: $0.double(1)) }
+        return Dictionary(rows.map { ($0.key, $0.sum) }, uniquingKeysWith: +)
+    }
+
+    /// The highest sample of a series in `(from, to]` with its time and contributor, e.g. "today's
+    /// peak". Older spans are searched at bucket granularity, like `sum`.
+    public func peak(_ series: SeriesKey, from: Date, to: Date) throws -> SeriesPoint? {
+        let (start, end) = (from.timeIntervalSinceReferenceDate, to.timeIntervalSinceReferenceDate)
+        let key = Database.Value.text(series.rawValue)
+        let age = (lastRecorded?.timeIntervalSinceReferenceDate ?? end) - start
+        let tier = Tier.covering(age: age, retention: retention)
+        let sql = tier == .raw
+            ? "SELECT t, v, label FROM raw WHERE series = ? AND t > ? AND t <= ? ORDER BY v DESC, t LIMIT 1"
+            : """
+              SELECT max_t, max, max_label FROM buckets WHERE tier = \(tier.rawValue) AND series = ?
+              AND start >= ? AND start <= ? ORDER BY max DESC, start LIMIT 1
+              """
+        return try database.query(sql, key, .double(tier == .raw ? start : tier.bucketStart(start)), .double(end)) {
+            SeriesPoint(time: Date(timeIntervalSinceReferenceDate: $0.double(0)), value: $0.double(1),
+                        contributor: $0.isNull(2) ? nil : $0.text(2))
+        }.first
+    }
+
     /// Per-day sums for the last `days` local days ending with the day containing `now`, oldest first.
     public func dailyTotals(
         _ series: SeriesKey, days: Int, endingAt now: Date, calendar: Calendar = .current
