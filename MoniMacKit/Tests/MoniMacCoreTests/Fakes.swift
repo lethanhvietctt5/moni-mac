@@ -40,6 +40,20 @@ final class ScriptedSampler: SystemSampler {
     }
 }
 
+/// Fake SystemActions: records requested actions instead of performing them.
+@MainActor
+final class RecordingActions: SystemActions {
+    enum Action: Equatable {
+        case quitApp(pid: Int32)
+        case openActivityMonitor
+    }
+
+    private(set) var recorded: [Action] = []
+
+    func quitApp(pid: Int32) { recorded.append(.quitApp(pid: pid)) }
+    func openActivityMonitor() { recorded.append(.openActivityMonitor) }
+}
+
 extension Reading<CPUUsage> {
     /// CPU busy at `user` + `system`, the rest idle.
     static func cpu(user: Double, system: Double) -> Self {

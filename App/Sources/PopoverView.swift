@@ -1,0 +1,94 @@
+import MoniMacCore
+import SwiftUI
+
+enum PopoverTab: String, CaseIterable {
+    case overview = "Overview"
+    case cpu = "CPU"
+    case memory = "Memory"
+    case gpu = "GPU"
+    case network = "Network"
+    case disk = "Disk"
+    case battery = "Battery"
+
+    /// Tabs with content so far; the rest are placeholders until their tickets land.
+    var isAvailable: Bool { self == .cpu }
+}
+
+/// The popover shown when a menu bar item is clicked.
+struct PopoverView: View {
+    let monitor: Monitor
+    let quit: () -> Void
+    @State private var tab: PopoverTab = .cpu
+    @State private var range: TimeRange = .fiveMinutes
+
+    var body: some View {
+        let panel = monitor.cpuPanel(range: range)
+        VStack(spacing: 0) {
+            header
+            VStack(spacing: 12) {
+                SegmentedPicker(options: PopoverTab.allCases, selection: $tab, label: \.rawValue,
+                                isEnabled: \.isAvailable)
+                switch tab {
+                case .cpu:
+                    CPUTab(panel: panel, range: $range, quitApp: monitor.quitApp(id:),
+                           openActivityMonitor: monitor.openActivityMonitor)
+                default:
+                    placeholder
+                }
+                footer(status: panel.status)
+            }
+            .padding(14)
+        }
+        .frame(width: 380)
+        .background(Palette.windowBackground)
+    }
+
+    private var header: some View {
+        HStack {
+            Text("MoniMac")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Palette.textPrimary)
+            Spacer()
+            HStack(spacing: 12) {
+                // Wired up by the main window (ticket 04) and Settings (ticket 13).
+                headerButton("macwindow", help: "Open MoniMac")
+                headerButton("gearshape", help: "Settings")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    private func headerButton(_ symbol: String, help: String) -> some View {
+        Button {} label: {
+            Image(systemName: symbol).font(.system(size: 13))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.textSecondary)
+        .disabled(true)
+        .help("\(help) (coming soon)")
+    }
+
+    private var placeholder: some View {
+        Text("\(tab.rawValue) is coming soon.")
+            .font(.system(size: 12))
+            .foregroundStyle(Palette.textSecondary)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+
+    private func footer(status: String) -> some View {
+        HStack {
+            HStack(spacing: 6) {
+                Circle().fill(Palette.success).frame(width: 6, height: 6)
+                Text(status)
+            }
+            Spacer()
+            Button("Quit MoniMac", action: quit)
+                .buttonStyle(.plain)
+                .fontWeight(.medium)
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(Palette.textSecondary)
+        .padding(.top, 2)
+    }
+}

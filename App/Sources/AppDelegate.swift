@@ -8,7 +8,9 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 @main
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let monitor = Monitor(sampler: HostSampler(), history: makeHistory(), preferences: Preferences())
+    private let monitor = Monitor(
+        sampler: HostSampler(), history: makeHistory(), preferences: Preferences(), actions: WorkspaceActions()
+    )
     private var statusBar: StatusBarController?
     private var refresh: Task<Void, Never>?
 
@@ -24,6 +26,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar = StatusBarController(monitor: monitor)
         refresh = Task { [monitor] in
             await monitor.run(every: .seconds(2))
+        }
+        // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
+        if CommandLine.arguments.contains("--show-popover") {
+            Task { @MainActor [statusBar] in
+                try? await Task.sleep(for: .seconds(3))
+                statusBar?.showPopover()
+            }
         }
     }
 

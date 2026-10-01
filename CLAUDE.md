@@ -22,6 +22,8 @@ open build/Build/Products/Debug/MoniMac.app
 
 Rerun `xcodegen generate` after adding or removing app source files or editing `project.yml`.
 
+`--show-popover` (e.g. `open …/MoniMac.app --args --show-popover`) opens the popover on launch. Automation can't click the status item without Accessibility permission, so use this flag to screenshot the popover. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
+
 ## Layout
 
 - `MoniMacKit/`: Swift package with all logic.
@@ -71,4 +73,5 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
 - **Not sandboxed, not on the Mac App Store, no licensing or payments.**
 - **Menu bar reorder and hide** use the system's ⌘-drag behavior. Don't build a custom drag UI in the menu bar.
 - **Per-app volume** (Core Audio process taps) needs a feasibility spike first. If it fails, Sound ships without per-app sliders.
+- **Process sampling (no privileged helper):** own-user processes come from `proc_pid_rusage` (every 4 s; its times are Mach absolute units, converted with `mach_timebase_info`). Other users' processes come from the setuid `/bin/ps` in the background (every 15 s). Helpers are attributed via the private responsible-pid call, with a fallback to the outermost `.app` in the path. Quit (×) is offered only for running regular apps.
 - **Name:** the product is **MoniMac**; the repo is `moni-mac`. "Vitals" was its old name.

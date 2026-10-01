@@ -4,11 +4,20 @@
 
 **Blocked by:** 02 — History + CPU sparkline in the menu bar
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through (automation can't click the status item without Accessibility permission). Unchecked boxes are built but not yet exercised in the real app.
 
-- [ ] Clicking the CPU item opens the popover on the CPU tab with all sections populated from live data
-- [ ] Range buttons switch the chart between 1m, 5m, 1H, and 24H
-- [ ] Top Apps groups helpers under their app (e.g. Chrome helpers count toward Google Chrome)
-- [ ] Pressing × on an app records a graceful-quit action for that app (verified with the recording fake) and quits it in the real app
-- [ ] The Quit MoniMac and Activity Monitor actions work
-- [ ] Tests cover AppGrouping roll-up and the CPU tab's feature state from scripted snapshots
+**Decisions made while building:**
+- **Process sampling without a privileged helper.** Your own processes are read with `proc_pid_rusage` (every 4 s). Other users' processes (WindowServer, root daemons) are invisible to that API, so they're read from the setuid `/bin/ps` in the background every 15 s, with rates averaged over that interval.
+- **Attribution.** Helpers roll up under macOS's *responsible* process (private `responsibility_get_pid_responsible_for_pid`, resolved at runtime), falling back to the outermost `.app` in the path.
+- **The × appears only for running regular (Dock) apps.** Quitting e.g. WindowServer would log the user out.
+- **Default CPU mode is System** (per the Settings design). The popover shows whole-CPU percentages until ticket 13 adds the switch.
+- **Copy change:** the Load Average subtitle reads "Runnable threads, averaged" instead of the design's "Runnable threads per core", because load average isn't per core.
+- **Kernel tick counters can report zero change over a short interval.** HostSampler then keeps its baseline and repeats the last value instead of flashing "—".
+- **Self-cost:** about 0.4% CPU for the Release app with the popover closed, plus about 0.1% for the `ps` runs.
+
+- [x] Clicking the CPU item opens the popover on the CPU tab with all sections populated from live data (popover verified via `--show-popover`; the click handler itself is not yet exercised)
+- [ ] Range buttons switch the chart between 1m, 5m, 1H, and 24H (built; not yet clicked in the real app)
+- [x] Top Apps groups helpers under their app (e.g. Chrome helpers count toward Google Chrome)
+- [ ] Pressing × on an app records a graceful-quit action for that app (verified with the recording fake) and quits it in the real app (the real `terminate()` path is not yet clicked)
+- [ ] The Quit MoniMac and Activity Monitor actions work (built; not yet clicked in the real app)
+- [x] Tests cover AppGrouping roll-up and the CPU tab's feature state from scripted snapshots

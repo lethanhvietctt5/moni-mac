@@ -1,0 +1,76 @@
+import Testing
+@testable import MoniMacCore
+
+struct AppGroupingTests {
+    let chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    let renderer = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/131/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)"
+    let safari = "/Applications/Safari.app/Contents/MacOS/Safari"
+    let webContent = "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+    let windowServer = "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer"
+
+    private func process(_ pid: Int32, _ path: String?, cpu: Double, responsible: Int32? = nil, regular: Bool = false) -> ProcessSample {
+        ProcessSample(pid: pid, responsiblePID: responsible, name: path.map { String($0.split(separator: "/").last!) } ?? "proc\(pid)",
+                      path: path, cpu: cpu, isRegularApp: regular)
+    }
+
+    @Test func helpersRollUpUnderTheirResponsibleApp() {
+        let apps = AppGrouping.apps(from: [
+            process(10, safari, cpu: 0.1, regular: true),
+            process(11, webContent, cpu: 0.4, responsible: 10),
+            process(12, webContent, cpu: 0.2, responsible: 10),
+        ])
+
+        #expect(apps.count == 1)
+        #expect(apps[0].name == "Safari")
+        #expect(apps[0].bundlePath == "/Applications/Safari.app")
+        #expect(apps[0].processCount == 3)
+        #expect(abs(apps[0].cpu - 0.7) < 1e-9)
+    }
+
+    @Test func nestedHelperAppsCountTowardTheOutermostAppWithoutResponsibility() {
+        let apps = AppGrouping.apps(from: [
+            process(20, chrome, cpu: 0.2, regular: true),
+            process(21, renderer, cpu: 0.5),
+        ])
+
+        #expect(apps.map(\.name) == ["Google Chrome"])
+        #expect(apps[0].processCount == 2)
+    }
+
+    @Test func processWithoutResponsibilityOrBundleIsItsOwnEntry() {
+        let apps = AppGrouping.apps(from: [process(30, webContent, cpu: 0.3), process(31, windowServer, cpu: 0.2)])
+
+        #expect(apps.map(\.name) == ["com.apple.WebKit.WebContent", "WindowServer"])
+        #expect(apps.map(\.bundlePath) == [nil, nil])
+        #expect(apps[1].id == windowServer)
+    }
+
+    @Test func sortsBusiestFirst() {
+        let apps = AppGrouping.apps(from: [
+            process(1, safari, cpu: 0.1), process(2, chrome, cpu: 0.9), process(3, windowServer, cpu: 0.5),
+        ])
+
+        #expect(apps.map(\.name) == ["Google Chrome", "WindowServer", "Safari"])
+    }
+
+    @Test func onlyARunningRegularAppCanBeQuit() {
+        let apps = AppGrouping.apps(from: [
+            process(20, chrome, cpu: 0.9, regular: true),
+            process(21, renderer, cpu: 0.5, responsible: 20),
+            process(40, windowServer, cpu: 0.8),
+        ])
+
+        let byName = Dictionary(uniqueKeysWithValues: apps.map { ($0.name, $0) })
+        #expect(byName["Google Chrome"]?.quitPID == 20)
+        #expect(byName["WindowServer"]?.canQuit == false)
+    }
+
+    @Test(arguments: [
+        ("/Applications/Xcode.app/Contents/MacOS/Xcode", "/Applications/Xcode.app"),
+        ("/usr/bin/swift-frontend", nil),
+        (nil, nil),
+    ] as [(String?, String?)])
+    func findsTheOutermostAppBundle(path: String?, bundle: String?) {
+        #expect(AppGrouping.outermostAppBundle(in: path) == bundle)
+    }
+}
