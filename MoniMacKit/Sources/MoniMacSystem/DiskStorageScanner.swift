@@ -44,12 +44,14 @@ struct DiskStorageScanner: Sendable {
     /// The scan and how many entries it visited.
     func scan() -> (StorageScan, entries: Int) {
         var budget = maxEntries
+        var capped = false
         var applicationBytes: UInt64 = 0
         var appCount = 0
         for path in applications {
             let size = Self.size(of: path, budget: &budget)
             applicationBytes += size.bytes
             appCount += size.apps
+            capped = capped || size.capped
         }
         var developerBytes: [String: UInt64] = [:]
         var order: [String] = []
@@ -57,30 +59,32 @@ struct DiskStorageScanner: Sendable {
             let size = Self.size(of: location.path, excluding: Set(location.excluding), budget: &budget)
             if developerBytes[location.name] == nil { order.append(location.name) }
             developerBytes[location.name, default: 0] += size.bytes
+            capped = capped || size.capped
         }
         let scan = StorageScan(
             applications: applicationBytes, appCount: appCount,
             developer: order.map { StorageScan.Item(name: $0, bytes: developerBytes[$0]!) },
-            isPartial: budget <= 0
+            isPartial: capped
         )
-        return (scan, maxEntries - max(budget, 0))
+        return (scan, maxEntries - budget)
     }
 
     /// Allocated bytes under `path`, and the `.app` bundles in it or one folder down. A missing
-    /// folder is empty. Stops when `budget` (entries left to visit) runs out.
-    static func size(of path: String, excluding: Set<String> = [], budget: inout Int) -> (bytes: UInt64, apps: Int) {
+    /// folder is empty. Stops when `budget` (entries left to visit) runs out, and says so.
+    static func size(of path: String, excluding: Set<String> = [], budget: inout Int)
+        -> (bytes: UInt64, apps: Int, capped: Bool) {
         // Enumerated paths are canonical (e.g. /private/var/… for /var/…), so compare canonical ones.
         let root = URL(fileURLWithPath: path, isDirectory: true)
         let excluding = Set(excluding.map(canonical))
         let keys: [URLResourceKey] = [.totalFileAllocatedSizeKey, .isDirectoryKey, .isVolumeKey]
-        guard budget > 0, let enumerator = FileManager.default.enumerator(
+        guard let enumerator = FileManager.default.enumerator(
             at: root, includingPropertiesForKeys: keys, options: [], errorHandler: { _, _ in true }
-        ) else { return (0, 0) }
+        ) else { return (0, 0, false) }
         var bytes: UInt64 = 0
         var apps = 0
         for case let url as URL in enumerator {
+            guard budget > 0 else { return (bytes, apps, true) }
             budget -= 1
-            if budget <= 0 { break }
             guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
             if values.isDirectory == true {
                 if values.isVolume == true || excluding.contains(url.path) {
@@ -92,7 +96,7 @@ struct DiskStorageScanner: Sendable {
             }
             bytes += UInt64(values.totalFileAllocatedSize ?? 0)
         }
-        return (bytes, apps)
+        return (bytes, apps, false)
     }
 
     /// The path with symbolic links resolved, as `realpath` gives it (unlike `resolvingSymlinksInPath`,

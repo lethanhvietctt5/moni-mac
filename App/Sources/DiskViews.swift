@@ -31,6 +31,7 @@ private struct DiskPopoverContent: View {
     var body: some View {
         VStack(spacing: 12) {
             hero
+            VolumeUsageBar(usedShare: panel.usedShare, height: 6)
             DiskBars(bars: panel.history, cornerRadius: 1.5, spacing: 2)
                 .frame(height: 56)
                 .padding([.top, .horizontal], 8)
@@ -170,7 +171,7 @@ private struct DiskWindowContent: View {
                     Text(detail.freeCaption).font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Palette.textSecondary)
                 }
-                UsageBar(share: detail.usedShare ?? 0, color: Palette.disk, height: 8)
+                VolumeUsageBar(usedShare: detail.usedShare, height: 8)
             }
             .frame(width: 260, alignment: .leading)
             stat(detail.read, dot: Palette.disk)

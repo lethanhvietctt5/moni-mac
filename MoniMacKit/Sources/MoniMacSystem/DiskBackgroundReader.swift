@@ -80,7 +80,7 @@ final class DiskBackgroundReader: Sendable {
                 let (result, entries) = scanner.scan()
                 let cpu = Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - cpuStart) / 1_000_000_000
                 let wall = Date().timeIntervalSince(wallStart)
-                log.info("""
+                log.notice("""
                     Storage scan: \(entries) entries in \(wall, format: .fixed(precision: 1)) s, \
                     \(cpu, format: .fixed(precision: 2)) s CPU, partial: \(result.isPartial)
                     """)

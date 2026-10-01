@@ -5,7 +5,7 @@ import Foundation
 /// - **Applications:** /Applications and ~/Applications.
 /// - **Developer:** Xcode data and simulators (~/Library/Developer), command line tools and
 ///   simulator runtimes (/Library/Developer), Homebrew, and toolchains and package caches in the
-///   home folder (npm, Cargo, rustup, Gradle, Maven, Go, CocoaPods, OrbStack, Colima).
+///   home folder (npm, Cargo, rustup, Gradle, Maven, Go, CocoaPods, Colima).
 /// - **Documents:** everything else on the Data volume: your files, photos, mail, and app data.
 ///   It's what remains after the other categories, so protected folders (Documents, Desktop,
 ///   Downloads, other apps' containers) are never read and no privacy prompt appears. Docker
@@ -36,6 +36,11 @@ public struct StorageBreakdown: Equatable, Sendable {
 
     /// In `Category.allCases` order.
     public var segments: [Segment]
+
+    /// The used segments the bar draws, left to right; Free fills the rest.
+    public var usedSegments: [Segment] {
+        segments.filter { $0.category != .free && $0.bytes > 0 }
+    }
 }
 
 extension StorageBreakdown {

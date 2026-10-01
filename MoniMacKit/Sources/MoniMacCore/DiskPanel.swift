@@ -33,14 +33,15 @@ extension DiskPanel {
         snapshot: Snapshot?, history: MetricsHistory, range: TimeRange, calendar: Calendar = .current
     ) -> DiskPanel {
         let disk = snapshot?.disk.value
-        let today = DiskToday(disk: disk, history: history, now: snapshot?.timestamp, calendar: calendar)
+        let today = DiskToday(disk: disk, history: history, now: snapshot?.timestamp, calendar: calendar,
+                              topAppCount: topAppCount)
         let chart = DiskChart(history: history, range: range, endingAt: snapshot?.timestamp, count: historyBarCount)
         let storage = disk.map(StorageBreakdown.make) ?? .unavailable(.warmingUp)
 
         return DiskPanel(
-            volumeLine: disk.map { DiskDetail.subtitle(for: $0.volume) } ?? "Disk",
+            volumeLine: disk.map { DiskDetail.subtitle(for: $0.volume) } ?? Format.placeholder,
             free: disk.map { DiskFormat.bytes($0.volume.free) } ?? Format.placeholder,
-            freeCaption: disk.map { DiskDetail.freeOf($0.volume) } ?? "free",
+            freeCaption: disk.map { DiskDetail.freeCaption(for: $0.volume) } ?? "free",
             usedShare: disk.map { DiskDetail.usedShare($0.volume) },
             range: range,
             history: chart.bars,
@@ -50,7 +51,7 @@ extension DiskPanel {
             writtenToday: today.written,
             storage: storage.value,
             storageStatus: DiskToday.storageStatus(storage),
-            writesToday: today.writers(history: history, count: topAppCount)
+            writesToday: today.writers
         )
     }
 }

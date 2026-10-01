@@ -65,14 +65,15 @@ extension DiskDetail {
     ) -> DiskDetail {
         let disk = snapshot?.disk.value
         let now = snapshot?.timestamp
-        let today = DiskToday(disk: disk, history: history, now: now, calendar: calendar)
+        let today = DiskToday(disk: disk, history: history, now: now, calendar: calendar, topAppCount: topAppCount)
         let chart = DiskChart(history: history, range: range, endingAt: now, count: historyBarCount)
         let storage = disk.map(StorageBreakdown.make)
 
         return DiskDetail(
             subtitle: disk.map { subtitle(for: $0.volume) } ?? Format.placeholder,
             free: disk.map { DiskFormat.parts(Double($0.volume.free)).number } ?? Format.placeholder,
-            freeCaption: disk.map { "\(DiskFormat.parts(Double($0.volume.free)).unit) \(freeOf($0.volume))" } ?? "free",
+            freeCaption: disk.map { "\(DiskFormat.parts(Double($0.volume.free)).unit) \(freeCaption(for: $0.volume))" }
+                ?? "free",
             usedShare: disk.map(\.volume).map(usedShare),
             read: today.read,
             write: today.write,
@@ -83,7 +84,7 @@ extension DiskDetail {
             history: chart.bars,
             yAxis: chart.yAxis,
             xAxis: CPUDetail.xAxis(range: range, endingAt: now, timeZone: calendar.timeZone),
-            writesToday: today.writers(history: history, count: topAppCount)
+            writesToday: today.writers
         )
     }
 
@@ -94,7 +95,7 @@ extension DiskDetail {
     }
 
     /// e.g. "free of 994 GB".
-    static func freeOf(_ volume: DiskVolume) -> String {
+    static func freeCaption(for volume: DiskVolume) -> String {
         "free of \(DiskFormat.bytes(volume.capacity))"
     }
 
@@ -109,10 +110,10 @@ struct DiskToday {
     let read: DiskDetail.Stat
     let write: DiskDetail.Stat
     let written: DiskDetail.Stat
-    private let midnight: Date?
-    private let now: Date?
+    /// The apps that wrote the most since midnight, including ones that have since quit.
+    let writers: [DiskDetail.AppRow]
 
-    init(disk: DiskReading?, history: MetricsHistory, now: Date?, calendar: Calendar) {
+    init(disk: DiskReading?, history: MetricsHistory, now: Date?, calendar: Calendar, topAppCount: Int) {
         let midnight = now.map(calendar.startOfDay)
         let io = disk?.io.value
         /// A rate with today's peak, e.g. "48 MB/s" and "Peak 1.9 GB/s today".
@@ -131,15 +132,16 @@ struct DiskToday {
         let health = Self.health(disk?.health ?? .unavailable(.warmingUp))
         written = DiskDetail.Stat(label: "Written Today", value: total.map(DiskFormat.bytes) ?? Format.placeholder,
                                   detail: health, help: health)
-        self.now = now
-        self.midnight = midnight
+        if let now, let midnight,
+           let sums = try? history.sums(prefix: SeriesKey.diskWrittenByAppPrefix, from: midnight, to: now) {
+            writers = Self.topWriters(sums, count: topAppCount)
+        } else {
+            writers = []
+        }
     }
 
-    /// The apps that wrote the most since midnight, including ones that have since quit.
-    func writers(history: MetricsHistory, count: Int) -> [DiskDetail.AppRow] {
-        guard let now, let midnight,
-              let sums = try? history.sums(prefix: SeriesKey.diskWrittenByAppPrefix, from: midnight, to: now)
-        else { return [] }
+    /// Per-app sums keyed "disk.written.app:<app id>" as rows, most first.
+    private static func topWriters(_ sums: [SeriesKey: Double], count: Int) -> [DiskDetail.AppRow] {
         let prefixLength = SeriesKey.diskWrittenByAppPrefix.count
         let apps: [(id: String, bytes: Double)] = sums.compactMap { key, bytes in
             bytes > 0 ? (String(key.rawValue.dropFirst(prefixLength)), bytes) : nil

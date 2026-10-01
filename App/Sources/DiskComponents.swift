@@ -65,7 +65,7 @@ struct StorageBar: View {
         GeometryReader { geometry in
             HStack(spacing: 2) {
                 if let storage {
-                    let used = storage.segments.filter { $0.category != .free && $0.bytes > 0 }
+                    let used = storage.usedSegments
                     // Leave room for the gaps so the segments keep their proportions.
                     let width = max(geometry.size.width - 2 * CGFloat(used.count), 0)
                     ForEach(used, id: \.category) { segment in
@@ -77,6 +77,20 @@ struct StorageBar: View {
         }
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+}
+
+/// How full the volume is; a faded empty track while that's unknown, never a 0% bar.
+struct VolumeUsageBar: View {
+    let usedShare: Double?
+    let height: CGFloat
+
+    var body: some View {
+        if let usedShare {
+            UsageBar(share: usedShare, color: Palette.disk, height: height)
+        } else {
+            Capsule().fill(Palette.track).frame(height: height).opacity(0.5)
+        }
     }
 }
 
