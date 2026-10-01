@@ -132,17 +132,26 @@ private struct MemoryPopoverContent: View {
 
 // MARK: Window
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum MemorySection: String, WindowSection {
+    case summary, breakdown, history, topApps
+
+    var width: SectionWidth {
+        self == .history || self == .topApps ? .half : .full
+    }
+}
+
 private struct MemoryWindowContent: View {
     let detail: MemoryDetail
     @Binding var range: TimeRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            summary
-            breakdown
-            HStack(alignment: .top, spacing: 32) {
-                history
-                topApps
+        ReorderableSections { (section: MemorySection) in
+            switch section {
+            case .summary: summary
+            case .breakdown: breakdown
+            case .history: history
+            case .topApps: topApps
             }
         }
     }

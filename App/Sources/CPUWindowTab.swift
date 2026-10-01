@@ -12,17 +12,26 @@ struct CPUWindowTab: View {
     }
 }
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum CPUSection: String, WindowSection {
+    case summary, history, perCore, topApps
+
+    var width: SectionWidth {
+        self == .perCore || self == .topApps ? .half : .full
+    }
+}
+
 private struct CPUWindowContent: View {
     let detail: CPUDetail
     @Binding var range: TimeRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            summary
-            history
-            HStack(alignment: .top, spacing: 32) {
-                perCore
-                topApps
+        ReorderableSections { (section: CPUSection) in
+            switch section {
+            case .summary: summary
+            case .history: history
+            case .perCore: perCore
+            case .topApps: topApps
             }
         }
     }

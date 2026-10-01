@@ -15,21 +15,34 @@ struct TemperatureWindowTab: View {
     }
 }
 
+/// The tab's sections in default order; the user can rearrange them.
+private enum TemperatureSection: String, WindowSection {
+    case readouts, historyAndFans, sensors
+
+    var width: SectionWidth {
+        .full
+    }
+}
+
 private struct TemperatureWindowContent: View {
     let detail: TemperatureDetail
     @Binding var range: TimeRange
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            readouts
-            HStack(alignment: .top, spacing: 20) {
-                history
-                if let fans = detail.fans {
-                    FansCard(fans: fans)
+        ReorderableSections { (section: TemperatureSection) in
+            switch section {
+            case .readouts: readouts
+            // Fans may be absent, so the chart and the fans card move together.
+            case .historyAndFans:
+                HStack(alignment: .top, spacing: 20) {
+                    history
+                    if let fans = detail.fans {
+                        FansCard(fans: fans)
+                    }
                 }
+                .frame(height: 415)
+            case .sensors: sensors
             }
-            .frame(height: 415)
-            sensors
         }
     }
 
