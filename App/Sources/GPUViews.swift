@@ -161,6 +161,9 @@ private struct GPUWindowContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            if let unavailable = detail.unavailable {
+                GPUNote(text: unavailable)
+            }
             HStack(spacing: 16) {
                 GPUTile(tile: detail.utilization, symbol: "cpu")
                 GPUTile(tile: detail.memory, symbol: "memorychip")
