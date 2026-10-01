@@ -135,7 +135,7 @@ enum GPUFormat {
     }
 
     /// A per-app share with one decimal, e.g. `"12.4%"`.
-    private static func appShare(_ share: Double) -> String {
+    static func appShare(_ share: Double) -> String {
         String(format: "%.1f%%", min(max(share, 0), 1) * 100)
     }
 }

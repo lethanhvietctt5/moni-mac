@@ -122,9 +122,10 @@ struct CPUPanelTests {
         ])])
         monitor.tick()
 
-        monitor.quitApp(id: monitor.cpuPanel(range: .oneMinute).topApps[0].id)
+        monitor.resolveQuit(appID: monitor.cpuPanel(range: .oneMinute).topApps[0].id,
+                            choice: .quit(reopenWindows: false))
 
-        #expect(actions.recorded == [.quitApp(pid: 2)])
+        #expect(actions.recorded == [.quitApp(pid: 2, reopenWindows: false)])
     }
 
     @Test func quitDoesNothingForProcessesThatAreNotApps() throws {
@@ -133,7 +134,8 @@ struct CPUPanelTests {
         ])])
         monitor.tick()
 
-        monitor.quitApp(id: windowServer)
+        monitor.resolveQuit(appID: windowServer, choice: .quit(reopenWindows: false))
+        monitor.resolveQuit(appID: windowServer, choice: .forceQuit)
 
         #expect(actions.recorded.isEmpty)
     }

@@ -4,10 +4,12 @@
 
 **Blocked by:** 11 — Overview: Tiles and popover Overview
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through. The List view (Chrome expanded), the Tiles view, and the quit sheet were seen in the running app through launch flags (`--overview-list`, `--expand <app>`, `--show-quit-sheet <app>`). Clicks automation can't make are not yet exercised: the Tiles/List toggle, column headers, the sort menu, search typing, the group toggle, disclosure, Show All links, the table's hover × and context menu, the popover ×, and the sheet's buttons. Their logic is covered by Core tests (`OverviewListTests`, `QuitSheetTests`).
 
-- [ ] Sorting, search, and grouping work together, and the footer counts stay correct
-- [ ] Show All from a Top Apps section opens the List view sorted by that metric
-- [ ] Quit records a graceful quit; Force Quit records a force quit; Cancel records nothing (verified with the recording fake)
-- [ ] Quitting a grouped app targets the responsible app, not individual helpers
-- [ ] The popover × now opens the quit sheet instead of quitting directly
+**Reopen windows:** the checkbox sends the quit Apple event with `kAEQuitPreserveState` (what ⌥⌘Q uses), but macOS gates that event behind Automation consent like any scripting event, and MoniMac doesn't ask for it. So the option takes effect only where the user already allowed MoniMac to control the app; otherwise the app quits normally. The checkbox is off by default.
+
+- [x] Sorting, search, and grouping work together, and the footer counts stay correct
+- [ ] Show All from a Top Apps section opens the List view sorted by that metric (built; `showAll(sortedBy:)` tested; the click isn't exercised)
+- [x] Quit records a graceful quit; Force Quit records a force quit; Cancel records nothing (verified with the recording fake)
+- [x] Quitting a grouped app targets the responsible app, not individual helpers
+- [ ] The popover × now opens the quit sheet instead of quitting directly (built; the standalone sheet was seen via `--show-quit-sheet`, which uses the same presenter; the × click isn't exercised)

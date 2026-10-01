@@ -13,9 +13,11 @@ final class StatusBarController: NSObject {
     private var menus: [Metric: NSMenu] = [:]
     private let popover = NSPopover()
     private let openWindow: () -> Void
+    private let quitSheet: QuitSheetPresenter
 
-    init(monitor: Monitor, openWindow: @escaping () -> Void) {
+    init(monitor: Monitor, quitSheet: QuitSheetPresenter, openWindow: @escaping () -> Void) {
         self.monitor = monitor
+        self.quitSheet = quitSheet
         self.openWindow = openWindow
         super.init()
         popover.behavior = .transient
@@ -39,7 +41,11 @@ final class StatusBarController: NSObject {
                 self?.openWindow()
             },
             quit: { NSApp.terminate(nil) }
-        ))
+        ).environment(\.requestQuit, RequestQuitAction { [weak self] id in
+            // The popover would close anyway once the panel takes focus; the panel stands alone.
+            self?.popover.performClose(nil)
+            self?.quitSheet.present(appID: id)
+        }))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

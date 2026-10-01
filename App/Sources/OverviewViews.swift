@@ -23,21 +23,23 @@ struct OverviewPopoverTab: View {
     }
 }
 
-/// The toolbar's Tiles / List switch. Only Tiles exists until ticket 12 builds the List view.
+/// The toolbar's Tiles / List switch.
 struct OverviewLayoutToggle: View {
+    @Binding var layout: OverviewLayout
+
     var body: some View {
         HStack(spacing: 10) {
-            button("square.grid.2x2", help: "Tiles", selected: true)
-            button("list.bullet", help: "List (coming soon)", selected: false)
-                .disabled(true)
+            button("square.grid.2x2", help: "Tiles", for: .tiles)
+            button("list.bullet", help: "List", for: .list)
         }
     }
 
-    private func button(_ symbol: String, help: String, selected: Bool) -> some View {
-        Button {} label: {
+    private func button(_ symbol: String, help: String, for option: OverviewLayout) -> some View {
+        Button { layout = option } label: {
             Image(systemName: symbol).font(.system(size: 14))
                 .frame(width: 30, height: 28)
-                .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Palette.track : .clear))
+                .background(RoundedRectangle(cornerRadius: 6).fill(layout == option ? Palette.track : .clear))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(Palette.textSecondary)
@@ -105,9 +107,7 @@ private struct OverviewWindowContent: View {
             HStack {
                 Text("Busiest Right Now").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                // Switches to the List view once it exists (ticket 12).
-                Text(tiles.showAll).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
-                    .help("Coming soon")
+                ShowAllButton(title: tiles.showAll, column: .cpu)
             }
             HStack(alignment: .top, spacing: 24) {
                 ForEach(Array(tiles.busiestColumns.enumerated()), id: \.offset) { _, apps in column(apps) }
