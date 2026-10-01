@@ -139,5 +139,16 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **Thermal:**
     - SMC read-only calls, with sensor key tables per Apple silicon generation. Unknown keys are counted, never given guessed names.
     - IOHID is a fallback only
+- **App kinds** (`AppGrouping`):
+  - **app:** at least one process in the group is a Dock (regular) app.
+  - **system:** every process belongs to another user, or the bundle or executable is under `/System`, `/usr` (not `/usr/local`), `/bin`, `/sbin`, or `/Library/Apple`.
+  - **agent:** everything else.
+  - The Processes tile counts only groups with an `.app` bundle; bare daemons count only toward the process and thread totals.
+- **Projects:**
+  - **Where it looks:** project folders are looked up only for processes that listen on a port or watch files. Folders under Documents, Desktop, Downloads, iCloud Drive, or `/Volumes` are read only after the Projects tab has appeared (`projects.protectedFoldersAllowed`), so no privacy prompt fires at launch.
+  - **Process cache:** cached details are keyed by pid, start time, and name, because `exec` (e.g. `env` → `python3`) keeps the pid and start time. Framework Python runs as `Python.app` inside `Python.framework`, so the app-bundle exclusion skips `.framework/` paths.
+  - **Idle:** a new inbound connection on the server's ports since the previous read (every 12 s), or CPU at or above 3% of a core, counts as activity; watchers are judged by CPU alone. Last-active times and Ignore persist in Preferences (`projects.*`).
+  - **Stop:** it sends only SIGTERM, and only after re-checking that the pid still belongs to the user and has the same start time.
+- **Side effects while verifying:** check actions (quit, stop, open, reveal, volume, login items) through `RecordingActions` in tests. In the running app, never quit, stop, signal, or open anything you didn't create yourself, and don't change system state (login items, output device, volume) without restoring it.
 - **Chart times** use 24-hour `HH:mm` everywhere (`Format.time`).
 - **Name:** the product is **MoniMac**; the repo is `moni-mac`. "Vitals" was its old name.
