@@ -4,10 +4,14 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** ready-for-agent
+**Status:** in review
 
 - [ ] A Network menu bar item can be shown
-- [ ] Session totals reset on app launch and show their start time
-- [ ] The 7-day and 30-day charts show per-day download and upload from history
+- [x] Session totals reset on app launch and show their start time
+- [x] The 7-day and 30-day charts show per-day download and upload from history
 - [ ] Denying Location permission leaves the tab working, without the network name
-- [ ] Top Apps by Network shows live rates per app
+- [x] Top Apps by Network shows live rates per app
+
+**Verification notes:**
+- The Network menu bar item is covered by Core tests (text, units, sparkline). macOS doesn't expose status items to the window-ID screenshot script, so the item itself wasn't seen on screen.
+- On this Mac Location access was already granted, so the SSID shows. The denied path (no name in the interface line) is covered by Core tests but wasn't seen in the running app.
