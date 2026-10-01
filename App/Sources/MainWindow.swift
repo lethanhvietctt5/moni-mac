@@ -162,15 +162,16 @@ struct MainWindowView: View {
             }
             Spacer()
             if state.tab == .overview { OverviewLayoutToggle() }
-            // Wired up by the share card (ticket 19).
-            Button {} label: {
+            Button {
+                ShareCardWindowController.shared.show(monitor: monitor)
+            } label: {
                 Image(systemName: "square.and.arrow.up").font(.system(size: 14))
                     .frame(width: 30, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(Palette.textSecondary)
-            .disabled(true)
-            .help("Share (coming soon)")
+            .help("Share your week")
         }
         .padding(.horizontal, 24)
         .frame(height: 56)

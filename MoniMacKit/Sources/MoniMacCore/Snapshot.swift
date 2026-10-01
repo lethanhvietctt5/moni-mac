@@ -78,12 +78,17 @@ public struct SystemInfo: Equatable, Sendable {
     public var performanceCores: Int
     public var efficiencyCores: Int
     public var bootTime: Date?
+    /// The marketing name, e.g. "MacBook Pro", or nil when the Mac doesn't report one.
+    public var modelName: String?
 
-    public init(chipName: String, performanceCores: Int, efficiencyCores: Int, bootTime: Date?) {
+    public init(
+        chipName: String, performanceCores: Int, efficiencyCores: Int, bootTime: Date?, modelName: String? = nil
+    ) {
         self.chipName = chipName
         self.performanceCores = performanceCores
         self.efficiencyCores = efficiencyCores
         self.bootTime = bootTime
+        self.modelName = modelName
     }
 
     public var logicalCores: Int { performanceCores + efficiencyCores }
