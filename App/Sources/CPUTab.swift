@@ -3,10 +3,19 @@ import SwiftUI
 
 /// The popover's CPU tab. Renders `CPUPanel`; holds no logic.
 struct CPUTab: View {
+    let monitor: Monitor
+    @Binding var range: TimeRange
+
+    var body: some View {
+        // Built once per render: building it queries history.
+        CPUTabContent(monitor: monitor, panel: monitor.cpuPanel(range: range), range: $range)
+    }
+}
+
+private struct CPUTabContent: View {
+    let monitor: Monitor
     let panel: CPUPanel
     @Binding var range: TimeRange
-    let quitApp: (AppUsage.ID) -> Void
-    let openActivityMonitor: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -121,14 +130,14 @@ struct CPUTab: View {
             HStack {
                 Text("Top Apps by CPU").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
-                Button("Activity Monitor", action: openActivityMonitor)
+                Button("Activity Monitor", action: monitor.openActivityMonitor)
                     .buttonStyle(.plain)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Palette.accent)
             }
             .padding(.bottom, 6)
             ForEach(panel.topApps) { app in
-                AppRowView(app: app, quit: { quitApp(app.id) })
+                AppRowView(app: app, quit: { monitor.quitApp(id: app.id) })
             }
         }
     }

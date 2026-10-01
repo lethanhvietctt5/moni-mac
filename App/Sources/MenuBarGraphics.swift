@@ -67,12 +67,20 @@ extension Metric {
     var title: String {
         switch self {
         case .cpu: "CPU"
+        case .memory: "Memory"
+        case .network: "Network"
+        case .gpu: "GPU"
+        case .temperature: "Temperature"
         }
     }
 
     var symbolName: String {
         switch self {
         case .cpu: "cpu"
+        case .memory: "memorychip"
+        case .network: "arrow.up.arrow.down"
+        case .gpu: "rectangle.3.group"
+        case .temperature: "thermometer.medium"
         }
     }
 }

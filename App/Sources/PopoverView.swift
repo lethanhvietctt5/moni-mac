@@ -10,8 +10,14 @@ enum PopoverTab: String, CaseIterable {
     case disk = "Disk"
     case battery = "Battery"
 
-    /// Tabs with content so far; the rest are placeholders until their tickets land.
-    var isAvailable: Bool { self == .cpu }
+    /// Overview is a placeholder until ticket 11.
+    var isAvailable: Bool { self != .overview }
+
+    /// Tabs for hardware this Mac lacks are hidden.
+    @MainActor
+    func isShown(on monitor: Monitor) -> Bool {
+        self == .battery ? monitor.hasBattery : true
+    }
 }
 
 /// The popover shown when a menu bar item is clicked.
@@ -20,23 +26,30 @@ struct PopoverView: View {
     let openWindow: () -> Void
     let quit: () -> Void
     @State private var tab: PopoverTab = .cpu
-    @State private var range: TimeRange = .fiveMinutes
+    /// Each tab's chart range, so it survives switching tabs while the popover is open.
+    @State private var ranges: [PopoverTab: TimeRange] = [:]
+
+    private func range(for tab: PopoverTab) -> Binding<TimeRange> {
+        Binding { ranges[tab] ?? .fiveMinutes } set: { ranges[tab] = $0 }
+    }
 
     var body: some View {
-        let panel = monitor.cpuPanel(range: range)
         VStack(spacing: 0) {
             header
             VStack(spacing: 12) {
-                SegmentedPicker(options: PopoverTab.allCases, selection: $tab, label: \.rawValue,
-                                isEnabled: \.isAvailable)
+                SegmentedPicker(options: PopoverTab.allCases.filter { $0.isShown(on: monitor) }, selection: $tab,
+                                label: \.rawValue, isEnabled: \.isAvailable)
+                let range = range(for: tab)
                 switch tab {
-                case .cpu:
-                    CPUTab(panel: panel, range: $range, quitApp: monitor.quitApp(id:),
-                           openActivityMonitor: monitor.openActivityMonitor)
-                default:
-                    placeholder
+                case .overview: ComingSoon(title: "Overview")
+                case .cpu: CPUTab(monitor: monitor, range: range)
+                case .memory: MemoryPopoverTab(monitor: monitor, range: range)
+                case .gpu: GPUPopoverTab(monitor: monitor, range: range)
+                case .network: NetworkPopoverTab(monitor: monitor, range: range)
+                case .disk: DiskPopoverTab(monitor: monitor, range: range)
+                case .battery: BatteryPopoverTab(monitor: monitor, range: range)
                 }
-                footer(status: panel.status)
+                footer(status: monitor.statusLine)
             }
             .padding(14)
         }
@@ -68,13 +81,6 @@ struct PopoverView: View {
         .foregroundStyle(Palette.textSecondary)
         .disabled(action == nil)
         .help(help)
-    }
-
-    private var placeholder: some View {
-        Text("\(tab.rawValue) is coming soon.")
-            .font(.system(size: 12))
-            .foregroundStyle(Palette.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: 200)
     }
 
     private func footer(status: String) -> some View {

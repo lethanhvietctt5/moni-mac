@@ -103,3 +103,15 @@ struct StackedBars: View {
         }
     }
 }
+
+/// Placeholder for tabs whose ticket hasn't landed yet.
+struct ComingSoon: View {
+    let title: String
+
+    var body: some View {
+        Text("\(title) is coming soon.")
+            .font(.system(size: 12))
+            .foregroundStyle(Palette.textSecondary)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+}

@@ -3,6 +3,16 @@ import SwiftUI
 
 /// The main window's CPU tab. Renders `CPUDetail`; holds no logic.
 struct CPUWindowTab: View {
+    let monitor: Monitor
+    @Binding var range: TimeRange
+
+    var body: some View {
+        // Built once per render: building it queries history.
+        CPUWindowContent(detail: monitor.cpuDetail(range: range), range: $range)
+    }
+}
+
+private struct CPUWindowContent: View {
     let detail: CPUDetail
     @Binding var range: TimeRange
 

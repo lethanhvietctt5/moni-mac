@@ -36,6 +36,9 @@ targets:
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         LSUIElement: true
+        # Showing the Wi-Fi network name requires Location access (ticket 07).
+        NSLocationUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
+        NSLocationWhenInUseUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMac

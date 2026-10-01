@@ -25,7 +25,7 @@ final class StatusBarController: NSObject {
 
     /// Opens the popover under the first menu bar item.
     func showPopover() {
-        guard let button = items[.cpu]?.button else { return }
+        guard let metric = monitor.menuBarItems.first?.metric, let button = items[metric]?.button else { return }
         show(from: button)
     }
 
@@ -55,6 +55,13 @@ final class StatusBarController: NSObject {
     }
 
     private func render(_ menuBarItems: [MenuBarItem]) {
+        let shown = Set(menuBarItems.map(\.metric))
+        for (metric, statusItem) in items where !shown.contains(metric) {
+            NSStatusBar.system.removeStatusItem(statusItem)
+            items[metric] = nil
+            sizedStyles[metric] = nil
+            menus[metric] = nil
+        }
         for item in menuBarItems {
             let statusItem = items[item.metric] ?? makeStatusItem(for: item.metric)
             items[item.metric] = statusItem
@@ -67,7 +74,7 @@ final class StatusBarController: NSObject {
                 sizedStyles[item.metric] = item.style
             }
             apply(item, text: item.text, to: button)
-            updateStyleChecks(in: menus[item.metric], selected: item.style)
+            refreshMenuStates(in: menus[item.metric], style: item.style)
         }
     }
 
@@ -126,15 +133,37 @@ final class StatusBarController: NSObject {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let itemsMenu = NSMenu()
+        for other in Metric.allCases {
+            let item = NSMenuItem(title: other.title, action: #selector(toggleItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = MetricChoice(metric: other)
+            itemsMenu.addItem(item)
+        }
+        let itemsEntry = NSMenuItem(title: "Menu Bar Items", action: nil, keyEquivalent: "")
+        itemsEntry.submenu = itemsMenu
+        menu.addItem(itemsEntry)
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Quit MoniMac", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return menu
     }
 
-    private func updateStyleChecks(in menu: NSMenu?, selected: MenuBarStyle) {
+    /// Checks the item's current style and every metric currently shown in the menu bar.
+    private func refreshMenuStates(in menu: NSMenu?, style: MenuBarStyle) {
         for item in menu?.items ?? [] {
-            guard let choice = item.representedObject as? StyleChoice else { continue }
-            item.state = choice.style == selected ? .on : .off
+            if let choice = item.representedObject as? StyleChoice {
+                item.state = choice.style == style ? .on : .off
+            }
+            for subitem in item.submenu?.items ?? [] {
+                guard let choice = subitem.representedObject as? MetricChoice else { continue }
+                subitem.state = monitor.isMenuBarItemEnabled(choice.metric) ? .on : .off
+            }
         }
+    }
+
+    @objc private func toggleItem(_ sender: NSMenuItem) {
+        guard let choice = sender.representedObject as? MetricChoice else { return }
+        monitor.setMenuBarItemEnabled(!monitor.isMenuBarItemEnabled(choice.metric), for: choice.metric)
     }
 
     @objc private func selectStyle(_ sender: NSMenuItem) {
@@ -146,6 +175,14 @@ final class StatusBarController: NSObject {
 extension StatusBarController: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         popover.contentViewController = nil
+    }
+}
+
+private final class MetricChoice: NSObject {
+    let metric: Metric
+
+    init(metric: Metric) {
+        self.metric = metric
     }
 }
 

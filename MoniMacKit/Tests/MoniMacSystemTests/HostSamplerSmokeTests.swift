@@ -53,19 +53,23 @@ struct HostSamplerSmokeTests {
         let yes = try #require(processes.first { $0.pid == busy.processIdentifier })
         #expect((0.8...1.1).contains(yes.cpu), "yes used \(yes.cpu) cores")
         #expect(yes.path == "/usr/bin/yes")
+        #expect((yes.resources.memory ?? 0) > 0)
+        #expect(yes.resources.diskReadPerSecond != nil)
+        #expect((yes.resources.power ?? 0) > 0, "a busy process draws power")
         #expect(processes.contains { $0.pid == getpid() })
     }
 
     @Test func parsesPSOutput() {
         let rows = OtherUsersProcessReader.parse("""
-              600    88 1266:23.49 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
-                1     0   12:01.50 /sbin/launchd
-              999   501    0:00.02 /Applications/Some App.app/Contents/MacOS/Some App
+              600    88 412352 1266:23.49 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+                1     0  23904   12:01.50 /sbin/launchd
+              999   501   1024    0:00.02 /Applications/Some App.app/Contents/MacOS/Some App
             garbage line
             """)
 
         #expect(rows.map(\.pid) == [600, 1, 999])
         #expect(rows[0].cpuSeconds == 1266 * 60 + 23.49)
+        #expect(rows[0].residentBytes == 412_352 * 1024)
         #expect(rows[2].command == "/Applications/Some App.app/Contents/MacOS/Some App")
     }
 

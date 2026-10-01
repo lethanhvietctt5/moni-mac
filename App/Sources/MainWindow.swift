@@ -46,6 +46,12 @@ enum WindowTab: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Tabs for hardware this Mac lacks are hidden.
+    @MainActor
+    func isShown(on monitor: Monitor) -> Bool {
+        self == .battery ? monitor.hasBattery : true
+    }
+
     /// Sidebar groups; Settings sits alone at the bottom.
     static let groups: [(title: String, tabs: [WindowTab])] = [
         ("Monitor", [.overview, .cpu, .memory, .gpu, .network, .disk]),
@@ -58,6 +64,12 @@ enum WindowTab: String, CaseIterable, Identifiable {
 @Observable
 final class WindowState {
     var tab: WindowTab = .cpu
+    /// Each tab's chart range, so it survives switching tabs.
+    var ranges: [WindowTab: TimeRange] = [:]
+
+    func range(for tab: WindowTab) -> Binding<TimeRange> {
+        Binding { self.ranges[tab] ?? .twentyFourHours } set: { self.ranges[tab] = $0 }
+    }
 }
 
 /// Owns the main window. The window (and its SwiftUI views) exist only while it's open.
@@ -106,11 +118,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 struct MainWindowView: View {
     let monitor: Monitor
     @Bindable var state: WindowState
-    @State private var range: TimeRange = .twentyFourHours
 
     var body: some View {
         HStack(spacing: 0) {
-            Sidebar(selection: $state.tab)
+            Sidebar(selection: $state.tab, isShown: { $0.isShown(on: monitor) })
                 .frame(width: 232)
             VStack(spacing: 0) {
                 toolbar
@@ -126,8 +137,14 @@ struct MainWindowView: View {
 
     private var subtitle: String? {
         switch state.tab {
-        case .cpu: monitor.cpuDetail(range: range).subtitle
-        default: nil
+        case .cpu: monitor.cpuSubtitle
+        case .memory: monitor.memorySubtitle
+        case .gpu: monitor.gpuSubtitle
+        case .network: monitor.networkSubtitle
+        case .disk: monitor.diskSubtitle
+        case .battery: monitor.batterySubtitle
+        case .temperature: monitor.temperatureSubtitle
+        case .overview, .bluetooth, .sound, .projects, .settings: nil
         }
     }
 
@@ -158,20 +175,23 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var content: some View {
+        let range = state.range(for: state.tab)
         switch state.tab {
-        case .cpu:
-            CPUWindowTab(detail: monitor.cpuDetail(range: range), range: $range)
-        default:
-            Text("\(state.tab.title) is coming soon.")
-                .font(.system(size: 13))
-                .foregroundStyle(Palette.textSecondary)
-                .frame(maxWidth: .infinity, minHeight: 400)
+        case .cpu: CPUWindowTab(monitor: monitor, range: range)
+        case .memory: MemoryWindowTab(monitor: monitor, range: range)
+        case .gpu: GPUWindowTab(monitor: monitor, range: range)
+        case .network: NetworkWindowTab(monitor: monitor, range: range)
+        case .disk: DiskWindowTab(monitor: monitor, range: range)
+        case .battery: BatteryWindowTab(monitor: monitor, range: range)
+        case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
+        case .overview, .bluetooth, .sound, .projects, .settings: ComingSoon(title: state.tab.title)
         }
     }
 }
 
 private struct Sidebar: View {
     @Binding var selection: WindowTab
+    let isShown: (WindowTab) -> Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -184,7 +204,7 @@ private struct Sidebar: View {
                     .padding(.horizontal, 10)
                     .padding(.top, 10)
                     .padding(.bottom, 4)
-                ForEach(group.tabs) { item($0) }
+                ForEach(group.tabs.filter(isShown)) { item($0) }
             }
             Spacer()
             item(.settings)

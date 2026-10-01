@@ -19,15 +19,20 @@ public final class Monitor {
     }
     public private(set) var menuBarItems: [MenuBarItem] = []
 
+    // Internal, not private: each metric's feature state lives in its own file as a Monitor extension.
     @ObservationIgnored private let sampler: any SystemSampler
-    @ObservationIgnored private let history: MetricsHistory
-    @ObservationIgnored private let preferences: Preferences
-    @ObservationIgnored private let actions: any SystemActions
+    @ObservationIgnored let history: MetricsHistory
+    @ObservationIgnored let preferences: Preferences
+    @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
+    /// When this Monitor started, e.g. for "this session" totals.
+    public let startedAt: Date
 
     public init(
-        sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences, actions: any SystemActions
+        sampler: any SystemSampler, history: MetricsHistory, preferences: Preferences, actions: any SystemActions,
+        startedAt: Date = Date()
     ) {
+        self.startedAt = startedAt
         self.sampler = sampler
         self.history = history
         self.preferences = preferences
@@ -68,10 +73,27 @@ public final class Monitor {
         CPUDetail.make(snapshot: latest, apps: apps, history: history, range: range, mode: preferences.cpuMode)
     }
 
+    /// The popover footer, e.g. "Live · uptime 3d 4h".
+    public var statusLine: String {
+        guard let latest, let boot = latest.system.bootTime else { return "Live" }
+        return "Live · uptime \(Format.uptime(latest.timestamp.timeIntervalSince(boot)))"
+    }
+
     // MARK: Intents
 
     public func setMenuBarStyle(_ style: MenuBarStyle, for metric: Metric) {
         preferences.setMenuBarStyle(style, for: metric)
+        rebuildMenuBarItems()
+    }
+
+    public func isMenuBarItemEnabled(_ metric: Metric) -> Bool {
+        preferences.isMenuBarItemEnabled(metric)
+    }
+
+    /// Shows or hides a metric's menu bar item. The last item can't be hidden: it's the way into the app.
+    public func setMenuBarItemEnabled(_ enabled: Bool, for metric: Metric) {
+        if !enabled, menuBarItems.map(\.metric) == [metric] { return }
+        preferences.setMenuBarItemEnabled(enabled, for: metric)
         rebuildMenuBarItems()
     }
 
@@ -88,32 +110,19 @@ public final class Monitor {
     // MARK: Menu bar
 
     private func rebuildMenuBarItems() {
-        menuBarItems = Metric.allCases.map { metric in
+        var shown = Metric.allCases.filter(preferences.isMenuBarItemEnabled)
+        // Never leave the app without a menu bar item, even if settings were edited by hand.
+        if shown.isEmpty { shown = [.cpu] }
+        menuBarItems = shown.map { metric in
             let style = preferences.menuBarStyle(for: metric)
+            let source = metric.menuBar
             return MenuBarItem(
                 metric: metric,
                 style: style,
-                text: text(for: metric),
-                bars: style == .value ? [] : bars(for: metric)
+                text: source.text(latest, preferences: preferences),
+                bars: style == .value ? [] : source.bars(history: history, endingAt: latest?.timestamp),
+                widestText: source.widestText(preferences: preferences)
             )
         }
-    }
-
-    private func text(for metric: Metric) -> String {
-        switch metric {
-        case .cpu:
-            guard let latest, let cpu = latest.cpu.value else { return Format.placeholder }
-            return Format.cpu(cpu.total, mode: preferences.cpuMode, logicalCores: latest.system.logicalCores)
-        }
-    }
-
-    private func bars(for metric: Metric) -> [Double?] {
-        let empty = [Double?](repeating: nil, count: Sparkline.barCount)
-        guard let now = latest?.timestamp else { return empty }
-        let series: SeriesKey = switch metric {
-        case .cpu: .cpuTotal
-        }
-        let points = (try? history.summary(series, over: .oneMinute, endingAt: now).points) ?? []
-        return Sparkline.bars(points, endingAt: now)
     }
 }

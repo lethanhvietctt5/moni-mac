@@ -10,6 +10,13 @@ public struct Snapshot: Equatable, Sendable {
     public var loadAverage: Reading<LoadAverage>
     public var taskCounts: Reading<TaskCounts>
     public var processes: Reading<[ProcessSample]>
+    // One field per metric; each metric's file defines its reading type.
+    public var memory: Reading<MemoryReading>
+    public var gpu: Reading<GPUReading>
+    public var network: Reading<NetworkReading>
+    public var disk: Reading<DiskReading>
+    public var battery: Reading<BatteryReading>
+    public var thermal: Reading<ThermalReading>
 
     public init(
         timestamp: Date,
@@ -18,7 +25,13 @@ public struct Snapshot: Equatable, Sendable {
         cores: Reading<[CoreUsage]> = .unavailable(.unsupported),
         loadAverage: Reading<LoadAverage> = .unavailable(.unsupported),
         taskCounts: Reading<TaskCounts> = .unavailable(.unsupported),
-        processes: Reading<[ProcessSample]> = .unavailable(.unsupported)
+        processes: Reading<[ProcessSample]> = .unavailable(.unsupported),
+        memory: Reading<MemoryReading> = .unavailable(.unsupported),
+        gpu: Reading<GPUReading> = .unavailable(.unsupported),
+        network: Reading<NetworkReading> = .unavailable(.unsupported),
+        disk: Reading<DiskReading> = .unavailable(.unsupported),
+        battery: Reading<BatteryReading> = .unavailable(.unsupported),
+        thermal: Reading<ThermalReading> = .unavailable(.unsupported)
     ) {
         self.timestamp = timestamp
         self.system = system
@@ -27,6 +40,12 @@ public struct Snapshot: Equatable, Sendable {
         self.loadAverage = loadAverage
         self.taskCounts = taskCounts
         self.processes = processes
+        self.memory = memory
+        self.gpu = gpu
+        self.network = network
+        self.disk = disk
+        self.battery = battery
+        self.thermal = thermal
     }
 }
 
@@ -121,13 +140,61 @@ public struct ProcessSample: Equatable, Sendable {
     public var cpu: Double
     /// Whether this is a running app with a Dock presence (the only kind MoniMac offers to quit).
     public var isRegularApp: Bool
+    /// Everything besides CPU; each figure is nil when it couldn't be read.
+    public var resources: ResourceUse
 
-    public init(pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false) {
+    public init(
+        pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false,
+        resources: ResourceUse = ResourceUse()
+    ) {
         self.pid = pid
         self.responsiblePID = responsiblePID
         self.name = name
         self.path = path
         self.cpu = cpu
         self.isRegularApp = isRegularApp
+        self.resources = resources
+    }
+}
+
+/// What a process (or an app's processes together) uses besides CPU. Nil means not readable.
+public struct ResourceUse: Equatable, Sendable {
+    /// Memory in bytes: the physical footprint for the user's own processes; for other users'
+    /// processes, where the footprint isn't readable, the resident size from `ps`.
+    public var memory: UInt64?
+    /// Share of the GPU, 0...1.
+    public var gpu: Double?
+    /// Network traffic, bytes per second (in + out).
+    public var network: Double?
+    public var diskReadPerSecond: Double?
+    public var diskWritePerSecond: Double?
+    /// Estimated power draw in watts.
+    public var power: Double?
+
+    public init(
+        memory: UInt64? = nil, gpu: Double? = nil, network: Double? = nil,
+        diskReadPerSecond: Double? = nil, diskWritePerSecond: Double? = nil, power: Double? = nil
+    ) {
+        self.memory = memory
+        self.gpu = gpu
+        self.network = network
+        self.diskReadPerSecond = diskReadPerSecond
+        self.diskWritePerSecond = diskWritePerSecond
+        self.power = power
+    }
+
+    /// Field-wise sum; a figure stays nil only if it's nil on both sides.
+    public static func + (lhs: ResourceUse, rhs: ResourceUse) -> ResourceUse {
+        func add<T: AdditiveArithmetic>(_ a: T?, _ b: T?) -> T? {
+            switch (a, b) {
+            case (nil, nil): nil
+            default: (a ?? .zero) + (b ?? .zero)
+            }
+        }
+        return ResourceUse(
+            memory: add(lhs.memory, rhs.memory), gpu: add(lhs.gpu, rhs.gpu), network: add(lhs.network, rhs.network),
+            diskReadPerSecond: add(lhs.diskReadPerSecond, rhs.diskReadPerSecond),
+            diskWritePerSecond: add(lhs.diskWritePerSecond, rhs.diskWritePerSecond), power: add(lhs.power, rhs.power)
+        )
     }
 }

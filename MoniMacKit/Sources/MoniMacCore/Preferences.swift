@@ -11,8 +11,11 @@ public enum MenuBarStyle: String, CaseIterable, Sendable {
 }
 
 /// Every user setting, persisted in UserDefaults.
+///
+/// Metric-specific settings (e.g. units) can live in that metric's file as an extension;
+/// prefix their keys with the metric, e.g. "network.units".
 public final class Preferences {
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -26,9 +29,22 @@ public final class Preferences {
         defaults.set(style.rawValue, forKey: Self.styleKey(metric))
     }
 
+    /// Whether a metric has a menu bar item. Only CPU is shown until the user adds others.
+    public func isMenuBarItemEnabled(_ metric: Metric) -> Bool {
+        defaults.object(forKey: Self.enabledKey(metric)) as? Bool ?? (metric == .cpu)
+    }
+
+    public func setMenuBarItemEnabled(_ enabled: Bool, for metric: Metric) {
+        defaults.set(enabled, forKey: Self.enabledKey(metric))
+    }
+
     public var cpuMode: CPUMode {
         get { defaults.string(forKey: "cpu.mode").flatMap(CPUMode.init(rawValue:)) ?? .system }
         set { defaults.set(newValue.rawValue, forKey: "cpu.mode") }
+    }
+
+    private static func enabledKey(_ metric: Metric) -> String {
+        "menuBar.\(metric.rawValue).enabled"
     }
 
     private static func styleKey(_ metric: Metric) -> String {

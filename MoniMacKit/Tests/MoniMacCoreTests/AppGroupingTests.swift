@@ -65,6 +65,28 @@ struct AppGroupingTests {
         #expect(byName["WindowServer"]?.canQuit == false)
     }
 
+    @Test func sumsPerProcessResourcesAndKeepsMissingOnesNil() {
+        var main = process(20, chrome, cpu: 0.2, regular: true)
+        main.resources = ResourceUse(memory: 300, power: 1.5)
+        var helper = process(21, renderer, cpu: 0.5, responsible: 20)
+        helper.resources = ResourceUse(memory: 700, diskWritePerSecond: 10)
+
+        let app = AppGrouping.apps(from: [main, helper])[0]
+
+        #expect(app.resources == ResourceUse(memory: 1000, diskWritePerSecond: 10, power: 1.5))
+    }
+
+    @Test func busiestAppNamesTheOwnerOfTheBusiestProcess() {
+        let processes = [
+            process(20, chrome, cpu: 0.2, regular: true),
+            process(21, webContent, cpu: 0.9, responsible: 10),
+            process(10, safari, cpu: 0.1, regular: true),
+        ]
+
+        #expect(AppGrouping.busiestApp(in: processes, by: \.cpu) == "Safari")
+        #expect(AppGrouping.busiestApp(in: processes, by: \.resources.gpu) == nil)
+    }
+
     @Test(arguments: [
         ("/Applications/Xcode.app/Contents/MacOS/Xcode", "/Applications/Xcode.app"),
         ("/usr/bin/swift-frontend", nil),

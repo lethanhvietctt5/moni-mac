@@ -10,6 +10,8 @@ public struct AppUsage: Equatable, Sendable, Identifiable {
     public var cpu: Double
     /// The process to ask to quit. Nil unless the group is a running regular app.
     public var quitPID: Int32?
+    /// Summed over the group's processes.
+    public var resources = ResourceUse()
 
     public var canQuit: Bool { quitPID != nil }
 }
@@ -27,17 +29,15 @@ public enum AppGrouping {
         var order: [String] = []
 
         for process in processes {
-            let responsible = process.responsiblePID.flatMap { byPID[$0] }
-            let bundle = responsible.flatMap { outermostAppBundle(in: $0.path) } ?? outermostAppBundle(in: process.path)
-            let id = bundle ?? process.path ?? process.name
-            let name = bundle.map(appName(forBundle:)) ?? process.path.map(lastComponent) ?? process.name
+            let (id, name, bundle) = owner(of: process, byPID: byPID)
 
             if groups[id] == nil {
-                groups[id] = AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0, quitPID: nil)
+                groups[id] = AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0)
                 order.append(id)
             }
             groups[id]!.processCount += 1
             groups[id]!.cpu += process.cpu
+            groups[id]!.resources = groups[id]!.resources + process.resources
             if process.isRegularApp, let bundle, outermostAppBundle(in: process.path) == bundle {
                 groups[id]!.quitPID = process.pid
             }
@@ -47,6 +47,24 @@ public enum AppGrouping {
             .map { (index: $0.offset, app: groups[$0.element]!) }
             .sorted { $0.app.cpu != $1.app.cpu ? $0.app.cpu > $1.app.cpu : $0.index < $1.index }
             .map(\.app)
+    }
+
+    /// The app a process belongs to: its id, display name, and bundle (if any).
+    static func owner(of process: ProcessSample, byPID: [Int32: ProcessSample]) -> (id: String, name: String, bundle: String?) {
+        let responsible = process.responsiblePID.flatMap { byPID[$0] }
+        let bundle = responsible.flatMap { outermostAppBundle(in: $0.path) } ?? outermostAppBundle(in: process.path)
+        let id = bundle ?? process.path ?? process.name
+        let name = bundle.map(appName(forBundle:)) ?? process.path.map(lastComponent) ?? process.name
+        return (id, name, bundle)
+    }
+
+    /// The name of the app owning the busiest process by `measure`, without grouping every process.
+    /// Cheap enough to run every tick, e.g. to record who caused a peak.
+    public static func busiestApp(in processes: [ProcessSample], by measure: (ProcessSample) -> Double?) -> String? {
+        guard let busiest = processes.max(by: { (measure($0) ?? 0) < (measure($1) ?? 0) }),
+              (measure(busiest) ?? 0) > 0 else { return nil }
+        let responsible = busiest.responsiblePID.flatMap { pid in processes.first { $0.pid == pid } }
+        return owner(of: busiest, byPID: responsible.map { [$0.pid: $0] } ?? [:]).name
     }
 
     /// `/Applications/Google Chrome.app/Contents/.../Helper.app/Contents/MacOS/Helper` → `/Applications/Google Chrome.app`.
@@ -63,3 +81,4 @@ public enum AppGrouping {
         path.split(separator: "/").last.map(String.init) ?? path
     }
 }
+

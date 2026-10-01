@@ -7,6 +7,9 @@ public enum Sparkline {
     /// Bar count is fixed so the item never changes width.
     public static let barCount = 15
 
+    /// No data yet.
+    public static let empty = [Double?](repeating: nil, count: barCount)
+
     /// The last minute as `barCount` bars, oldest first.
     public static func bars(_ points: [SeriesPoint], endingAt now: Date) -> [Double?] {
         Resample.bars(points, endingAt: now, window: window, count: barCount)

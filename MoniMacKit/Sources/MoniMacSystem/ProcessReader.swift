@@ -25,8 +25,15 @@ final class ProcessReader {
     }()
     private let others = OtherUsersProcessReader()
     private var identities: [Int32: Identity] = [:]
-    /// CPU nanoseconds per pid at the previous sample, with the process start time it belongs to.
-    private var previousCPU: [Int32: (start: UInt64, nanoseconds: UInt64)] = [:]
+    /// Cumulative counters per pid at the previous pass, with the process start time they belong to.
+    private struct Counters {
+        var start: UInt64
+        var cpuNanoseconds: UInt64
+        var diskRead: UInt64
+        var diskWritten: UInt64
+        var energyNanojoules: UInt64
+    }
+    private var previous: [Int32: Counters] = [:]
     private var previousWall: UInt64?
     private var pidBuffer = [pid_t](repeating: 0, count: 4096)
     private let regularApps = RegularApps()
@@ -39,42 +46,55 @@ final class ProcessReader {
         self.interval = UInt64(interval * 1_000_000_000)
     }
 
-    func sample() -> Reading<[ProcessSample]> {
+    /// The process list, and whether it was refreshed by this call (false when the previous pass
+    /// is reused because the interval hasn't elapsed).
+    func sample() -> (processes: Reading<[ProcessSample]>, refreshed: Bool) {
         others.refreshIfDue()
         let wall = DispatchTime.now().uptimeNanoseconds
         if let previousWall, wall - previousWall < interval, lastResult.value != nil {
-            return lastResult
+            return (lastResult, false)
         }
         let elapsed = previousWall.map { Double(wall - $0) }
 
         var samples: [ProcessSample] = []
-        var currentCPU: [Int32: (start: UInt64, nanoseconds: UInt64)] = [:]
+        var current: [Int32: Counters] = [:]
         for pid in listPIDs() {
             // rusage fails for other users' processes, which OtherUsersProcessReader covers.
             guard let usage = rusage(pid) else { continue }
-            let nanoseconds = (usage.ri_user_time + usage.ri_system_time) * timebase.numer / timebase.denom
-            let start = usage.ri_proc_start_abstime
-            currentCPU[pid] = (start, nanoseconds)
+            let counters = Counters(
+                start: usage.ri_proc_start_abstime,
+                cpuNanoseconds: (usage.ri_user_time + usage.ri_system_time) * timebase.numer / timebase.denom,
+                diskRead: usage.ri_diskio_bytesread,
+                diskWritten: usage.ri_diskio_byteswritten,
+                energyNanojoules: usage.ri_energy_nj
+            )
+            current[pid] = counters
 
-            let identity = identity(of: pid, start: start)
-            var cores = 0.0
-            if let elapsed, let previous = previousCPU[pid], previous.start == start, nanoseconds >= previous.nanoseconds {
-                cores = Double(nanoseconds - previous.nanoseconds) / elapsed
-            }
-            samples.append(ProcessSample(
+            let identity = identity(of: pid, start: counters.start)
+            var sample = ProcessSample(
                 pid: pid, responsiblePID: identity.responsiblePID, name: identity.name, path: identity.path,
-                cpu: cores, isRegularApp: regularApps.contains(pid)
-            ))
+                cpu: 0, isRegularApp: regularApps.contains(pid), resources: ResourceUse(memory: usage.ri_phys_footprint)
+            )
+            if let elapsed, let before = previous[pid], before.start == counters.start {
+                let seconds = elapsed / 1_000_000_000
+                func rate(_ now: UInt64, _ then: UInt64) -> Double { now >= then ? Double(now - then) / seconds : 0 }
+                sample.cpu = rate(counters.cpuNanoseconds, before.cpuNanoseconds) / 1_000_000_000
+                sample.resources.diskReadPerSecond = rate(counters.diskRead, before.diskRead)
+                sample.resources.diskWritePerSecond = rate(counters.diskWritten, before.diskWritten)
+                // Nanojoules per second → watts.
+                sample.resources.power = rate(counters.energyNanojoules, before.energyNanojoules) / 1_000_000_000
+            }
+            samples.append(sample)
         }
 
-        if identities.count > currentCPU.count * 2 {
-            identities = identities.filter { currentCPU[$0.key] != nil }
+        if identities.count > current.count * 2 {
+            identities = identities.filter { current[$0.key] != nil }
         }
-        previousCPU = currentCPU
+        previous = current
         defer { previousWall = wall }
-        guard elapsed != nil else { return .unavailable(.warmingUp) }
+        guard elapsed != nil else { return (.unavailable(.warmingUp), true) }
         lastResult = .value(samples + others.latest())
-        return lastResult
+        return (lastResult, true)
     }
 
     private func listPIDs() -> ArraySlice<pid_t> {
@@ -87,10 +107,10 @@ final class ProcessReader {
     }
 
     /// rusage reports CPU time in Mach absolute time units, not nanoseconds.
-    private func rusage(_ pid: pid_t) -> rusage_info_v4? {
-        var usage = rusage_info_v4()
+    private func rusage(_ pid: pid_t) -> rusage_info_v6? {
+        var usage = rusage_info_v6()
         let result = withUnsafeMutablePointer(to: &usage) {
-            $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V4, $0) }
+            $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V6, $0) }
         }
         return result == 0 ? usage : nil
     }

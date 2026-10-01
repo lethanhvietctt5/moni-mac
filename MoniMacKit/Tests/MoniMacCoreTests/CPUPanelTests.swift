@@ -68,7 +68,6 @@ struct CPUPanelTests {
         #expect(panel.total == "—")
         #expect(panel.loadAverages == ["—", "—", "—"])
         #expect(panel.history.allSatisfy { $0 == nil })
-        #expect(panel.status == "Live")
     }
 
     @Test func coresArePerformanceFirstAndLabelled() throws {
@@ -145,11 +144,15 @@ struct CPUPanelTests {
         #expect(actions.recorded == [.openActivityMonitor])
     }
 
+    @Test func statusIsLiveBeforeTheFirstSample() throws {
+        #expect(try monitor([snapshot()]).statusLine == "Live")
+    }
+
     @Test func statusShowsUptime() throws {
         let monitor = try monitor([snapshot(boot: clock.now.addingTimeInterval(-(3 * 86400 + 4 * 3600 + 120)))])
         monitor.tick()
 
-        #expect(monitor.cpuPanel(range: .oneMinute).status == "Live · uptime 3d 4h")
+        #expect(monitor.statusLine == "Live · uptime 3d 4h")
     }
 
     @Test(arguments: [(0, "0m"), (59, "0m"), (720, "12m"), (15120, "4h 12m"), (273600, "3d 4h")])
