@@ -30,11 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await monitor.run(every: .seconds(2))
         }
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
-        // `--show-window` opens the main window on launch, for the same reason.
+        // `--show-window` opens the main window on launch, for the same reason; `--tab gpu` picks its tab.
         if CommandLine.arguments.contains("--show-window") {
+            let arguments = CommandLine.arguments
+            let tab = arguments.firstIndex(of: "--tab").flatMap { arguments.dropFirst($0 + 1).first }
+                .flatMap(WindowTab.init(rawValue:))
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(1))
-                self?.mainWindow.show()
+                self?.mainWindow.show(tab: tab)
             }
         }
         if CommandLine.arguments.contains("--show-popover") {
