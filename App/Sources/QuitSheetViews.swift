@@ -57,6 +57,10 @@ final class QuitSheetPresenter: NSObject, NSWindowDelegate {
         panel.titlebarAppearsTransparent = true
         panel.isReleasedWhenClosed = false
         panel.level = .floating
+        // Panels hide when their app isn't active, and macOS may decline MoniMac's activation request.
+        panel.hidesOnDeactivate = false
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.delegate = self
         let content = NSHostingController(rootView: QuitSheetView(
             monitor: monitor, appID: appID,

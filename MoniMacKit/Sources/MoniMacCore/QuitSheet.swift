@@ -50,7 +50,10 @@ extension QuitSheet {
         }
         let count = app.processCount
         let memory = app.resources.memory.map(Format.memorySize)
-        let usage = "\(app.name) is using \(cpu(app.cpu, decimals: 0)) CPU"
+        // Whole percents, except below 10% where "0%" would hide a working app.
+        let shown = mode == .system ? app.cpu / Double(cores) : app.cpu
+        let appCPU = cpu(app.cpu, decimals: shown < 0.095 ? 1 : 0)
+        let usage = "\(app.name) is using \(appCPU) CPU"
             + (memory.map { " and \($0) of memory" } ?? "") + "."
         // Busiest first; stable for equal CPU.
         let listed = members.enumerated()
@@ -71,7 +74,7 @@ extension QuitSheet {
             },
             more: remaining > 0
                 ? "and \(Format.count(remaining)) more helper \(remaining == 1 ? "process" : "processes")" : nil,
-            total: "Total  \(cpu(app.cpu, decimals: 0))" + (memory.map { " · \($0)" } ?? ""),
+            total: "Total  \(appCPU)" + (memory.map { " · \($0)" } ?? ""),
             reopenLabel: "Reopen \(app.name) windows next time"
         )
     }

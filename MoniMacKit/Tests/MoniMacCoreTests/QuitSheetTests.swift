@@ -28,14 +28,14 @@ struct QuitSheetTests {
         let sheet = try #require(try monitor().quitSheet(for: chromeID))
 
         #expect(sheet.title == "Quit Google Chrome and its 6 processes?")
-        #expect(sheet.message == "Google Chrome is using 7% CPU and 1.2 GB of memory. "
+        #expect(sheet.message == "Google Chrome is using 6.5% CPU and 1.2 GB of memory. "
             + "Quitting asks the app to close normally so you can save your work.")
         #expect(sheet.processes.map(\.name) == ["Google Chrome"]
             + Array(repeating: "Google Chrome Helper (Renderer)", count: 4))
         #expect(sheet.processes.map(\.pid) == ["2", "10", "11", "12", "13"])
         #expect(sheet.processes.first.map { [$0.cpu, $0.memory] } == ["2.0%", "800 MB"])
         #expect(sheet.more == "and 1 more helper process")
-        #expect(sheet.total == "Total  7% · 1.2 GB")
+        #expect(sheet.total == "Total  6.5% · 1.2 GB")
         #expect(sheet.reopenLabel == "Reopen Google Chrome windows next time")
     }
 
