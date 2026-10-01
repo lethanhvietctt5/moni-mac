@@ -109,29 +109,47 @@ extension BatteryDetail {
         )
     }
 
+    /// What the battery is doing, with minutes to full or empty when macOS has an estimate.
+    private enum State {
+        case charging(minutes: Int?)
+        case pluggedIn(isFullyCharged: Bool)
+        case onBattery(minutes: Int?)
+
+        init(_ battery: BatteryReading) {
+            // A missing estimate while charging or on battery means macOS hasn't produced one yet.
+            let minutes = battery.timeRemaining?.minutes
+            if battery.isCharging {
+                self = .charging(minutes: minutes)
+            } else if battery.isPluggedIn {
+                self = .pluggedIn(isFullyCharged: battery.isFullyCharged)
+            } else {
+                self = .onBattery(minutes: minutes)
+            }
+        }
+    }
+
     /// e.g. "Charging · 1 h 12 min until full", "On battery · 3 h 20 min left", "Fully charged".
     static func subtitle(for reading: Reading<BatteryReading>) -> String {
         guard let battery = reading.value else { return status(for: reading) }
-        // A missing estimate while charging or on battery means macOS hasn't produced one yet.
-        let time = battery.timeRemaining?.minutes
-        if battery.isCharging {
-            return "Charging · " + (time.map { "\(duration(minutes: $0)) until full" } ?? calculating)
+        return switch State(battery) {
+        case .charging(let minutes): "Charging · " + (minutes.map { "\(duration(minutes: $0)) until full" } ?? calculating)
+        case .pluggedIn(let full): full ? "Fully charged" : "On power · Not charging"
+        case .onBattery(let minutes): "On battery · " + (minutes.map { "\(duration(minutes: $0)) left" } ?? calculating)
         }
-        if battery.isPluggedIn { return battery.isFullyCharged ? "Fully charged" : "On power · Not charging" }
-        return "On battery · " + (time.map { "\(duration(minutes: $0)) left" } ?? calculating)
     }
 
     /// The hero's second line: time to full or empty, or why there's none.
     static func status(for reading: Reading<BatteryReading>) -> String {
         switch reading {
-        case .unavailable(.warmingUp): return Format.placeholder
-        case .unavailable(.unsupported): return "This Mac has no battery"
-        case .unavailable(.failed(let reason)): return "Battery unavailable: \(reason)"
+        case .unavailable(.warmingUp): Format.placeholder
+        case .unavailable(.unsupported): "This Mac has no battery"
+        case .unavailable(.failed(let reason)): "Battery unavailable: \(reason)"
         case .value(let battery):
-            let time = battery.timeRemaining?.minutes
-            if battery.isCharging { return time.map { "Full in \(duration(minutes: $0))" } ?? calculating }
-            if battery.isPluggedIn { return battery.isFullyCharged ? "Fully charged" : "Not charging" }
-            return time.map { "\(duration(minutes: $0)) remaining" } ?? calculating
+            switch State(battery) {
+            case .charging(let minutes): minutes.map { "Full in \(duration(minutes: $0))" } ?? calculating
+            case .pluggedIn(let full): full ? "Fully charged" : "Not charging"
+            case .onBattery(let minutes): minutes.map { "\(duration(minutes: $0)) remaining" } ?? calculating
+            }
         }
     }
 
@@ -149,7 +167,7 @@ extension BatteryDetail {
         let temperature = battery?.temperature
         return [
             Stat(kind: .power, label: "Power Draw", value: battery?.batteryPower.map { watts(abs($0)) } ?? dash,
-                 caption: battery?.systemPower.map { "System using \(watts($0))" } ?? "System power unavailable",
+                 caption: powerCaption(battery),
                  help: "Power flowing into or out of the battery, and the whole Mac's use. " + estimateHelp),
             Stat(kind: .health, label: "Health", value: health.map { Format.percent($0) } ?? dash,
                  caption: health.map { health in
@@ -159,11 +177,20 @@ extension BatteryDetail {
                  } ?? dash,
                  help: "Current full-charge capacity compared with the battery's design capacity."),
             Stat(kind: .cycles, label: "Cycle Count", value: battery?.cycleCount.map(Format.count) ?? dash,
-                 caption: battery?.ratedCycles.map { "of \(Format.count($0)) rated cycles" } ?? dash,
+                 caption: battery.map {
+                     "of \(Format.count($0.ratedCycles ?? BatteryReading.appleSiliconRatedCycles)) rated cycles"
+                 } ?? dash,
                  help: nil),
             Stat(kind: .temperature, label: "Temperature", value: temperature.map { String(format: "%.1f °C", $0) } ?? dash,
                  caption: temperature.map(temperatureNote) ?? dash, help: nil),
         ]
+    }
+
+    /// Says which way power flows, since Power Draw is shown unsigned: "Charging · system using 21.6 W".
+    private static func powerCaption(_ battery: BatteryReading?) -> String {
+        let system = battery?.systemPower.map { "system using \(watts($0))" } ?? "system power unavailable"
+        let caption = (battery?.batteryPower ?? 0) > 0 ? "Charging · \(system)" : system
+        return caption.prefix(1).uppercased() + caption.dropFirst()
     }
 
     /// Apple rates Mac batteries for 10–35 °C ambient; the pack itself normally sits below 40 °C.
@@ -210,7 +237,7 @@ extension BatteryDetail {
     /// e.g. "1 h 12 min", "45 min".
     static func duration(minutes: Int) -> String {
         let (hours, mins) = (max(minutes, 0) / 60, max(minutes, 0) % 60)
-        if hours == 0 { return "\(mins) min" }
+        if hours == 0 { return mins == 0 ? "< 1 min" : "\(mins) min" }
         return mins == 0 ? "\(hours) h" : "\(hours) h \(mins) min"
     }
 }

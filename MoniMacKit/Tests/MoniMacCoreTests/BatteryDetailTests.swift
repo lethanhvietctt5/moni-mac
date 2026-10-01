@@ -59,7 +59,7 @@ struct BatteryDetailTests {
         monitor.tick()
 
         #expect(monitor.hasBattery)
-        #expect(monitor.batteryPanel(range: .oneHour).status == "Battery unavailable: IOKit said no")
+        #expect(monitor.batteryDetail(range: .oneHour, layout: .popover).status == "Battery unavailable: IOKit said no")
     }
 
     @Test func batteryStaysHiddenUntilTheFirstSample() throws {
@@ -80,8 +80,21 @@ struct BatteryDetailTests {
         #expect(detail.stats.map(\.label) == ["Power Draw", "Health", "Cycle Count", "Temperature"])
         #expect(detail.stats.map(\.value) == ["14.2 W", "92%", "214", "31.4 °C"])
         #expect(detail.stats.map(\.caption) == [
-            "System using 21.6 W", "Normal · 4,627 of 5,030 mAh", "of 1,000 rated cycles", "Within normal range",
+            "Charging · system using 21.6 W", "Normal · 4,627 of 5,030 mAh", "of 1,000 rated cycles",
+            "Within normal range",
         ])
+    }
+
+    @Test func ratedCyclesAssumeAppleSiliconWhenTheBatteryDoesNotSay() throws {
+        var battery = charging
+        battery.ratedCycles = nil
+        #expect(try detail(snapshot(.value(battery))).stats[2].caption == "of 1,000 rated cycles")
+    }
+
+    @Test func underAMinuteLeftIsNotShownAsZero() throws {
+        var battery = charging
+        battery.timeRemaining = .minutes(0)
+        #expect(try detail(snapshot(.value(battery))).status == "Full in < 1 min")
     }
 
     @Test func powerFiguresAreLabelledAsEstimates() throws {
@@ -103,6 +116,7 @@ struct BatteryDetailTests {
         #expect(detail.source == "On battery")
         #expect(detail.status == "3 h 20 min remaining")
         #expect(detail.stats[0].value == "9.5 W")
+        #expect(detail.stats[0].caption == "System using 21.6 W")
     }
 
     @Test func timeStillBeingEstimatedSaysCalculatingNeverZero() throws {

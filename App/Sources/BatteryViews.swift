@@ -12,7 +12,9 @@ struct BatteryPopoverTab: View {
 
     var body: some View {
         // Built once per render: building it queries history.
-        BatteryPopoverContent(monitor: monitor, detail: monitor.batteryPanel(range: range), range: $range)
+        BatteryPopoverContent(
+            monitor: monitor, detail: monitor.batteryDetail(range: range, layout: .popover), range: $range
+        )
     }
 }
 
@@ -24,7 +26,7 @@ struct BatteryWindowTab: View {
 
     var body: some View {
         // Built once per render: building it queries history.
-        BatteryWindowContent(detail: monitor.batteryDetail(range: range), range: $range)
+        BatteryWindowContent(detail: monitor.batteryDetail(range: range, layout: .window), range: $range)
     }
 }
 
@@ -369,7 +371,7 @@ private struct ChargeBars: View {
 private struct ChargeLegend: View {
     var body: some View {
         HStack(spacing: 16) {
-            item("Charging", BatteryColors.level)
+            item("On power", BatteryColors.level)
             item("On battery", BatteryColors.onBattery)
         }
     }

@@ -6,7 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] The popover and window Battery tabs show live values
-- [ ] The charge history chart distinguishes charging from on-battery periods
-- [ ] Power figures are labelled as estimates in tooltips
-- [ ] With a fake sampler reporting no battery, the Battery tab and popover tab are hidden
+- [x] The popover and window Battery tabs show live values
+- [ ] The charge history chart distinguishes charging from on-battery periods (built and covered by `BatteryDetailTests`/`BatteryHistoryTests`; not seen on screen because this Mac stayed plugged in)
+- [ ] Power figures are labelled as estimates in tooltips (`.help` on Power Draw and every app watts value, asserted in tests; hovering can't be automated, so the tooltips weren't seen)
+- [x] With a fake sampler reporting no battery, the Battery tab and popover tab are hidden (`Monitor.hasBattery` is false in `aMacWithoutABatteryHidesBattery`; both tab lists filter on it)
+
+**Notes:** The legend says "On power" rather than the design's "Charging", because the 1/0 series records whether an adapter is connected (a Mac held at 100% isn't charging, but it isn't on battery either). Health is nominal ÷ design capacity (87% on the M4 test Mac), while System Settings shows 89% from a private, smoothed metric.

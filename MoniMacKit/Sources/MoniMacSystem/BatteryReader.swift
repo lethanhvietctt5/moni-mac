@@ -95,13 +95,10 @@ final class BatteryReader {
     /// The whole Mac's draw from the power controller's telemetry, in watts.
     private func systemPower() -> Double? {
         guard battery != 0, let telemetry = property(battery, "PowerTelemetryData") as? [String: Any] else { return nil }
-        // SystemLoad is the system's total draw; SystemPowerIn is adapter input, absent on battery.
-        for key in ["SystemLoad", "SystemPowerIn"] {
-            if let milliwatts = (telemetry[key] as? NSNumber)?.int64Value, milliwatts > 0 {
-                return Double(milliwatts) / 1000
-            }
-        }
-        return nil
+        // SystemLoad is the system's total draw. (SystemPowerIn is adapter input, which includes
+        // charging power, so it isn't used as a stand-in.)
+        guard let milliwatts = (telemetry["SystemLoad"] as? NSNumber)?.int64Value, milliwatts > 0 else { return nil }
+        return Double(milliwatts) / 1000
     }
 
     /// Cached details, reread every `detailsInterval` and whenever the adapter is plugged or unplugged.
@@ -126,10 +123,11 @@ final class BatteryReader {
             isPluggedIn: isPluggedIn,
             adapterWatts: (adapter?[kIOPSPowerAdapterWattsKey] as? NSNumber)?.doubleValue,
             designCapacity: lookup("DesignCapacity"),
-            // Nominal capacity is what macOS bases "Maximum Capacity" on; the raw figure is a fallback.
+            // The closest public figure to System Settings' "Maximum Capacity", which comes from a
+            // private, smoothed metric and can read a couple of points higher. The raw figure is a fallback.
             maxCapacity: lookup("NominalChargeCapacity") ?? lookup("AppleRawMaxCapacity"),
             cycleCount: lookup("CycleCount"),
-            ratedCycles: int(battery, "DesignCycleCount9C") ?? 1000,
+            ratedCycles: int(battery, "DesignCycleCount9C"),
             // Reported in hundredths of a degree Celsius.
             temperature: lookup("Temperature").map { Double($0) / 100 }
         )

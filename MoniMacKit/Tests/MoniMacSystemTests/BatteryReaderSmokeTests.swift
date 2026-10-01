@@ -34,7 +34,7 @@ struct BatteryReaderSmokeTests {
         #expect((1000...20000).contains(design))
         #expect((design / 2...design).contains(max))
         #expect((battery.cycleCount ?? -1) >= 0)
-        #expect(battery.ratedCycles == 1000)
+        #expect((battery.ratedCycles ?? BatteryReading.appleSiliconRatedCycles) == 1000)
         #expect((10...50).contains(try #require(battery.temperature)))
         #expect(abs(try #require(battery.batteryPower)) < 150)
         #expect((1...300).contains(try #require(battery.systemPower)))

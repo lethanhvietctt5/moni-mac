@@ -37,8 +37,10 @@ public struct BatteryReading: Equatable, Sendable {
     /// Capacity now, mAh.
     public var maxCapacity: Int?
     public var cycleCount: Int?
-    /// Cycles the battery is rated for (1,000 on Apple silicon MacBooks).
+    /// Cycles the battery is rated for, when the battery reports it.
     public var ratedCycles: Int?
+    /// Apple's rating for Apple silicon MacBook batteries, assumed when the battery doesn't say.
+    public static let appleSiliconRatedCycles = 1000
     /// Battery temperature in °C.
     public var temperature: Double?
 
@@ -104,13 +106,8 @@ extension Monitor {
         return latest.battery != .unavailable(.unsupported)
     }
 
-    /// The main window's Battery tab for the given chart range.
-    public func batteryDetail(range: TimeRange) -> BatteryDetail {
-        BatteryDetail.make(snapshot: latest, apps: apps, history: history, range: range, layout: .window)
-    }
-
-    /// The popover's Battery tab for the given chart range.
-    public func batteryPanel(range: TimeRange) -> BatteryDetail {
-        BatteryDetail.make(snapshot: latest, apps: apps, history: history, range: range, layout: .popover)
+    /// The Battery tab for the given chart range: `.window` for the main window, `.popover` for the popover.
+    public func batteryDetail(range: TimeRange, layout: BatteryDetail.Layout) -> BatteryDetail {
+        BatteryDetail.make(snapshot: latest, apps: apps, history: history, range: range, layout: layout)
     }
 }
