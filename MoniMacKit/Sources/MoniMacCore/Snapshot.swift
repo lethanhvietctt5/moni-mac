@@ -78,15 +78,27 @@ public struct SystemInfo: Equatable, Sendable {
     public var performanceCores: Int
     public var efficiencyCores: Int
     public var bootTime: Date?
+    /// The marketing name, e.g. "MacBook Pro", or nil when the Mac doesn't report one.
+    public var modelName: String?
 
-    public init(chipName: String, performanceCores: Int, efficiencyCores: Int, bootTime: Date?) {
+    public init(
+        chipName: String, performanceCores: Int, efficiencyCores: Int, bootTime: Date?, modelName: String? = nil
+    ) {
         self.chipName = chipName
         self.performanceCores = performanceCores
         self.efficiencyCores = efficiencyCores
         self.bootTime = bootTime
+        self.modelName = modelName
     }
 
     public var logicalCores: Int { performanceCores + efficiencyCores }
+
+    /// e.g. "MacBook Pro · M3 Pro · 36 GB". With a model name the chip drops "Apple"; without one it's kept,
+    /// e.g. "Apple M4 · 24 GB".
+    public func deviceLine(memory: UInt64?) -> String {
+        let chip = modelName != nil && chipName.hasPrefix("Apple ") ? String(chipName.dropFirst("Apple ".count)) : chipName
+        return ([modelName, chip, memory.map(Format.memorySize)].compactMap { $0 }).joined(separator: " · ")
+    }
 
     public static let unknown = SystemInfo(chipName: "Mac", performanceCores: 1, efficiencyCores: 0, bootTime: nil)
 }

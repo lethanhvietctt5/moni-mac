@@ -54,6 +54,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 statusBar?.showPopover()
             }
         }
+        // `--show-share-card` opens the share card preview. `--export-share-card <path> [--dark]` renders the
+        // card to a PNG and quits, so its size and look can be checked without clicking.
+        if CommandLine.arguments.contains("--show-share-card") {
+            Task { @MainActor [monitor] in
+                try? await Task.sleep(for: .seconds(2))
+                ShareCardWindowController.shared.show(monitor: monitor)
+            }
+        }
+        if let path = Self.launchValue("--export-share-card") {
+            Task { @MainActor [monitor] in
+                // Wait for a few samples, so the card has the Mac's memory and battery and the process list
+                // (for the busiest app's icon) has warmed up.
+                try? await Task.sleep(for: .seconds(5))
+                let dark = CommandLine.arguments.contains("--dark")
+                if !ShareCardWindowController.export(monitor: monitor, to: path, dark: dark) {
+                    log.error("Couldn't export the share card to \(path, privacy: .public)")
+                }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    /// The value after a development flag, e.g. the path in `--export-share-card <path>`.
+    private static func launchValue(_ flag: String) -> String? {
+        let arguments = CommandLine.arguments
+        return arguments.firstIndex(of: flag).flatMap {
+            arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil
+        }
     }
 
     /// MoniMac shows no menu bar of its own, but key equivalents like ⌘W and ⌘Q still route through it.

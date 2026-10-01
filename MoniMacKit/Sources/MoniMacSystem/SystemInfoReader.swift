@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import IOKit
 import MoniMacCore
 
 /// Reads facts about the Mac that don't change while MoniMac runs.
@@ -21,8 +22,27 @@ enum SystemInfoReader {
             chipName: sysctlString("machdep.cpu.brand_string") ?? "Mac",
             performanceCores: performance,
             efficiencyCores: efficiency,
-            bootTime: bootTime()
+            bootTime: bootTime(),
+            modelName: modelName()
         )
+    }
+
+    /// The marketing name, e.g. "MacBook Pro", from the device tree's `product-name`
+    /// ("MacBook Pro (14-inch, Nov 2024)") without the parenthetical. Apple silicon only; no privileges needed.
+    static func modelName() -> String? {
+        let entry = IORegistryEntryFromPath(kIOMainPortDefault, "IODeviceTree:/product")
+        guard entry != 0 else { return nil }
+        defer { IOObjectRelease(entry) }
+        guard let data = IORegistryEntryCreateCFProperty(entry, "product-name" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? Data else { return nil }
+        return marketingName(String(nullTerminated: data.map { CChar(bitPattern: $0) }))
+    }
+
+    /// "MacBook Pro (14-inch, Nov 2024)" → "MacBook Pro"; nil when nothing is left.
+    static func marketingName(_ productName: String) -> String? {
+        let name = productName.split(separator: "(", maxSplits: 1).first.map(String.init) ?? ""
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private static func bootTime() -> Date? {
