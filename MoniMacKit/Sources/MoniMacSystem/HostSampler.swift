@@ -11,6 +11,12 @@ public final class HostSampler: SystemSampler {
     private var lastCPU: CPUUsage?
     private let cores: CoreLoadReader
     private let processes = ProcessReader()
+    private let memory = MemoryReader()
+    private let gpu = GPUReader()
+    private let network = NetworkReader()
+    private let disk = DiskReader()
+    private let battery = BatteryReader()
+    private let thermal = ThermalReader()
 
     public init() {
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
@@ -24,7 +30,13 @@ public final class HostSampler: SystemSampler {
             cores: cores.sample(),
             loadAverage: sampleLoadAverage(),
             taskCounts: sampleTaskCounts(),
-            processes: processes.sample()
+            processes: network.annotate(gpu.annotate(processes.sample())),
+            memory: memory.sample(),
+            gpu: gpu.sample(),
+            network: network.sample(),
+            disk: disk.sample(),
+            battery: battery.sample(),
+            thermal: thermal.sample()
         )
     }
 

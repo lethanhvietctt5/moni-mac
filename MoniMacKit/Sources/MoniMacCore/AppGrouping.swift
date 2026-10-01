@@ -10,6 +10,13 @@ public struct AppUsage: Equatable, Sendable, Identifiable {
     public var cpu: Double
     /// The process to ask to quit. Nil unless the group is a running regular app.
     public var quitPID: Int32?
+    /// Sums over the group's processes; nil when no process reported the value.
+    public var memory: UInt64?
+    public var gpu: Double?
+    public var network: Double?
+    public var diskReadPerSecond: Double?
+    public var diskWritePerSecond: Double?
+    public var power: Double?
 
     public var canQuit: Bool { quitPID != nil }
 }
@@ -33,11 +40,12 @@ public enum AppGrouping {
             let name = bundle.map(appName(forBundle:)) ?? process.path.map(lastComponent) ?? process.name
 
             if groups[id] == nil {
-                groups[id] = AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0, quitPID: nil)
+                groups[id] = AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0)
                 order.append(id)
             }
             groups[id]!.processCount += 1
             groups[id]!.cpu += process.cpu
+            groups[id]!.add(process)
             if process.isRegularApp, let bundle, outermostAppBundle(in: process.path) == bundle {
                 groups[id]!.quitPID = process.pid
             }
@@ -61,5 +69,20 @@ public enum AppGrouping {
 
     private static func lastComponent(_ path: String) -> String {
         path.split(separator: "/").last.map(String.init) ?? path
+    }
+}
+
+private extension AppUsage {
+    mutating func add(_ process: ProcessSample) {
+        func sum<T: AdditiveArithmetic>(_ total: T?, _ value: T?) -> T? {
+            guard let value else { return total }
+            return (total ?? .zero) + value
+        }
+        memory = sum(memory, process.memory)
+        gpu = sum(gpu, process.gpu)
+        network = sum(network, process.network)
+        diskReadPerSecond = sum(diskReadPerSecond, process.diskReadPerSecond)
+        diskWritePerSecond = sum(diskWritePerSecond, process.diskWritePerSecond)
+        power = sum(power, process.power)
     }
 }

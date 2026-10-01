@@ -72,7 +72,7 @@ extension CPUDetail {
         let peak = now.flatMap { try? history.summary(.cpuTotal, over: range, endingAt: $0).peak }
 
         return CPUDetail(
-            subtitle: "\(system.chipName) · \(cores) cores (\(system.performanceCores)P + \(system.efficiencyCores)E)",
+            subtitle: subtitle(for: system),
             total: cpu.map { format($0.total) } ?? dash,
             split: cpu,
             stats: [
@@ -101,6 +101,11 @@ extension CPUDetail {
                               share: min(share, 1))
             }
         )
+    }
+
+    /// e.g. "Apple M3 Pro · 12 cores (6P + 6E)".
+    public static func subtitle(for system: SystemInfo) -> String {
+        "\(system.chipName) · \(system.logicalCores) cores (\(system.performanceCores)P + \(system.efficiencyCores)E)"
     }
 
     /// Four labels at 0, ¼, ½, ¾ of the range, then "Now". Within a day they snap to the hour.

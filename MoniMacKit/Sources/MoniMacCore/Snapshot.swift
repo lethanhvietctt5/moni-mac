@@ -10,6 +10,13 @@ public struct Snapshot: Equatable, Sendable {
     public var loadAverage: Reading<LoadAverage>
     public var taskCounts: Reading<TaskCounts>
     public var processes: Reading<[ProcessSample]>
+    // One field per metric; each metric's file defines its reading type.
+    public var memory: Reading<MemoryReading>
+    public var gpu: Reading<GPUReading>
+    public var network: Reading<NetworkReading>
+    public var disk: Reading<DiskReading>
+    public var battery: Reading<BatteryReading>
+    public var thermal: Reading<ThermalReading>
 
     public init(
         timestamp: Date,
@@ -18,7 +25,13 @@ public struct Snapshot: Equatable, Sendable {
         cores: Reading<[CoreUsage]> = .unavailable(.unsupported),
         loadAverage: Reading<LoadAverage> = .unavailable(.unsupported),
         taskCounts: Reading<TaskCounts> = .unavailable(.unsupported),
-        processes: Reading<[ProcessSample]> = .unavailable(.unsupported)
+        processes: Reading<[ProcessSample]> = .unavailable(.unsupported),
+        memory: Reading<MemoryReading> = .unavailable(.unsupported),
+        gpu: Reading<GPUReading> = .unavailable(.unsupported),
+        network: Reading<NetworkReading> = .unavailable(.unsupported),
+        disk: Reading<DiskReading> = .unavailable(.unsupported),
+        battery: Reading<BatteryReading> = .unavailable(.unsupported),
+        thermal: Reading<ThermalReading> = .unavailable(.unsupported)
     ) {
         self.timestamp = timestamp
         self.system = system
@@ -27,6 +40,12 @@ public struct Snapshot: Equatable, Sendable {
         self.loadAverage = loadAverage
         self.taskCounts = taskCounts
         self.processes = processes
+        self.memory = memory
+        self.gpu = gpu
+        self.network = network
+        self.disk = disk
+        self.battery = battery
+        self.thermal = thermal
     }
 }
 
@@ -121,13 +140,33 @@ public struct ProcessSample: Equatable, Sendable {
     public var cpu: Double
     /// Whether this is a running app with a Dock presence (the only kind MoniMac offers to quit).
     public var isRegularApp: Bool
+    /// Physical memory footprint in bytes.
+    public var memory: UInt64?
+    /// Share of the GPU, 0...1.
+    public var gpu: Double?
+    /// Network traffic, bytes per second (in + out).
+    public var network: Double?
+    public var diskReadPerSecond: Double?
+    public var diskWritePerSecond: Double?
+    /// Estimated power draw in watts.
+    public var power: Double?
 
-    public init(pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false) {
+    public init(
+        pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false,
+        memory: UInt64? = nil, gpu: Double? = nil, network: Double? = nil,
+        diskReadPerSecond: Double? = nil, diskWritePerSecond: Double? = nil, power: Double? = nil
+    ) {
         self.pid = pid
         self.responsiblePID = responsiblePID
         self.name = name
         self.path = path
         self.cpu = cpu
         self.isRegularApp = isRegularApp
+        self.memory = memory
+        self.gpu = gpu
+        self.network = network
+        self.diskReadPerSecond = diskReadPerSecond
+        self.diskWritePerSecond = diskWritePerSecond
+        self.power = power
     }
 }

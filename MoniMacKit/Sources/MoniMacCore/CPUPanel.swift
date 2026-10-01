@@ -50,8 +50,6 @@ public struct CPUPanel: Equatable, Sendable {
     /// Performance cores first, then efficiency cores.
     public var cores: [Core]
     public var topApps: [AppRow]
-    /// e.g. "Live · uptime 3d 4h".
-    public var status: String
 }
 
 extension CPUPanel {
@@ -85,10 +83,7 @@ extension CPUPanel {
                     detail: app.processCount == 1 ? "1 process" : "\(app.processCount) processes",
                     value: format(share), share: min(share, 1), canQuit: app.canQuit
                 )
-            },
-            status: system.bootTime.flatMap { boot in
-                snapshot.map { "Live · uptime \(Format.uptime($0.timestamp.timeIntervalSince(boot)))" }
-            } ?? "Live"
+            }
         )
     }
 

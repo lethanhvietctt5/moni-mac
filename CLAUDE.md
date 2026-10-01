@@ -24,7 +24,7 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
 
 `--show-popover` and `--show-window` (e.g. `open …/MoniMac.app --args --show-window`) open the popover or main window on launch. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI.
 
-**Screenshots:** capture the main window with `scripts/screenshot-window.sh out.png` (by window ID). Capture the popover with `screencapture -R` on the small region under the status item. **Never capture the full screen**: it records the user's other apps. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
+**Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
 
 ## Layout
 
@@ -33,6 +33,12 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
   - `MoniMacSystem` holds the real sampler and is the **only** target allowed to read OS state.
   - `MoniMacSystemTests` are smoke tests that run against the real Mac.
 - **History:** `MetricsHistory` is SQLite (system `SQLite3`) at `~/Library/Application Support/MoniMac/History.sqlite`. Tests use `.inMemory`. Preferences are UserDefaults (`io.github.lethanhvietctt5.MoniMac`), so `defaults write` can switch settings while developing.
+- **Per-metric files:** each metric (Memory, GPU, Network, Disk, Battery, Thermal/Temperature) has its own files, so tickets don't edit shared code:
+  - `MoniMacCore/Metrics/<Metric>.swift`: the reading type, its history series, and menu bar hooks. Feature state goes here too, as `Monitor` extensions.
+  - `MoniMacSystem/<Metric>Reader.swift`: the sampler.
+  - `App/Sources/<Metric>Views.swift`: the popover and window tabs.
+
+  Shared switches (`Snapshot`, `HostSampler`, `Monitor` menu bar dispatch, `PopoverView`, `MainWindowView`) already route to them. Per-process memory, disk, and power come from `ProcessReader`. Per-process GPU and network come from the readers' `annotate` hooks.
 - `App/`: thin AppKit shell (status items now, the popover and window later) that renders `Monitor`'s feature state. `project.yml` builds it.
 - **Signing:** `Config/Signing.xcconfig` defaults to ad-hoc. For a stable identity, so that granted permissions survive rebuilds, run `scripts/create-signing-cert.sh` once and set `CODE_SIGN_IDENTITY` in the gitignored `Config/Local.xcconfig`.
 

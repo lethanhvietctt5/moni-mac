@@ -19,10 +19,11 @@ public final class Monitor {
     }
     public private(set) var menuBarItems: [MenuBarItem] = []
 
+    // Internal, not private: each metric's feature state lives in its own file as a Monitor extension.
     @ObservationIgnored private let sampler: any SystemSampler
-    @ObservationIgnored private let history: MetricsHistory
-    @ObservationIgnored private let preferences: Preferences
-    @ObservationIgnored private let actions: any SystemActions
+    @ObservationIgnored let history: MetricsHistory
+    @ObservationIgnored let preferences: Preferences
+    @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
 
     public init(
@@ -68,10 +69,27 @@ public final class Monitor {
         CPUDetail.make(snapshot: latest, apps: apps, history: history, range: range, mode: preferences.cpuMode)
     }
 
+    /// The popover footer, e.g. "Live · uptime 3d 4h".
+    public var statusLine: String {
+        guard let latest, let boot = latest.system.bootTime else { return "Live" }
+        return "Live · uptime \(Format.uptime(latest.timestamp.timeIntervalSince(boot)))"
+    }
+
     // MARK: Intents
 
     public func setMenuBarStyle(_ style: MenuBarStyle, for metric: Metric) {
         preferences.setMenuBarStyle(style, for: metric)
+        rebuildMenuBarItems()
+    }
+
+    public func isMenuBarItemEnabled(_ metric: Metric) -> Bool {
+        preferences.isMenuBarItemEnabled(metric)
+    }
+
+    /// Shows or hides a metric's menu bar item. The last item can't be hidden: it's the way into the app.
+    public func setMenuBarItemEnabled(_ enabled: Bool, for metric: Metric) {
+        if !enabled, menuBarItems.map(\.metric) == [metric] { return }
+        preferences.setMenuBarItemEnabled(enabled, for: metric)
         rebuildMenuBarItems()
     }
 
@@ -88,7 +106,7 @@ public final class Monitor {
     // MARK: Menu bar
 
     private func rebuildMenuBarItems() {
-        menuBarItems = Metric.allCases.map { metric in
+        menuBarItems = Metric.allCases.filter(preferences.isMenuBarItemEnabled).map { metric in
             let style = preferences.menuBarStyle(for: metric)
             return MenuBarItem(
                 metric: metric,
@@ -104,16 +122,24 @@ public final class Monitor {
         case .cpu:
             guard let latest, let cpu = latest.cpu.value else { return Format.placeholder }
             return Format.cpu(cpu.total, mode: preferences.cpuMode, logicalCores: latest.system.logicalCores)
+        case .memory: return MemoryMenuBar.text(latest, preferences: preferences)
+        case .network: return NetworkMenuBar.text(latest, preferences: preferences)
+        case .gpu: return GPUMenuBar.text(latest, preferences: preferences)
+        case .temperature: return ThermalMenuBar.text(latest, preferences: preferences)
         }
     }
 
     private func bars(for metric: Metric) -> [Double?] {
-        let empty = [Double?](repeating: nil, count: Sparkline.barCount)
-        guard let now = latest?.timestamp else { return empty }
-        let series: SeriesKey = switch metric {
-        case .cpu: .cpuTotal
+        let now = latest?.timestamp
+        switch metric {
+        case .cpu:
+            guard let now else { return Sparkline.empty }
+            let points = (try? history.summary(.cpuTotal, over: .oneMinute, endingAt: now).points) ?? []
+            return Sparkline.bars(points, endingAt: now)
+        case .memory: return MemoryMenuBar.bars(history: history, endingAt: now)
+        case .network: return NetworkMenuBar.bars(history: history, endingAt: now)
+        case .gpu: return GPUMenuBar.bars(history: history, endingAt: now)
+        case .temperature: return ThermalMenuBar.bars(history: history, endingAt: now)
         }
-        let points = (try? history.summary(series, over: .oneMinute, endingAt: now).points) ?? []
-        return Sparkline.bars(points, endingAt: now)
     }
 }

@@ -106,7 +106,6 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 struct MainWindowView: View {
     let monitor: Monitor
     @Bindable var state: WindowState
-    @State private var range: TimeRange = .twentyFourHours
 
     var body: some View {
         HStack(spacing: 0) {
@@ -126,7 +125,13 @@ struct MainWindowView: View {
 
     private var subtitle: String? {
         switch state.tab {
-        case .cpu: monitor.cpuDetail(range: range).subtitle
+        case .cpu: CPUWindowTab.subtitle(monitor)
+        case .memory: MemoryWindowTab.subtitle(monitor)
+        case .gpu: GPUWindowTab.subtitle(monitor)
+        case .network: NetworkWindowTab.subtitle(monitor)
+        case .disk: DiskWindowTab.subtitle(monitor)
+        case .battery: BatteryWindowTab.subtitle(monitor)
+        case .temperature: TemperatureWindowTab.subtitle(monitor)
         default: nil
         }
     }
@@ -159,13 +164,14 @@ struct MainWindowView: View {
     @ViewBuilder
     private var content: some View {
         switch state.tab {
-        case .cpu:
-            CPUWindowTab(detail: monitor.cpuDetail(range: range), range: $range)
-        default:
-            Text("\(state.tab.title) is coming soon.")
-                .font(.system(size: 13))
-                .foregroundStyle(Palette.textSecondary)
-                .frame(maxWidth: .infinity, minHeight: 400)
+        case .cpu: CPUWindowTab(monitor: monitor)
+        case .memory: MemoryWindowTab(monitor: monitor)
+        case .gpu: GPUWindowTab(monitor: monitor)
+        case .network: NetworkWindowTab(monitor: monitor)
+        case .disk: DiskWindowTab(monitor: monitor)
+        case .battery: BatteryWindowTab(monitor: monitor)
+        case .temperature: TemperatureWindowTab(monitor: monitor)
+        case .overview, .bluetooth, .sound, .projects, .settings: ComingSoon(title: state.tab.title)
         }
     }
 }

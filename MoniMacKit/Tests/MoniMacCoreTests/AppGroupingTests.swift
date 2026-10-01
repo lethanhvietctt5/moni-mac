@@ -65,6 +65,23 @@ struct AppGroupingTests {
         #expect(byName["WindowServer"]?.canQuit == false)
     }
 
+    @Test func sumsPerProcessFiguresAndKeepsMissingOnesNil() {
+        var main = process(20, chrome, cpu: 0.2, regular: true)
+        main.memory = 300
+        main.power = 1.5
+        var helper = process(21, renderer, cpu: 0.5, responsible: 20)
+        helper.memory = 700
+        helper.diskWritePerSecond = 10
+
+        let app = AppGrouping.apps(from: [main, helper])[0]
+
+        #expect(app.memory == 1000)
+        #expect(app.power == 1.5)
+        #expect(app.diskWritePerSecond == 10)
+        #expect(app.gpu == nil)
+        #expect(app.network == nil)
+    }
+
     @Test(arguments: [
         ("/Applications/Xcode.app/Contents/MacOS/Xcode", "/Applications/Xcode.app"),
         ("/usr/bin/swift-frontend", nil),

@@ -124,6 +124,33 @@ struct MenuBarTests {
         #expect(cpuItem(monitor)?.text == "420%")
     }
 
+    @Test func onlyCPUIsShownByDefault() throws {
+        let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
+
+        #expect(monitor.menuBarItems.map(\.metric) == [.cpu])
+    }
+
+    @Test func itemsCanBeShownAndHiddenAndPersist() throws {
+        let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
+
+        monitor.setMenuBarItemEnabled(true, for: .memory)
+        monitor.setMenuBarItemEnabled(true, for: .network)
+        #expect(monitor.menuBarItems.map(\.metric) == [.cpu, .memory, .network])
+
+        monitor.setMenuBarItemEnabled(false, for: .cpu)
+        #expect(monitor.menuBarItems.map(\.metric) == [.memory, .network])
+        #expect(try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)]).menuBarItems.map(\.metric) == [.memory, .network])
+    }
+
+    @Test func theLastItemCannotBeHidden() throws {
+        let monitor = try makeMonitor(cpu: [.cpu(user: 0.5, system: 0)])
+
+        monitor.setMenuBarItemEnabled(false, for: .cpu)
+
+        #expect(monitor.menuBarItems.map(\.metric) == [.cpu])
+        #expect(monitor.isMenuBarItemEnabled(.cpu))
+    }
+
     @Test(arguments: [
         (0.0, "0%"), (0.004, "0%"), (0.005, "1%"), (0.317, "32%"), (1.0, "100%"), (1.2, "100%"), (-0.1, "0%"),
     ])

@@ -41,3 +41,11 @@ extension CPUUsage {
         self.init(user: user / total, system: system / total, idle: idle / total)
     }
 }
+
+extension Snapshot {
+    /// Values MetricsHistory records for CPU.
+    var cpuSeries: [(SeriesKey, Double)] {
+        guard let cpu = cpu.value else { return [] }
+        return [(.cpuTotal, cpu.total), (.cpuUser, cpu.user), (.cpuSystem, cpu.system)]
+    }
+}

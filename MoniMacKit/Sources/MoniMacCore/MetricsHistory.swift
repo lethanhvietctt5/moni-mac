@@ -160,8 +160,8 @@ public final class MetricsHistory {
     }
 
     private static func values(in snapshot: Snapshot) -> [(SeriesKey, Double)] {
-        guard let cpu = snapshot.cpu.value else { return [] }
-        return [(.cpuTotal, cpu.total), (.cpuUser, cpu.user), (.cpuSystem, cpu.system)]
+        snapshot.cpuSeries + snapshot.memorySeries + snapshot.gpuSeries + snapshot.networkSeries
+            + snapshot.diskSeries + snapshot.batterySeries + snapshot.thermalSeries
     }
 }
 

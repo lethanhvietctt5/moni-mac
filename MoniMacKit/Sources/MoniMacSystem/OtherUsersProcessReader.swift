@@ -62,7 +62,8 @@ final class OtherUsersProcessReader: Sendable {
                     samples.append(ProcessSample(
                         pid: row.pid, name: (row.command as NSString).lastPathComponent,
                         path: row.command.hasPrefix("/") ? row.command : nil,
-                        cpu: (row.cpuSeconds - previous.cpuSeconds) / elapsed
+                        cpu: (row.cpuSeconds - previous.cpuSeconds) / elapsed,
+                        memory: row.residentBytes
                     ))
                 }
                 state.previous = next
@@ -75,6 +76,8 @@ final class OtherUsersProcessReader: Sendable {
     struct Row: Equatable {
         var pid: Int32
         var uid: uid_t
+        /// Resident memory (ps reports KiB).
+        var residentBytes: UInt64
         var cpuSeconds: Double
         var command: String
     }
@@ -82,7 +85,7 @@ final class OtherUsersProcessReader: Sendable {
     private static func runPS() -> [Row] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-axo", "pid=,uid=,time=,comm="]
+        process.arguments = ["-axo", "pid=,uid=,rss=,time=,comm="]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
@@ -96,13 +99,13 @@ final class OtherUsersProcessReader: Sendable {
         return parse(String(decoding: data, as: UTF8.self))
     }
 
-    /// Parses `ps -axo pid=,uid=,time=,comm=` output.
+    /// Parses `ps -axo pid=,uid=,rss=,time=,comm=` output.
     static func parse(_ output: String) -> [Row] {
         output.split(separator: "\n").compactMap { line in
-            let fields = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
-            guard fields.count == 4, let pid = Int32(fields[0]), let uid = uid_t(fields[1]),
-                  let seconds = parseCPUTime(fields[2]) else { return nil }
-            return Row(pid: pid, uid: uid, cpuSeconds: seconds, command: String(fields[3]))
+            let fields = line.split(separator: " ", maxSplits: 4, omittingEmptySubsequences: true)
+            guard fields.count == 5, let pid = Int32(fields[0]), let uid = uid_t(fields[1]),
+                  let kibibytes = UInt64(fields[2]), let seconds = parseCPUTime(fields[3]) else { return nil }
+            return Row(pid: pid, uid: uid, residentBytes: kibibytes * 1024, cpuSeconds: seconds, command: String(fields[4]))
         }
     }
 

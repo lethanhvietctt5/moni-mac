@@ -1,6 +1,6 @@
 /// The metrics that can appear as menu bar items.
 public enum Metric: String, CaseIterable, Sendable {
-    case cpu
+    case cpu, memory, network, gpu, temperature
 }
 
 /// What one menu bar item displays.
@@ -24,6 +24,10 @@ public struct MenuBarItem: Equatable, Sendable {
     public var widestText: String {
         switch metric {
         case .cpu: "100%"
+        case .memory: MemoryMenuBar.widestText
+        case .network: NetworkMenuBar.widestText
+        case .gpu: GPUMenuBar.widestText
+        case .temperature: ThermalMenuBar.widestText
         }
     }
 }
