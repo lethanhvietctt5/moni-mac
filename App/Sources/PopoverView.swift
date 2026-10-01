@@ -10,9 +10,6 @@ enum PopoverTab: String, CaseIterable {
     case disk = "Disk"
     case battery = "Battery"
 
-    /// Overview is a placeholder until ticket 11.
-    var isAvailable: Bool { self != .overview }
-
     /// Tabs for hardware this Mac lacks are hidden.
     @MainActor
     func isShown(on monitor: Monitor) -> Bool {
@@ -25,7 +22,7 @@ struct PopoverView: View {
     let monitor: Monitor
     let openWindow: () -> Void
     let quit: () -> Void
-    @State private var tab = PopoverTab.allCases.first { $0.rawValue.lowercased() == AppDelegate.launchTab } ?? .cpu
+    @State private var tab = PopoverTab.allCases.first { $0.rawValue.lowercased() == AppDelegate.launchTab } ?? .overview
     /// Each tab's chart range, so it survives switching tabs while the popover is open.
     @State private var ranges: [PopoverTab: TimeRange] = [:]
 
@@ -38,10 +35,10 @@ struct PopoverView: View {
             header
             VStack(spacing: 12) {
                 SegmentedPicker(options: PopoverTab.allCases.filter { $0.isShown(on: monitor) }, selection: $tab,
-                                label: \.rawValue, isEnabled: \.isAvailable)
+                                label: \.rawValue)
                 let range = range(for: tab)
                 switch tab {
-                case .overview: ComingSoon(title: "Overview")
+                case .overview: OverviewPopoverTab(monitor: monitor, openWindow: openWindow)
                 case .cpu: CPUTab(monitor: monitor, range: range)
                 case .memory: MemoryPopoverTab(monitor: monitor, range: range)
                 case .gpu: GPUPopoverTab(monitor: monitor, range: range)

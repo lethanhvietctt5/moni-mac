@@ -143,12 +143,14 @@ public struct ProcessSample: Equatable, Sendable {
     public var cpu: Double
     /// Whether this is a running app with a Dock presence (the only kind MoniMac offers to quit).
     public var isRegularApp: Bool
+    /// Whether another user (root, `_windowserver`, …) owns the process. Those are read from `ps`.
+    public var isOtherUser: Bool
     /// Everything besides CPU; each figure is nil when it couldn't be read.
     public var resources: ResourceUse
 
     public init(
         pid: Int32, responsiblePID: Int32? = nil, name: String, path: String?, cpu: Double, isRegularApp: Bool = false,
-        resources: ResourceUse = ResourceUse()
+        isOtherUser: Bool = false, resources: ResourceUse = ResourceUse()
     ) {
         self.pid = pid
         self.responsiblePID = responsiblePID
@@ -156,6 +158,7 @@ public struct ProcessSample: Equatable, Sendable {
         self.path = path
         self.cpu = cpu
         self.isRegularApp = isRegularApp
+        self.isOtherUser = isOtherUser
         self.resources = resources
     }
 }

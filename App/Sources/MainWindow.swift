@@ -63,7 +63,7 @@ enum WindowTab: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class WindowState {
-    var tab: WindowTab = .cpu
+    var tab: WindowTab = .overview
     /// Each tab's chart range, so it survives switching tabs.
     var ranges: [WindowTab: TimeRange] = [:]
 
@@ -144,8 +144,9 @@ struct MainWindowView: View {
         case .disk: monitor.diskSubtitle
         case .battery: monitor.batterySubtitle
         case .temperature: monitor.temperatureSubtitle
+        case .overview: monitor.overviewSubtitle
         case .projects: monitor.projectsSubtitle
-        case .overview, .bluetooth, .sound, .settings: nil
+        case .bluetooth, .sound, .settings: nil
         }
     }
 
@@ -160,6 +161,7 @@ struct MainWindowView: View {
                 }
             }
             Spacer()
+            if state.tab == .overview { OverviewLayoutToggle() }
             // Wired up by the share card (ticket 19).
             Button {} label: {
                 Image(systemName: "square.and.arrow.up").font(.system(size: 14))
@@ -185,8 +187,9 @@ struct MainWindowView: View {
         case .disk: DiskWindowTab(monitor: monitor, range: range)
         case .battery: BatteryWindowTab(monitor: monitor, range: range)
         case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
+        case .overview: OverviewWindowTab(monitor: monitor)
         case .projects: ProjectsWindowTab(monitor: monitor)
-        case .overview, .bluetooth, .sound, .settings: ComingSoon(title: state.tab.title)
+        case .bluetooth, .sound, .settings: ComingSoon(title: state.tab.title)
         }
     }
 }

@@ -62,7 +62,7 @@ final class OtherUsersProcessReader: Sendable {
                     samples.append(ProcessSample(
                         pid: row.pid, name: (row.command as NSString).lastPathComponent,
                         path: row.command.hasPrefix("/") ? row.command : nil,
-                        cpu: (row.cpuSeconds - previous.cpuSeconds) / elapsed,
+                        cpu: (row.cpuSeconds - previous.cpuSeconds) / elapsed, isOtherUser: true,
                         resources: ResourceUse(memory: row.residentBytes)
                     ))
                 }
