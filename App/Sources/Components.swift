@@ -1,4 +1,5 @@
 import AppKit
+import MoniMacCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -71,5 +72,34 @@ enum AppIcons {
         let icon = NSWorkspace.shared.icon(forFile: bundlePath)
         cache[bundlePath] = icon
         return icon
+    }
+}
+
+/// Stacked columns: user time under system time, one per bar; nil bars are empty.
+struct StackedBars: View {
+    let bars: [CPUPanel.StackedBar?]
+    let systemColor: Color
+    let cornerRadius: CGFloat
+    let spacing: CGFloat
+
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(alignment: .bottom, spacing: spacing) {
+                ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
+                    VStack(spacing: 1) {
+                        Spacer(minLength: 0)
+                        if let bar, bar.user + bar.system > 0 {
+                            UnevenRoundedRectangle(topLeadingRadius: cornerRadius, topTrailingRadius: cornerRadius)
+                                .fill(systemColor)
+                                .frame(height: geometry.size.height * min(bar.system, 1))
+                            Rectangle()
+                                .fill(Palette.cpu)
+                                .frame(height: geometry.size.height * min(bar.user, 1))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
     }
 }

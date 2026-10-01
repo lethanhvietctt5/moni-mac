@@ -4,10 +4,16 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit
 
-**Status:** ready-for-agent
+**Status:** done pending a manual click-through (automation can't click the status item or the window). Unchecked boxes are built but not yet exercised.
 
-- [ ] The popover's open-window button and "Open MoniMac" open the main window on the CPU tab
-- [ ] The sidebar shows the grouped tabs, and selecting a tab switches the content
-- [ ] The CPU history chart switches between 12H/24H/7D/30D and labels the peak value and time
-- [ ] Per-core bars show performance and efficiency cores separately
-- [ ] Window feature-state tests cover stat cards and the peak label from scripted history
+**Notes:**
+- The window and its SwiftUI views exist only while it's open, so a closed window costs nothing.
+- Threads and processes come from `processor_set_statistics`, which counts every process without root.
+- The window CPU tab uses the design's single CPU color for all cores; the popover keeps teal for efficiency cores, as its design does.
+- "Open MoniMac" in the popover lives on the Overview tab (ticket 11). The popover header's window button is wired now.
+
+- [ ] The popover's open-window button and "Open MoniMac" open the main window on the CPU tab (window button wired, not yet clicked; `--show-window` opens the same window)
+- [ ] The sidebar shows the grouped tabs, and selecting a tab switches the content (groups verified by screenshot; switching not yet clicked)
+- [ ] The CPU history chart switches between 12H/24H/7D/30D and labels the peak value and time (peak label and per-range axes verified by screenshot and tests; switching not yet clicked)
+- [x] Per-core bars show performance and efficiency cores separately
+- [x] Window feature-state tests cover stat cards and the peak label from scripted history

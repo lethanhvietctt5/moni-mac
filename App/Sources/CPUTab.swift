@@ -177,27 +177,10 @@ private struct HistoryGraph: View {
     let bars: [CPUPanel.StackedBar?]
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack(alignment: .bottom, spacing: 2) {
-                ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                    VStack(spacing: 1) {
-                        Spacer(minLength: 0)
-                        if let bar, bar.user + bar.system > 0 {
-                            UnevenRoundedRectangle(topLeadingRadius: 1.5, topTrailingRadius: 1.5)
-                                .fill(Palette.memory)
-                                .frame(height: geometry.size.height * bar.system)
-                            Rectangle()
-                                .fill(Palette.cpu)
-                                .frame(height: geometry.size.height * bar.user)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .frame(height: 56)
-        .padding([.top, .horizontal], 8)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
+        StackedBars(bars: bars, systemColor: Palette.memory, cornerRadius: 1.5, spacing: 2)
+            .frame(height: 56)
+            .padding([.top, .horizontal], 8)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
     }
 }
 

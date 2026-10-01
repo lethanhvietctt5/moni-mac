@@ -4,6 +4,7 @@ import SwiftUI
 /// The design file's color tokens, resolved for light and dark appearance.
 enum Palette {
     static let windowBackground = color(light: 0xFFFFFF, dark: 0x1E1E20)
+    static let sidebarBackground = color(light: 0xF2F1F6, dark: 0x262628)
     static let surface = color(light: 0xF7F7F9, dark: 0x2C2C2E)
     static let surfaceRaised = color(light: 0xFFFFFF, dark: 0x323234)
     static let separator = color(light: 0xE5E5EA, dark: 0x3A3A3C)

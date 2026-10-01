@@ -68,7 +68,7 @@ extension CPUPanel {
             chipLine: "\(system.chipName) · \(cores) cores",
             total: cpu.map { format($0.total) } ?? Format.placeholder,
             range: range,
-            history: historyBars(history, range: range, endingAt: snapshot?.timestamp),
+            history: historyBars(history, range: range, endingAt: snapshot?.timestamp, count: historyBarCount),
             split: cpu,
             user: cpu.map { format($0.user) } ?? Format.placeholder,
             system: cpu.map { format($0.system) } ?? Format.placeholder,
@@ -92,12 +92,13 @@ extension CPUPanel {
         )
     }
 
+    /// User and system history as `count` stacked bars over the range.
     @MainActor
-    private static func historyBars(_ history: MetricsHistory, range: TimeRange, endingAt now: Date?) -> [StackedBar?] {
-        guard let now else { return Array(repeating: nil, count: historyBarCount) }
+    static func historyBars(_ history: MetricsHistory, range: TimeRange, endingAt now: Date?, count: Int) -> [StackedBar?] {
+        guard let now else { return Array(repeating: nil, count: count) }
         func bars(_ series: SeriesKey) -> [Double?] {
             let points = (try? history.summary(series, over: range, endingAt: now).points) ?? []
-            return Resample.bars(points, endingAt: now, window: range.duration, count: historyBarCount)
+            return Resample.bars(points, endingAt: now, window: range.duration, count: count)
         }
         return zip(bars(.cpuUser), bars(.cpuSystem)).map { user, system in
             guard let user, let system else { return nil }
@@ -106,7 +107,7 @@ extension CPUPanel {
     }
 
     /// Labels P1… then E1…, performance cores first, keeping kernel order within each kind.
-    private static func coreBars(_ cores: [CoreUsage]) -> [Core] {
+    static func coreBars(_ cores: [CoreUsage]) -> [Core] {
         func bars(_ kind: CoreKind, prefix: String) -> [Core] {
             cores.filter { $0.kind == kind }.enumerated().map {
                 Core(label: "\(prefix)\($0.offset + 1)", kind: kind, usage: $0.element.usage)

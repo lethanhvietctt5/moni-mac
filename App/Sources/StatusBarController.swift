@@ -12,9 +12,11 @@ final class StatusBarController: NSObject {
     private var sizedStyles: [Metric: MenuBarStyle] = [:]
     private var menus: [Metric: NSMenu] = [:]
     private let popover = NSPopover()
+    private let openWindow: () -> Void
 
-    init(monitor: Monitor) {
+    init(monitor: Monitor, openWindow: @escaping () -> Void) {
         self.monitor = monitor
+        self.openWindow = openWindow
         super.init()
         popover.behavior = .transient
         popover.delegate = self
@@ -30,7 +32,14 @@ final class StatusBarController: NSObject {
     /// The SwiftUI content exists only while the popover is open, so a closed popover costs nothing.
     private func show(from button: NSStatusBarButton) {
         guard !popover.isShown else { return }
-        let content = NSHostingController(rootView: PopoverView(monitor: monitor, quit: { NSApp.terminate(nil) }))
+        let content = NSHostingController(rootView: PopoverView(
+            monitor: monitor,
+            openWindow: { [weak self] in
+                self?.popover.performClose(nil)
+                self?.openWindow()
+            },
+            quit: { NSApp.terminate(nil) }
+        ))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

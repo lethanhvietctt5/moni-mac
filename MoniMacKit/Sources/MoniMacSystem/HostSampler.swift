@@ -23,6 +23,7 @@ public final class HostSampler: SystemSampler {
             cpu: sampleCPU(),
             cores: cores.sample(),
             loadAverage: sampleLoadAverage(),
+            taskCounts: sampleTaskCounts(),
             processes: processes.sample()
         )
     }
@@ -63,6 +64,24 @@ public final class HostSampler: SystemSampler {
             idle: ticks.2,  // CPU_STATE_IDLE
             nice: ticks.3  // CPU_STATE_NICE
         )
+    }
+
+    /// System-wide counts, including processes MoniMac can't inspect individually.
+    private func sampleTaskCounts() -> Reading<TaskCounts> {
+        var processorSet = processor_set_name_t()
+        guard processor_set_default(host, &processorSet) == KERN_SUCCESS else {
+            return .unavailable(.failed("processor_set_default failed"))
+        }
+        defer { mach_port_deallocate(mach_task_self_, processorSet) }
+        var info = processor_set_load_info()
+        var count = mach_msg_type_number_t(MemoryLayout<processor_set_load_info>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                processor_set_statistics(processorSet, PROCESSOR_SET_LOAD_INFO, $0, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else { return .unavailable(.failed("processor_set_statistics failed")) }
+        return .value(TaskCounts(processes: Int(info.task_count), threads: Int(info.thread_count)))
     }
 
     private func sampleLoadAverage() -> Reading<LoadAverage> {

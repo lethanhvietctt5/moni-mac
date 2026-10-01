@@ -22,7 +22,9 @@ open build/Build/Products/Debug/MoniMac.app
 
 Rerun `xcodegen generate` after adding or removing app source files or editing `project.yml`.
 
-`--show-popover` (e.g. `open …/MoniMac.app --args --show-popover`) opens the popover on launch. Automation can't click the status item without Accessibility permission, so use this flag to screenshot the popover. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
+`--show-popover` and `--show-window` (e.g. `open …/MoniMac.app --args --show-window`) open the popover or main window on launch. Automation can't click the status item or the window without Accessibility permission, so use these flags to check UI.
+
+**Screenshots:** capture the main window with `scripts/screenshot-window.sh out.png` (by window ID). Capture the popover with `screencapture -R` on the small region under the status item. **Never capture the full screen**: it records the user's other apps. Measure self-cost (budget: under 1% CPU with the popover closed) on a **Release** build; Debug is several times slower.
 
 ## Layout
 

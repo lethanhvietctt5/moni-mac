@@ -17,6 +17,7 @@ enum PopoverTab: String, CaseIterable {
 /// The popover shown when a menu bar item is clicked.
 struct PopoverView: View {
     let monitor: Monitor
+    let openWindow: () -> Void
     let quit: () -> Void
     @State private var tab: PopoverTab = .cpu
     @State private var range: TimeRange = .fiveMinutes
@@ -50,23 +51,23 @@ struct PopoverView: View {
                 .foregroundStyle(Palette.textPrimary)
             Spacer()
             HStack(spacing: 12) {
-                // Wired up by the main window (ticket 04) and Settings (ticket 13).
-                headerButton("macwindow", help: "Open MoniMac")
-                headerButton("gearshape", help: "Settings")
+                headerButton("macwindow", help: "Open MoniMac", action: openWindow)
+                // Wired up by Settings (ticket 13).
+                headerButton("gearshape", help: "Settings (coming soon)", action: nil)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
     }
 
-    private func headerButton(_ symbol: String, help: String) -> some View {
-        Button {} label: {
+    private func headerButton(_ symbol: String, help: String, action: (() -> Void)?) -> some View {
+        Button { action?() } label: {
             Image(systemName: symbol).font(.system(size: 13))
         }
         .buttonStyle(.plain)
         .foregroundStyle(Palette.textSecondary)
-        .disabled(true)
-        .help("\(help) (coming soon)")
+        .disabled(action == nil)
+        .help(help)
     }
 
     private var placeholder: some View {
