@@ -52,8 +52,7 @@ final class SMC {
 
     /// How many keys the SMC has.
     func keyCount() -> Int? {
-        guard let bytes = read("#KEY"), bytes.count >= 4 else { return nil }
-        return Int(bytes.prefix(4).reduce(UInt32(0)) { $0 << 8 | UInt32($1) })
+        read("#KEY").flatMap { Self.decode($0, type: "ui32") }.map { Int($0) }
     }
 
     /// The key at an index, 0..<keyCount.
@@ -88,12 +87,12 @@ final class SMC {
     /// types are big-endian fixed point (`fpe2` for fans, `sp78` for temperatures) or integers.
     static func decode(_ bytes: [UInt8], type: String) -> Double? {
         func bigEndian(_ count: Int) -> UInt32? {
-            bytes.count >= count ? bytes.prefix(count).reduce(UInt32(0)) { $0 << 8 | UInt32($1) } : nil
+            bytes.count >= count ? bigEndianValue(bytes.prefix(count)) : nil
         }
         switch type {
         case "flt ":
             guard bytes.count >= 4 else { return nil }
-            return Double(Float32(bitPattern: bytes.prefix(4).reversed().reduce(UInt32(0)) { $0 << 8 | UInt32($1) }))
+            return Double(Float32(bitPattern: bigEndianValue(bytes.prefix(4).reversed())))
         case "fpe2": return bigEndian(2).map { Double($0) / 4 }
         case "sp78": return bigEndian(2).map { Double(Int16(truncatingIfNeeded: $0)) / 256 }
         case "ui8 ": return bigEndian(1).map(Double.init)
@@ -118,7 +117,12 @@ final class SMC {
 
     /// A four-character key as the SMC's 32-bit code, e.g. "Tp01".
     private static func code(_ key: String) -> UInt32 {
-        key.utf8.prefix(4).reduce(UInt32(0)) { $0 << 8 | UInt32($1) }
+        bigEndianValue(key.utf8.prefix(4))
+    }
+
+    /// Bytes read as one big-endian unsigned integer (at most 4 bytes).
+    private static func bigEndianValue(_ bytes: some Sequence<UInt8>) -> UInt32 {
+        bytes.reduce(UInt32(0)) { $0 << 8 | UInt32($1) }
     }
 
     private static func name(_ code: UInt32) -> String {

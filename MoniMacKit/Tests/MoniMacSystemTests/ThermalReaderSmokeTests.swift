@@ -10,7 +10,7 @@ struct ThermalReaderSmokeTests {
         let reading = try #require(ThermalReader().sample().value)
         let sensors = try #require(reading.sensors.value, "sensors: \(reading.sensors)")
 
-        let groups = ThermalGroups(sensors)
+        let groups = ThermalGroups(sensors, chip: SystemInfoReader.read().chipName)
         let cpu = try #require(groups.cpu, "no CPU sensors among \(sensors.map(\.name))")
         #expect((15...110).contains(cpu))
     }
@@ -45,7 +45,9 @@ struct ThermalReaderSmokeTests {
 
         let sensors = hid.read()
 
-        #expect(sensors.contains { SensorGroup.of(sensorNamed: $0.name) != nil && (1...125).contains($0.celsius) })
+        #expect(sensors.contains {
+            ThermalSensorGroup.of(sensorNamed: $0.name, chip: "") != nil && (1...125).contains($0.celsius)
+        })
     }
 
     @Test(arguments: [

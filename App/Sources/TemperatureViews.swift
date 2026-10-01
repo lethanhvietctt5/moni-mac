@@ -36,7 +36,7 @@ private struct TemperatureWindowContent: View {
     private var readouts: some View {
         HStack(spacing: 0) {
             ForEach(Array(detail.cards.enumerated()), id: \.offset) { index, card in
-                ReadoutCard(card: card, symbol: Self.symbols[index % Self.symbols.count])
+                ReadoutCard(card: card)
                     .overlay(alignment: .trailing) {
                         if index < detail.cards.count - 1 {
                             Rectangle().fill(Palette.separator).frame(width: 1)
@@ -46,9 +46,6 @@ private struct TemperatureWindowContent: View {
         }
         .background(RoundedRectangle(cornerRadius: 14).fill(Palette.surface))
     }
-
-    /// CPU, GPU, SSD, Battery, matching the sidebar's symbols.
-    private static let symbols = ["cpu", "rectangle.3.group", "internaldrive", "battery.75percent"]
 
     private var history: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -115,7 +112,16 @@ private struct TemperatureWindowContent: View {
 /// One of the CPU, GPU, SSD, and Battery readouts: value, gauge, and today's peak.
 private struct ReadoutCard: View {
     let card: TemperatureDetail.Card
-    let symbol: String
+
+    /// Matches the sidebar's symbols for these parts.
+    private var symbol: String {
+        switch card.kind {
+        case .cpu: "cpu"
+        case .gpu: "rectangle.3.group"
+        case .ssd: "internaldrive"
+        case .battery: "battery.75percent"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -128,7 +134,7 @@ private struct ReadoutCard: View {
                     .foregroundStyle(Palette.textPrimary)
                 Text(card.unit).font(.system(size: 14, weight: .semibold)).foregroundStyle(Palette.textSecondary)
             }
-            Gauge(position: card.gauge)
+            HeatGauge(position: card.gauge)
             Text(card.caption).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
         }
         .padding(.horizontal, 18)
@@ -137,7 +143,7 @@ private struct ReadoutCard: View {
     }
 
     /// A cool-to-hot gradient with a marker at the current temperature.
-    private struct Gauge: View {
+    private struct HeatGauge: View {
         let position: Double?
 
         var body: some View {
@@ -198,7 +204,11 @@ private struct TemperatureBars: View {
 
 /// The read-only Fans card: each fan's speed, share of its maximum, and range. No controls.
 private struct FansCard: View {
-    let fans: [TemperatureDetail.FanRow]
+    let fans: TemperatureDetail.Fans
+
+    private var rows: [TemperatureDetail.FanRow] {
+        if case .speeds(let rows) = fans { rows } else { [] }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -207,7 +217,11 @@ private struct FansCard: View {
                 Spacer()
                 Text("Managed by macOS").font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.textSecondary)
             }
-            ForEach(fans) { fan in
+            if case .unreadable(let reason) = fans {
+                Text(reason).font(.system(size: 12)).foregroundStyle(Palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(rows) { fan in
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
                         Image(systemName: "fan")

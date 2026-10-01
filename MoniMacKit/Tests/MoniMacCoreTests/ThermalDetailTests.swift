@@ -120,8 +120,8 @@ struct ThermalDetailTests {
     @Test func fansShowSpeedShareAndRange() throws {
         let fans = try detail(history: [], latest: snapshot(at: clock.now)).fans
 
-        #expect(fans == [.init(id: 0, name: "Fan", rpm: "3,200", percent: "49%", share: 3200.0 / 6550,
-                               minimum: "1,200 RPM", maximum: "6,550 RPM")])
+        #expect(fans == .speeds([.init(id: 0, name: "Fan", rpm: "3,200", percent: "49%", share: 3200.0 / 6550,
+                                       minimum: "1,200 RPM", maximum: "6,550 RPM")]))
     }
 
     @Test func severalFansAreNumberedUnlessTheSMCNamesThem() throws {
@@ -129,8 +129,16 @@ struct ThermalDetailTests {
             Fan(rpm: 0, minimumRPM: 1200, maximumRPM: 6550), Fan(name: "Right", rpm: 2400, minimumRPM: 1200, maximumRPM: 6000),
         ]))).fans
 
-        #expect(fans?.map(\.name) == ["Fan 1", "Right"])
-        #expect(fans?.map(\.percent) == ["0%", "40%"])
+        guard case .speeds(let rows) = fans else { Issue.record("fans: \(String(describing: fans))"); return }
+        #expect(rows.map(\.name) == ["Fan 1", "Right"])
+        #expect(rows.map(\.percent) == ["0%", "40%"])
+    }
+
+    /// Fans that exist but can't be read keep the card and say why, rather than vanishing.
+    @Test func unreadableFansSayWhy() throws {
+        let fans = try detail(history: [], latest: snapshot(at: clock.now, fans: .unavailable(.failed("AppleSMC couldn't be opened")))).fans
+
+        #expect(fans == .unreadable("Fan speeds couldn't be read: AppleSMC couldn't be opened."))
     }
 
     /// Ticket criterion: with a fake sampler reporting no fans, the Fans card is hidden.
@@ -139,7 +147,6 @@ struct ThermalDetailTests {
 
         monitor.tick()
 
-        #expect(monitor.hasFans == false)
         #expect(monitor.temperatureDetail(range: .twentyFourHours).fans == nil)
         #expect(monitor.temperatureSubtitle == "Thermal state: Nominal")
     }
@@ -158,10 +165,11 @@ struct ThermalDetailTests {
 
         monitor.tick()
 
-        #expect(monitor.hasFans)
         #expect(monitor.temperatureSubtitle == "Thermal state: Nominal · 1 fan")
         let two = ThermalReading(state: .serious, sensors: .value([]), fans: .value(oneFan + oneFan))
         #expect(TemperatureDetail.subtitle(for: two) == "Thermal state: Serious · 2 fans")
+        let unknown = ThermalReading(state: nil, sensors: .value([]), fans: .unavailable(.unsupported))
+        #expect(TemperatureDetail.subtitle(for: unknown) == "Thermal state: Unknown")
     }
 
     @Test func sensorListGroupsAndCountsUnnamedSensors() throws {

@@ -3,13 +3,14 @@ import Foundation
 /// What SystemSampler reads for thermal on each tick: the OS thermal state, named temperature
 /// sensors, and fans. MoniMac only reads these; it never controls fans.
 public struct ThermalReading: Equatable, Sendable {
-    public var state: ThermalState
+    /// Nil when macOS reports a state this version of MoniMac doesn't know.
+    public var state: ThermalState?
     /// Every temperature sensor the Mac reported, under the name the hardware uses.
     public var sensors: Reading<[ThermalSensor]>
     /// `.unavailable(.unsupported)` on a fanless Mac.
     public var fans: Reading<[Fan]>
 
-    public init(state: ThermalState, sensors: Reading<[ThermalSensor]>, fans: Reading<[Fan]>) {
+    public init(state: ThermalState?, sensors: Reading<[ThermalSensor]>, fans: Reading<[Fan]>) {
         self.state = state
         self.sensors = sensors
         self.fans = fans
@@ -59,27 +60,69 @@ extension SeriesKey {
     public static let thermalBattery = SeriesKey(rawValue: "thermal.battery")
 }
 
+/// The parts with a card in the Temperature & Fans tab, each with a history series.
+public enum ThermalCard: CaseIterable, Sendable {
+    case cpu, gpu, ssd, battery
+
+    public var title: String {
+        switch self {
+        case .cpu: "CPU"
+        case .gpu: "GPU"
+        case .ssd: "SSD"
+        case .battery: "Battery"
+        }
+    }
+
+    var series: SeriesKey {
+        switch self {
+        case .cpu: .thermalCPU
+        case .gpu: .thermalGPU
+        case .ssd: .thermalSSD
+        case .battery: .thermalBattery
+        }
+    }
+
+    /// This part's temperature, °C, or nil when the Mac doesn't report it.
+    func celsius(in groups: ThermalGroups) -> Double? {
+        switch self {
+        case .cpu: groups.cpu
+        case .gpu: groups.average(.gpu)
+        case .ssd: groups.average(.ssd)
+        case .battery: groups.average(.battery)
+        }
+    }
+}
+
+/// The span gauges, chart bars, and the menu bar sparkline share: room temperature to throttling.
+enum TemperatureScale {
+    static let range: ClosedRange<Double> = 20...100
+
+    /// A temperature as 0...1 of `range`.
+    static func position(_ celsius: Double) -> Double {
+        min(max((celsius - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
+    }
+}
+
 extension Snapshot {
+    /// Sensors grouped for this Mac's chip, or nil when no sensors were read.
+    var thermalGroups: ThermalGroups? {
+        thermal.value?.sensors.value.map { ThermalGroups($0, chip: system.chipName) }
+    }
+
     /// Values MetricsHistory records for thermal: the card temperatures, in °C.
     var thermalSeries: [SeriesSample] {
-        guard let sensors = thermal.value?.sensors.value else { return [] }
-        let temperatures = ThermalGroups(sensors)
-        var samples: [SeriesSample] = []
-        if let cpu = temperatures.cpu {
-            samples.append(SeriesSample(.thermalCPU, cpu,
-                                        contributor: AppGrouping.busiestApp(in: processes.value ?? [], by: \.cpu)))
+        guard let groups = thermalGroups else { return [] }
+        return ThermalCard.allCases.compactMap { card in
+            card.celsius(in: groups).map { celsius in
+                let busiest = card == .cpu ? AppGrouping.busiestApp(in: processes.value ?? [], by: \.cpu) : nil
+                return SeriesSample(card.series, celsius, contributor: busiest)
+            }
         }
-        for (key, group) in [(SeriesKey.thermalGPU, SensorGroup.gpu), (.thermalSSD, .ssd), (.thermalBattery, .battery)] {
-            if let value = temperatures.average(group) { samples.append(SeriesSample(key, value)) }
-        }
-        return samples
     }
 
     /// The menu bar's temperature: the CPU, or the hottest known sensor when the CPU isn't reported.
     var headlineTemperature: Double? {
-        guard let sensors = thermal.value?.sensors.value else { return nil }
-        let groups = ThermalGroups(sensors)
-        return groups.cpu ?? groups.hottest
+        thermalGroups.flatMap { $0.cpu ?? $0.hottest }
     }
 }
 
@@ -113,9 +156,6 @@ extension Preferences {
 
 /// The temperature menu bar item.
 enum TemperatureMenuBar: MenuBarMetric {
-    /// The sparkline's scale, °C: room temperature to throttling.
-    static let scale: ClosedRange<Double> = 20...100
-
     /// The widest text the item can show; the item is sized for it.
     static func widestText(preferences: Preferences) -> String {
         preferences.temperatureUnit.compact(100)
@@ -126,17 +166,12 @@ enum TemperatureMenuBar: MenuBarMetric {
         return preferences.temperatureUnit.compact(celsius)
     }
 
-    /// Sparkline bars over the last minute, 0...1, `Sparkline.barCount` long.
+    /// Sparkline bars over the last minute, 0...1 of `TemperatureScale`, `Sparkline.barCount` long.
     @MainActor
     static func bars(history: MetricsHistory, endingAt now: Date?) -> [Double?] {
         guard let now else { return Sparkline.empty }
         let points = (try? history.summary(.thermalCPU, over: .oneMinute, endingAt: now).points) ?? []
-        return Sparkline.bars(points, endingAt: now).map { $0.map(normalized) }
-    }
-
-    /// A temperature as 0...1 of `scale`.
-    static func normalized(_ celsius: Double) -> Double {
-        min(max((celsius - scale.lowerBound) / (scale.upperBound - scale.lowerBound), 0), 1)
+        return Sparkline.bars(points, endingAt: now).map { $0.map(TemperatureScale.position) }
     }
 }
 
@@ -144,11 +179,6 @@ extension Monitor {
     /// The main window toolbar subtitle for the Temperature & Fans tab, e.g. "Thermal state: Nominal · 1 fan".
     public var temperatureSubtitle: String? {
         latest?.thermal.value.map(TemperatureDetail.subtitle)
-    }
-
-    /// Whether this Mac reports any fans. Fan readouts are hidden on fanless Macs.
-    public var hasFans: Bool {
-        latest?.thermal.value?.fans.value?.isEmpty == false
     }
 
     /// The main window's Temperature & Fans tab for the given chart range.
