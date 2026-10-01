@@ -8,7 +8,8 @@ MoniMac is a free, open-source macOS system monitor (menu bar items, a popover, 
 
 ## Sources of truth
 
-- **Spec:** `docs/specs/monimac-v1.md`. It is an umbrella spec: problem, user stories, architecture, testing decisions, out of scope, and a suggested order of 16 child issues (Further Notes). Implement in slices following that list, starting with the harness and seams.
+- **Spec:** `docs/specs/monimac-v1.md`. It is an umbrella spec: problem, user stories, architecture, testing decisions, and out of scope.
+- **Tickets:** `docs/tickets/monimac-v1/`, one file per vertical slice, numbered in dependency order. Each has "Blocked by", "Status", and acceptance criteria. Pick any ticket whose blockers are done, and tick its criteria and update its status as you finish.
 - **UI designs:** `/Users/mb/Documents/moni-mac-designs.pen`, which is outside the repo. Read and edit it only through the Pencil MCP tools (`mcp__pencil__*`). Never use Read or Grep on `.pen` files; they are encrypted. Top-level frames: Templates, MoniMac Screens (Menu Bar, Popover & Alerts · Main Window — System Metrics · Main Window — Devices, Developer & Settings), Components (reusable: Sidebar Item, App Row, Metric Tile, Segmented Control, Section Header, Toggle).
 - Numbers in the designs are sample data, not requirements. The spec's Further Notes lists the known inconsistencies.
 - New specs go in `docs/specs/` as markdown. There is no issue tracker.

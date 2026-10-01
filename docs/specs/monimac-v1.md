@@ -240,7 +240,7 @@ As a Mac user — especially a developer — I can't easily tell why my Mac feel
   - On first launch, macOS blocks the app. Since macOS 15, right-click › Open no longer bypasses this; users must click **Open Anyway** in System Settings › Privacy & Security (or remove the quarantine attribute in Terminal). The README and every release note carry these steps with screenshots (story 146).
   - **Homebrew:** the official cask repository drops apps that fail Gatekeeper from September 2026, so MoniMac won't be listed there. A project-owned tap is optional, but Homebrew no longer offers a way to skip quarantine, so tap users still go through Open Anyway.
   - If a paid account is added later, switching to Developer ID + notarization is a release-pipeline change only; no app code depends on it.
-- **Updates:** use an open-source in-app updater whose update archives are verified with the project's own EdDSA signing key (this needs no Apple account), reading a feed published with GitHub Releases. The release-pipeline child issue must confirm that an installed update launches without triggering Gatekeeper again; if it does, fall back to "Update available" linking to the release page.
+- **Updates:** use an open-source in-app updater whose update archives are verified with the project's own EdDSA signing key (this needs no Apple account), reading a feed published with GitHub Releases. The release-pipeline ticket (20) must confirm that an installed update launches without triggering Gatekeeper again; if it does, fall back to "Update available" linking to the release page.
 - **Stack:** native Swift. Use SwiftUI for the window and popover; use AppKit where SwiftUI falls short (status items, the popover window, sheets).
 - **Targets:** Apple silicon first. The minimum macOS version is pinned by the per-app audio approach (see below). If no lower target is needed, assume macOS 14.2 or later.
 - **App mode:** an accessory (menu bar) app by default; "Show icon in Dock" switches the activation policy.
@@ -282,7 +282,7 @@ As a Mac user — especially a developer — I can't easily tell why my Mac feel
 
 - **CPU % mode** is one setting applied everywhere. This explains why the design shows "Xcode 412%" in the popover and notifications (Per-core) and "12.4%" in the window (System). Each surface must not choose its own mode. Sample screens disagree, so the spec rules: every surface follows the setting.
 - **Menu bar reorder/hide** uses the system's ⌘-drag behavior for status items. MoniMac persists visibility and order from Settings but does not build its own drag UI in the menu bar. The Settings list has drag handles for order.
-- **Per-app volume, ducking, and "mute new apps"** have no simple public API. Decision: implement with Core Audio process taps feeding a MoniMac-owned aggregate output (macOS 14.2+). **This needs a feasibility spike (child issue 2).** If it fails, ship Sound with output device and system volume plus per-app *activity* only, and hide the per-app sliders.
+- **Per-app volume, ducking, and "mute new apps"** have no simple public API. Decision: implement with Core Audio process taps feeding a MoniMac-owned aggregate output (macOS 14.2+). **This needs a feasibility spike (ticket 16).** If it fails, ship Sound with output device and system volume plus per-app *activity* only, and hide the per-app sliders.
 - **Fans are read-only.** MoniMac reads fan speeds and temperatures from the SMC but never writes to it.
 - **Quit flow:** "Quit" sends a graceful terminate. "Force Quit" is a separate destructive button. "Reopen windows next time" maps to the app's state-restoration preference. Quitting a group targets the responsible app, not individual helpers.
 - **Network SSID** needs Location permission on recent macOS. Request it once from the Network tab. If denied, show the interface without the name.
@@ -304,7 +304,7 @@ As a Mac user — especially a developer — I can't easily tell why my Mac feel
   - Formatting: units, CPU mode, compact menu bar strings.
   - Quit flow: Quit vs Force Quit vs Cancel → correct recorded action with correct target.
 - **Not unit-tested:** the real SystemSampler/SystemActions implementations. Cover them with a small smoke suite that runs on real hardware in CI-optional mode (checks fields are present and in range) and with manual QA against the Pencil designs.
-- **Prior art:** none. The repo is greenfield. The first child issue establishes the test harness (fake sampler, recording actions, clock control) that every later slice reuses.
+- **Prior art:** none. The repo is greenfield. Ticket 01 establishes the test harness (fake sampler, recording actions, clock control) that every later slice reuses.
 
 ## Out of Scope
 
@@ -327,21 +327,5 @@ As a Mac user — especially a developer — I can't easily tell why my Mac feel
   - Settings › "Data & License" is now "Data & About". Its row reads "MoniMac 1.4.2 · Free and open source · You're up to date" with a "Check for Updates…" button. The window subtitle reads "MoniMac 1.4.2".
   - The share card footer is `github.com/lethanhvietctt5/moni-mac`.
   - Temperature & Fans "Fan Control" is now a read-only "Fans" card: status "Managed by macOS", plain speed bars, and an info note. It has no mode switch, sliders, or 95°C note.
-- **Child issues (suggested order):**
-  1. Harness & seams: SystemSampler/SystemActions interfaces, fakes, clock, MetricsHistory with tiers.
-  2. Per-app audio feasibility spike (process taps). Decides Sound scope.
-  3. Menu bar items (Value/Graph/Both/Warning) + Settings › Menu Bar Items.
-  4. Popover shell + Overview + CPU tab.
-  5. Main window shell (sidebar groups, tab visibility/order, toolbar) + Overview Tiles.
-  6. Overview List + AppGrouping + Quit sheet.
-  7. CPU, Memory, GPU tabs.
-  8. Network, Disk tabs (incl. storage breakdown background job).
-  9. Battery tab.
-  10. AlertEngine + notifications + Settings › Notifications.
-  11. Temperature & Fans (read-only sensors and fan speeds).
-  12. Bluetooth tab + low battery alerts.
-  13. Sound tab (scope per spike).
-  14. Projects: ProjectCatalog, idle detection, actions.
-  15. Share card + WeeklySummary.
-  16. Settings remainder (General, Units, Data, About/Updates), launch at login, Dock icon, update feed, and the release pipeline (stable self-signed certificate, EdDSA-signed update feed, GitHub Releases, install instructions with Open Anyway screenshots). Consider doing the signing part of this early, alongside issue 1, so permissions granted during development survive.
+- **Tickets:** the implementation is split into 20 vertical-slice tickets in `docs/tickets/monimac-v1/`, numbered in dependency order. Each lists the tickets that block it.
 - No issue tracker is configured. This spec lives in the repo by choice. To publish it later, run `/setup-matt-pocock-skills` to configure a tracker and the `ready-for-agent` label.
