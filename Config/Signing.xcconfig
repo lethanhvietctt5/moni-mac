@@ -1,0 +1,20 @@
+// Code signing for MoniMac. Not sandboxed, not notarized, no Apple team.
+//
+// Default: ad-hoc signing, so the project builds for anyone without setup.
+// Ad-hoc identities change on every build, so macOS forgets granted permissions
+// (notifications, audio capture, location) after each rebuild. To keep them, sign
+// with a stable identity: run scripts/create-signing-cert.sh, then put this line in
+// Config/Local.xcconfig (gitignored):
+//
+//     CODE_SIGN_IDENTITY = MoniMac Self-Signed
+//
+// Any stable identity in your keychain works, e.g. an "Apple Development" certificate.
+// On the first build with a new identity, macOS asks whether codesign may use the key:
+// choose "Always Allow".
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+OTHER_CODE_SIGN_FLAGS = --timestamp=none
+
+#include? "Local.xcconfig"
