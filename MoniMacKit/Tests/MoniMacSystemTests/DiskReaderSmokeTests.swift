@@ -114,7 +114,7 @@ struct DiskStorageScannerSmokeTests {
         var scanner = DiskStorageScanner(home: fixture.root.path)
         scanner.applications = [fixture.root.path]
         scanner.developer = [.init(name: "Tools", path: fixture.root.appending(path: "excluded").path)]
-        let reader = DiskBackgroundReader(nvmeDevice: nil, scanner: scanner, scanDelay: 0)
+        let reader = DiskBackgroundReader(nvmeDevice: nil, scanner: scanner, cache: nil, scanDelay: 0)
 
         let start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
         reader.refreshIfDue()

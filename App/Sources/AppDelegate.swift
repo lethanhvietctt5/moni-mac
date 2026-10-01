@@ -9,7 +9,7 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = Monitor(
-        sampler: HostSampler(), history: makeHistory(), preferences: Preferences(), actions: WorkspaceActions()
+        sampler: HostSampler(storageScanCache: .standard), history: makeHistory(), preferences: Preferences(), actions: WorkspaceActions()
     )
     private var statusBar: StatusBarController?
     private lazy var mainWindow = MainWindowController(monitor: monitor)
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// History lives in Application Support. If it can't be opened, MoniMac keeps working in memory.
     private static func makeHistory() -> MetricsHistory {
-        let url = URL.applicationSupportDirectory.appending(path: "MoniMac/History.sqlite")
+        let url = AppFiles.directory.appending(path: "History.sqlite")
         do {
             return try MetricsHistory(.file(url))
         } catch {

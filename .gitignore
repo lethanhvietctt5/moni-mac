@@ -5,3 +5,4 @@ build/
 xcuserdata/
 .swiftpm/
 Config/Local.xcconfig
+.claude/worktrees/

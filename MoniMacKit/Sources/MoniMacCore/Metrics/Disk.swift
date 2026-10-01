@@ -96,9 +96,9 @@ public struct VolumeSpace: Equatable, Sendable {
     }
 }
 
-/// Folder sizes from one background scan. Protected folders (Documents, Desktop, other apps'
-/// containers) are never read, so scanning never triggers a privacy prompt.
-public struct StorageScan: Equatable, Sendable {
+/// Folder sizes from one background scan. Protected folders (Documents, Desktop, Downloads, other
+/// apps' containers) are never read, so scanning never triggers a privacy prompt.
+public struct StorageScan: Equatable, Sendable, Codable {
     /// Allocated bytes in /Applications and ~/Applications.
     public var applications: UInt64
     /// `.app` bundles found there, including one folder level down (e.g. Utilities).
@@ -107,8 +107,12 @@ public struct StorageScan: Equatable, Sendable {
     public var developer: [Item]
     /// Whether the scan hit its work cap, so the sizes are lower bounds.
     public var isPartial: Bool
+    /// When the scan ran. Scans are reused for hours (even across relaunches), so surfaces show their age.
+    public var scannedAt: Date?
+    /// The volume's free space when the scan ran; a large change since then triggers a rescan.
+    public var freeAtScan: UInt64?
 
-    public struct Item: Equatable, Sendable {
+    public struct Item: Equatable, Sendable, Codable {
         public var name: String
         public var bytes: UInt64
 
@@ -118,11 +122,23 @@ public struct StorageScan: Equatable, Sendable {
         }
     }
 
-    public init(applications: UInt64, appCount: Int, developer: [Item], isPartial: Bool = false) {
+    public init(
+        applications: UInt64, appCount: Int, developer: [Item], isPartial: Bool = false,
+        scannedAt: Date? = nil, freeAtScan: UInt64? = nil
+    ) {
         self.applications = applications
         self.appCount = appCount
         self.developer = developer
         self.isPartial = isPartial
+        self.scannedAt = scannedAt
+        self.freeAtScan = freeAtScan
+    }
+
+    /// e.g. "Scanned 2h 5m ago", once the scan is at least 10 minutes old.
+    public func age(at now: Date) -> String? {
+        guard let scannedAt else { return nil }
+        let age = now.timeIntervalSince(scannedAt)
+        return age >= 600 ? "Scanned \(Format.uptime(age)) ago" : nil
     }
 }
 

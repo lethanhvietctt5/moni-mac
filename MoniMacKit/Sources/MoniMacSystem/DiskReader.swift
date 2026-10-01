@@ -18,15 +18,18 @@ final class DiskReader {
     }()
     private var previous: (counters: DriveCounters, uptime: UInt64)?
 
-    init() {
-        background = DiskBackgroundReader(nvmeDevice: drive?.nvmeDevice)
+    init(storageScanCache: StorageScanCache? = nil) {
+        background = DiskBackgroundReader(nvmeDevice: drive?.nvmeDevice, cache: storageScanCache)
     }
 
     func sample() -> Reading<DiskReading> {
-        background.refreshIfDue()
         var fs = statfs()
-        guard statfs("/", &fs) == 0 else { return .unavailable(.failed("statfs(/) failed: errno \(errno)")) }
+        guard statfs("/", &fs) == 0 else {
+            background.refreshIfDue()
+            return .unavailable(.failed("statfs(/) failed: errno \(errno)"))
+        }
         let blockSize = UInt64(fs.f_bsize)
+        background.refreshIfDue(free: UInt64(fs.f_bavail) * blockSize, capacity: UInt64(fs.f_blocks) * blockSize)
         let volume = DiskVolume(
             name: identity.name, format: identity.format,
             capacity: UInt64(fs.f_blocks) * blockSize, free: UInt64(fs.f_bavail) * blockSize,

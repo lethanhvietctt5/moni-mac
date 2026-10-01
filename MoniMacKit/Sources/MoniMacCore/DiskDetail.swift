@@ -47,6 +47,8 @@ public struct DiskDetail: Equatable, Sendable {
     public var storage: StorageBreakdown?
     /// Why `storage` is missing, e.g. "Scanning storage…".
     public var storageStatus: String?
+    /// How old the breakdown is, e.g. "Scanned 2h 5m ago"; nil while it's recent.
+    public var storageAge: String?
     public var range: TimeRange
     /// `historyBarCount` bars over `range`, oldest first; nil where there's no data.
     public var history: [Bar?]
@@ -80,6 +82,7 @@ extension DiskDetail {
             writtenToday: today.written,
             storage: storage?.value,
             storageStatus: DiskToday.storageStatus(storage ?? .unavailable(.warmingUp)),
+            storageAge: now.flatMap { disk?.scan.value?.age(at: $0) },
             range: range,
             history: chart.bars,
             yAxis: chart.yAxis,

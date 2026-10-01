@@ -131,6 +131,9 @@ private struct DiskPopoverContent: View {
             } else if let status = panel.storageStatus {
                 Text(status).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
             }
+            if let age = panel.storageAge {
+                Text(age).font(.system(size: 10)).foregroundStyle(Palette.textTertiary)
+            }
         }
     }
 
@@ -224,6 +227,9 @@ private struct DiskWindowContent: View {
                 }
             } else if let status = detail.storageStatus {
                 Text(status).font(.system(size: 12)).foregroundStyle(Palette.textSecondary)
+            }
+            if let age = detail.storageAge {
+                Text(age).font(.system(size: 11)).foregroundStyle(Palette.textTertiary)
             }
         }
     }
