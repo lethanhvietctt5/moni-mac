@@ -46,7 +46,7 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
 ## Latency, quality, CPU
 
 - **Format:** tap A was 48 kHz, 2 channels, Float32 interleaved (`flags 9`). Tap B's source file was 44.1 kHz, but its tap also came in at 48 kHz with an unchanged level, so `afplay`/the HAL resampled it before the tap.
-- **Glitches:** none. Every phase ran 282 IOProc calls per 3 s (exactly 48 kHz at 512 frames), with **0 timestamp discontinuities** and **0 processor overloads**, across 7 pipelines and about 50 s.
+- **Glitches:** none. Every phase ran 281–284 IOProc calls per 3 s (about 48 kHz at 512 frames), with **0 timestamp discontinuities** and **0 processor overloads**, across 7 pipelines and about 50 s.
 - **Latency, from HAL properties:** these are estimates, not an acoustic measurement.
   - The aggregate reports input latency 21 + safety offset 36 frames and output latency 60 + safety 48 + stream 690 frames, plus one 512-frame buffer on each side.
   - That is about **39 ms** from the app's buffer to the speaker.
@@ -87,7 +87,7 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
   - The grant worked and persisted across launches of the same ad-hoc build: the second run started `authorized(0)`.
   - Rebuilding changes the cdhash, and TCC then treats it as a new app (Apple DTS). This wasn't tested here, to keep the grant.
   - Releases signed with the stable self-signed certificate should keep the grant across updates, because TCC keys on the designated requirement. That is inferred from TN3127, not observed.
-- **Privacy indicator:** while any tap is running, macOS shows the purple "system audio is being recorded" dot in the menu bar (Apple Mac User Guide). This supports running taps only when they're needed (below).
+- **Privacy indicator:** while any tap is running, macOS shows the purple "system audio is being recorded" dot in the menu bar (Apple Mac User Guide). Whether it showed during the spike is pending user report. This supports running taps only when they're needed (below).
 - **UX for story 143 (ask on first use):**
   - Sound tab: show the activity list without sliders, plus "Turn on per-app volume…" with one plain sentence: *"MoniMac changes an app's volume by routing its audio through MoniMac. macOS will ask to let MoniMac record system audio; nothing is recorded or saved."*
   - The first slider move or mute, or turning on Duck or "Mute new apps", triggers the prompt.
