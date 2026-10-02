@@ -7,6 +7,10 @@ options:
 packages:
   MoniMacKit:
     path: MoniMacKit
+  # The in-app updater (ticket 20). Pinned so release builds don't float to a new Sparkle on the runner.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 configFiles:
   Debug: Config/Signing.xcconfig
   Release: Config/Signing.xcconfig
@@ -16,6 +20,9 @@ settings:
     ARCHS: arm64
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    # Only scripts/release/build.sh turns this on. Development builds never start Sparkle, so they don't
+    # contact the feed or ask about automatic checks.
+    MONIMAC_UPDATES: "NO"
 targets:
   MoniMac:
     type: application
@@ -27,6 +34,7 @@ targets:
         product: MoniMacCore
       - package: MoniMacKit
         product: MoniMacSystem
+      - package: Sparkle
     info:
       path: App/Info.plist
       properties:
@@ -39,6 +47,12 @@ targets:
         # Showing the Wi-Fi network name requires Location access (ticket 07).
         NSLocationUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
         NSLocationWhenInUseUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
+        # Updates (ticket 20). The feed is the appcast attached to the newest GitHub release.
+        MoniMacUpdatesEnabled: $(MONIMAC_UPDATES)
+        SUFeedURL: https://github.com/lethanhvietctt5/moni-mac/releases/latest/download/appcast.xml
+        # The project's EdDSA public key. scripts/release/setup-wizard.sh replaces the placeholder;
+        # scripts/release/check-update-key.sh fails the release while it's still here.
+        SUPublicEDKey: PLACEHOLDER_SPARKLE_PUBLIC_ED_KEY
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMac

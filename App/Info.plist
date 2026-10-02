@@ -26,9 +26,15 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>MoniMacUpdatesEnabled</key>
+	<string>$(MONIMAC_UPDATES)</string>
 	<key>NSLocationUsageDescription</key>
 	<string>MoniMac shows the name of the Wi-Fi network you're connected to.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>MoniMac shows the name of the Wi-Fi network you're connected to.</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/lethanhvietctt5/moni-mac/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>PLACEHOLDER_SPARKLE_PUBLIC_ED_KEY</string>
 </dict>
 </plist>

@@ -22,6 +22,36 @@ public enum HistoryRetention: Int, CaseIterable, Sendable {
     public var title: String { "\(rawValue) days" }
 }
 
+/// What the updater last learned. Only release builds check for updates.
+public enum UpdateStatus: Equatable, Sendable {
+    /// A development build: no update key, so no checks.
+    case off
+    /// Checks are on, but none has finished since launch.
+    case idle
+    case upToDate
+    /// e.g. "0.2.0".
+    case available(String)
+
+    /// Whether this build checks for updates at all; the updater also disables the button while a check runs.
+    public var canCheck: Bool { self != .off }
+
+    /// The About row's second line, e.g. "Free and open source · You're up to date".
+    public var aboutDetail: String {
+        let note: String? = switch self {
+        case .off: "Development build"
+        case .idle: nil
+        case .upToDate: "You're up to date"
+        case .available(let version): "MoniMac \(version) is available"
+        }
+        return (["Free and open source"] + [note].compactMap { $0 }).joined(separator: " · ")
+    }
+
+    /// The disabled button's tooltip, or nil when it can be pressed.
+    public var checkHelp: String? {
+        canCheck ? nil : "Development builds don't check for updates; releases do"
+    }
+}
+
 /// Whether MoniMac opens at login, as the system reports it.
 public enum LaunchAtLogin: Sendable {
     case off, on
