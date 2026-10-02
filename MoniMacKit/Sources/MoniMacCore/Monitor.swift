@@ -28,6 +28,7 @@ public final class Monitor {
     @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored let projectActivity: ProjectActivity
     @ObservationIgnored let bluetoothTracker: BluetoothTracker
+    @ObservationIgnored let soundPolicy: SoundPolicy
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
     @ObservationIgnored var alerts = AlertState()
     /// When this Monitor started, e.g. for "this session" totals.
@@ -44,10 +45,13 @@ public final class Monitor {
         self.actions = actions
         projectActivity = ProjectActivity(preferences: preferences)
         bluetoothTracker = BluetoothTracker(preferences: preferences)
+        soundPolicy = SoundPolicy(preferences: preferences)
         launchAtLogin = actions.launchAtLogin
         let retention = preferences.keepHistory.duration
         if history.retention != retention { history.retention = retention }
         rebuildMenuBarItems()
+        // Apps adjusted in an earlier session keep their volume; with none, nothing is sent.
+        applySoundMix()
     }
 
     /// Takes one sample and records it. The refresh loop calls this; tests call it directly.
@@ -56,6 +60,7 @@ public final class Monitor {
         latest = snapshot
         observeProjects(snapshot)
         observeBluetooth(snapshot)
+        observeSound(snapshot)
         evaluateAlerts(snapshot)
         do {
             try history.record(snapshot)

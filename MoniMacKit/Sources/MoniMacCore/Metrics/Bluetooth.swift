@@ -195,7 +195,8 @@ extension Monitor {
     public var bluetoothDetail: BluetoothDetail {
         BluetoothDetail.make(
             reading: latest?.bluetooth ?? .unavailable(.warmingUp), records: bluetoothTracker.records,
-            now: latest?.timestamp ?? Date(), lowBatteryAlerts: preferences.bluetoothLowBatteryAlerts
+            now: latest?.timestamp ?? Date(), lowBatteryAlerts: preferences.bluetoothLowBatteryAlerts,
+            audio: latest?.sound.value
         )
     }
 

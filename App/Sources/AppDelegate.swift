@@ -14,12 +14,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let notificationsMuted = CommandLine.arguments.contains("--mute-notifications")
     /// Development aid: `--bluetooth-fixture <path>` reads Bluetooth devices from a saved
     /// `system_profiler SPBluetoothDataType -json` file, to check the tab with devices this Mac doesn't have.
-    private let sampler = HostSampler(storageScanCache: .standard,
-                                      bluetoothFixture: launchValue("--bluetooth-fixture").map(URL.init(fileURLWithPath:)))
+    /// Per-app volume's Core Audio taps, shared by the sampler (which reads audio through it) and the
+    /// actions (which apply gains through it). It does nothing until something needs audio.
+    private let audio = AudioMixer()
+    private lazy var sampler = HostSampler(storageScanCache: .standard,
+                                           bluetoothFixture: Self.launchValue("--bluetooth-fixture").map(URL.init(fileURLWithPath:)),
+                                           audio: audio)
     private lazy var monitor = Monitor(
         sampler: sampler, history: Self.makeHistory(), preferences: Preferences(),
-        actions: WorkspaceActions(notificationsMuted: Self.notificationsMuted)
+        actions: WorkspaceActions(notificationsMuted: Self.notificationsMuted, audio: audio)
     )
+    private var soundSelfTest: SoundSelfTest?
     private var statusBar: StatusBarController?
     /// The quit confirmation, shared by the popover, the window, and (later) notifications.
     private lazy var quitSheet = QuitSheetPresenter(monitor: monitor)
@@ -70,8 +75,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return .none }
             return monitor.bluetoothDemand(isTabShowing: mainWindow.isShowing(.bluetooth))
         }
+        // Audio is read only while the Sound or Bluetooth tab shows, or ducking or mute-new-apps needs it.
+        sampler.soundDemand = { [weak self] in
+            guard let self else { return .none }
+            // With `--show-window`, a covered window still counts, so the tab renders for a screenshot.
+            // The Bluetooth tab uses it too, to say which apps play to the headphones.
+            let ignoringCover = CommandLine.arguments.contains("--show-window")
+            let showing = [WindowTab.sound, .bluetooth].contains { mainWindow.isShowing($0, ignoringCover: ignoringCover) }
+            return monitor.soundDemand(isTabShowing: showing)
+        }
         observeSettings()
         UpdateController.shared.start()
+        // Development aid: `--sound-selftest <dir>` adjusts only the tone processes a verification script
+        // started, following the phases it writes to `<dir>/phase`. See SoundSelfTest.
+        if let directory = Self.launchValue("--sound-selftest") {
+            soundSelfTest = SoundSelfTest(audio: audio, directory: URL(fileURLWithPath: directory))
+        }
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
         // `--show-window` opens the main window on launch, for the same reason; `--tab` picks its tab,
         // `--overview-list` shows Overview as a List, and `--expand <app name>` opens that app's group.
@@ -191,6 +210,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         refresh?.cancel()
+        // Private taps end with the process anyway; this stops them cleanly and logs any left over.
+        audio.shutdown()
     }
 
     /// History lives in Application Support. If it can't be opened, MoniMac keeps working in memory.

@@ -29,4 +29,13 @@ public protocol SystemActions: AnyObject {
     func requestNotificationAuthorization()
     /// Posts an alert as a system notification, with "Quit <App>" (when offered) and "Show" actions.
     func deliver(_ alert: Alert)
+    /// Makes the device with this Core Audio UID the default output.
+    func setOutputDevice(uid: String)
+    /// Sets the default output device's volume, 0...1.
+    func setSystemVolume(_ volume: Double)
+    /// Applies per-app gains: starts a tap for each app that needs one (`SoundMix.needsTap`), retargets
+    /// it as the app's processes come and go, and stops it once the app is back at 100%.
+    func setSoundMix(_ mix: SoundMix)
+    /// Clears a "per-app volume isn't working" verdict, so the next tap is tried again.
+    func retrySoundAccess()
 }

@@ -47,6 +47,9 @@ targets:
         # Showing the Wi-Fi network name requires Location access (ticket 07).
         NSLocationUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
         NSLocationWhenInUseUsageDescription: MoniMac shows the name of the Wi-Fi network you're connected to.
+        # Per-app volume (ticket 17) routes an app's audio through a Core Audio process tap, which needs the
+        # System Audio Recording permission. macOS asks the first time a tap starts, never at launch.
+        NSAudioCaptureUsageDescription: MoniMac changes an app's volume by routing its audio through MoniMac. Nothing is recorded or saved.
         # Updates (ticket 20). The feed is the appcast attached to the newest GitHub release.
         MoniMacUpdatesEnabled: $(MONIMAC_UPDATES)
         SUFeedURL: https://github.com/lethanhvietctt5/moni-mac/releases/latest/download/appcast.xml

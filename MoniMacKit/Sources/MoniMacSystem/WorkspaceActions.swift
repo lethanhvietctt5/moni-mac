@@ -1,4 +1,6 @@
 import AppKit
+import AudioToolbox
+import CoreAudio
 import Darwin
 import MoniMacCore
 import os
@@ -10,11 +12,13 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 @MainActor
 public final class WorkspaceActions: SystemActions {
     private let notifications: NotificationDelivery
+    private let audio: AudioMixer
 
     /// `notificationsMuted` logs alerts instead of posting them and never asks for permission
-    /// (the `--mute-notifications` development flag).
-    public init(notificationsMuted: Bool = false) {
+    /// (the `--mute-notifications` development flag). `audio` is shared with `HostSampler`.
+    public init(notificationsMuted: Bool = false, audio: AudioMixer) {
         notifications = NotificationDelivery(isMuted: notificationsMuted)
+        self.audio = audio
     }
 
     public func quitApp(pid: Int32, reopenWindows: Bool) {
@@ -139,5 +143,35 @@ public final class WorkspaceActions: SystemActions {
 
     public func deliver(_ alert: Alert) {
         notifications.deliver(alert)
+    }
+
+    // MARK: Sound
+
+    public func setOutputDevice(uid: String) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let device = AudioHAL.device(uid: uid) else {
+                log.error("No output device with UID \(uid, privacy: .public)")
+                return
+            }
+            let status = AudioHAL.set(AudioHAL.system, kAudioHardwarePropertyDefaultOutputDevice, device)
+            if status != noErr { log.error("Switching output failed: \(AudioHAL.describe(status), privacy: .public)") }
+        }
+    }
+
+    public func setSystemVolume(_ volume: Double) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let device = AudioHAL.defaultOutputDevice else { return }
+            let status = AudioHAL.set(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+                                      Float32(min(max(volume, 0), 1)), kAudioObjectPropertyScopeOutput)
+            if status != noErr { log.error("Setting the volume failed: \(AudioHAL.describe(status), privacy: .public)") }
+        }
+    }
+
+    public func setSoundMix(_ mix: SoundMix) {
+        audio.apply(mix)
+    }
+
+    public func retrySoundAccess() {
+        audio.retryAccess()
     }
 }

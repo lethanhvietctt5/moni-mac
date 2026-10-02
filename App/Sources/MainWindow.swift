@@ -77,9 +77,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Whether `tab` is on screen: the window is open on it and not minimized or fully covered.
-    func isShowing(_ tab: WindowTab) -> Bool {
+    /// `ignoringCover` counts a covered window as showing (for screenshots taken while other apps are in front).
+    func isShowing(_ tab: WindowTab, ignoringCover: Bool = false) -> Bool {
         guard let window, state.tab == tab else { return false }
-        return window.occlusionState.contains(.visible)
+        return ignoringCover || window.occlusionState.contains(.visible)
     }
 
     private func makeWindow() -> NSWindow {
@@ -149,7 +150,7 @@ struct MainWindowView: View {
         case .overview: monitor.overviewSubtitle
         case .projects: monitor.projectsSubtitle
         case .settings: SettingsWindowTab.subtitle
-        case .sound: nil
+        case .sound: monitor.soundSubtitle
         }
     }
 
@@ -195,7 +196,7 @@ struct MainWindowView: View {
         case .overview: OverviewWindowTab(monitor: monitor)
         case .projects: ProjectsWindowTab(monitor: monitor)
         case .settings: SettingsWindowTab(monitor: monitor)
-        case .sound: ComingSoon(title: state.tab.title)
+        case .sound: SoundWindowTab(monitor: monitor)
         }
     }
 }
