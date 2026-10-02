@@ -23,8 +23,8 @@ private struct CPUTabContent: View {
             hero
             HistoryGraph(bars: panel.history)
                 .accessibilityElement()
-                .accessibilityLabel("CPU history")
-                .accessibilityValue(panel.range.shortLabel)
+                // The range the bars were built for, so a test can tell the chart switched.
+                .accessibilityLabel("CPU history, \(panel.range.shortLabel)")
                 .accessibilityIdentifier("cpu.popover.chart")
             split
             loadAverage

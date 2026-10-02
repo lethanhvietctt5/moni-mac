@@ -6,7 +6,7 @@
 
 **Status:** done pending a manual click-through (merged as PR #14; automation can't click the status item, tabs, or range buttons). Unchecked boxes are built but not yet exercised.
 
-- [ ] A Network menu bar item can be shown
+- [x] A Network menu bar item can be shown (UI test `MenuBarItemTests.testMemoryNetworkAndTemperatureItemsCanBeShown`, which enables it for one launch through launch-argument settings and reads the item's title, e.g. "3.8 KB/s")
 - [x] Session totals reset on app launch and show their start time
 - [x] The 7-day and 30-day charts show per-day download and upload from history
 - [ ] Denying Location permission leaves the tab working, without the network name

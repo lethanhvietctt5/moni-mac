@@ -12,18 +12,17 @@ final class PopoverTests: MoniMacUITestCase {
         let chart = popover.descendants(matching: .any)["cpu.popover.chart"]
         XCTAssertTrue(chart.waitForExistence(timeout: 10))
         XCTAssertTrue(isSelected(popover.buttons["cpu.range.5m"]), "5m is the default range")
-        XCTAssertEqual(chart.value as? String, "5m")
+        XCTAssertEqual(chart.label, "CPU history, 5m")
 
         for range in ["1m", "1H", "24H", "5m"] {
             popover.buttons["cpu.range.\(range)"].click()
             XCTAssertTrue(waitUntil(timeout: 5) { self.isSelected(popover.buttons["cpu.range.\(range)"]) },
                           "\(range) isn't selected after clicking it")
-            XCTAssertTrue(waitUntil(timeout: 5) { chart.value as? String == range },
-                          "The chart shows \(chart.value ?? "nothing"), not \(range)")
+            XCTAssertTrue(waitUntil(timeout: 5) { chart.label == "CPU history, \(range)" },
+                          "The chart is \"\(chart.label)\", not the \(range) range")
             for other in ["1m", "5m", "1H", "24H"] where other != range {
                 XCTAssertFalse(popover.buttons["cpu.range.\(other)"].isSelected)
             }
-            attachScreenshot(of: popover, named: "Popover CPU \(range)")
         }
     }
 
@@ -43,8 +42,11 @@ final class PopoverTests: MoniMacUITestCase {
         let running = { NSRunningApplication.runningApplications(withBundleIdentifier: activityMonitor) }
         let wasRunning = !running().isEmpty
         addTeardownBlock { @MainActor in
-            guard !wasRunning else { return }
-            for app in running() { app.terminate() }
+            // The sandboxed runner can't send a quit event, so it ends the app it opened through XCUITest.
+            guard !wasRunning, !running().isEmpty else { return }
+            let opened = XCUIApplication(bundleIdentifier: activityMonitor)
+            opened.terminate()
+            XCTAssertTrue(opened.wait(for: .notRunning, timeout: 10), "Activity Monitor is still running")
         }
         let app = launchMoniMac(["--show-popover", "--tab", "cpu"])
         let link = popover(of: app).buttons["cpu.activityMonitor"]
@@ -66,7 +68,6 @@ final class PopoverTests: MoniMacUITestCase {
         XCTAssertFalse(app.popovers.firstMatch.exists, "The popover stayed open")
         // The window opens on its current tab: Overview, the first tab, on a fresh launch.
         XCTAssertEqual(windowTitle(window), "Overview")
-        attachScreenshot(of: window, named: "Window from the popover button")
     }
 
     /// 04 / 11: the popover Overview tab's "Open MoniMac" link opens the main window.
@@ -84,10 +85,9 @@ final class PopoverTests: MoniMacUITestCase {
     /// throwaway app's row, and the app keeps running.
     @MainActor
     func testPopoverQuitButtonOpensQuitSheetAndCancelKeepsAppRunning() throws {
-        let dummy = try launchDummy(spinning: true)
+        let dummy = try launchDummy()
         let app = launchMoniMac(["--show-popover", "--tab", "cpu"])
         let sheet = try openQuitSheetFromPopover(app)
-        attachScreenshot(of: sheet, named: "Quit sheet from the popover")
         sheet.buttons["quitSheet.cancel"].click()
         XCTAssertTrue(waitUntil(timeout: 5) { !sheet.exists }, "The quit sheet stayed open")
         RunLoop.current.run(until: Date().addingTimeInterval(2))
@@ -97,7 +97,7 @@ final class PopoverTests: MoniMacUITestCase {
     /// 03: pressing × on an app and then the sheet's Quit quits that app (the throwaway app only).
     @MainActor
     func testPopoverQuitButtonThenQuitQuitsTheApp() throws {
-        let dummy = try launchDummy(spinning: true)
+        let dummy = try launchDummy()
         let app = launchMoniMac(["--show-popover", "--tab", "cpu"])
         let sheet = try openQuitSheetFromPopover(app)
         sheet.buttons["quitSheet.quit"].click()
@@ -115,14 +115,16 @@ final class PopoverTests: MoniMacUITestCase {
         let quit = popover.buttons.matching(identifier: "cpu.topApps.quit")
             .matching(NSPredicate(format: "label == %@", "Quit \(Self.dummyName)")).firstMatch
         XCTAssertTrue(quit.waitForExistence(timeout: 30), "\(Self.dummyName) didn't reach Top Apps by CPU")
-        attachScreenshot(of: popover, named: "Popover with the throwaway app")
         quit.click()
         let title = app.staticTexts["quitSheet.title"]
         XCTAssertTrue(title.waitForExistence(timeout: 10), "The quit sheet didn't open")
-        let sheet = app.windows.containing(.staticText, identifier: "quitSheet.title").firstMatch
-        guard title.label.contains(Self.dummyName) else {
+        // The standalone sheet is a floating panel, which accessibility reports as a dialog.
+        let sheet = [app.dialogs, app.windows, app.sheets].lazy
+            .map { $0.containing(.staticText, identifier: "quitSheet.title").firstMatch }
+            .first { $0.exists } ?? app
+        guard text(of: title).contains(Self.dummyName) else {
             sheet.buttons["quitSheet.cancel"].click()
-            XCTFail("The quit sheet is for \"\(title.label)\", not the throwaway app; cancelled")
+            XCTFail("The quit sheet is for \"\(text(of: title))\", not the throwaway app; cancelled")
             throw XCTSkip("Wrong quit sheet")
         }
         XCTAssertFalse(app.popovers.firstMatch.exists, "The popover stayed open behind the sheet")

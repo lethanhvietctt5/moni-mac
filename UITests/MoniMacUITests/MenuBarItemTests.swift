@@ -16,27 +16,20 @@ final class MenuBarItemTests: MoniMacUITestCase {
             "network": #"^\d+(\.\d+)? ([KMG]?B/s|[KMG]?bps)$"#,
             "temperature": #"^\d+°[CF]$"#,
         ]
-        var titles: [String: String] = [:]
+        // Status items expose their title but not the button's identifier, so each metric is told apart by
+        // its format: exactly one of MoniMac's items must match each.
+        var titles: [String] = []
         XCTAssertTrue(waitUntil(timeout: 20) {
-            titles = self.statusItemTitles(app)
-            return formats.allSatisfy { metric, format in
-                titles[metric].map { $0.range(of: format, options: .regularExpression) != nil } ?? false
+            titles = app.statusItems.allElementsBoundByIndex.map { $0.title }
+            return titles.count == formats.count && formats.values.allSatisfy { format in
+                titles.filter { $0.range(of: format, options: .regularExpression) != nil }.count == 1
             }
-        }, "Status items read \(titles); all items: \(app.statusItems.allElementsBoundByIndex.map(\.debugDescription))")
-        let attachment = XCTAttachment(string: titles.sorted { $0.key < $1.key }.map { "\($0): \($1)" }
-            .joined(separator: "\n"))
+        }, "MoniMac's status items read \(titles)")
+        let attachment = XCTAttachment(string: formats.keys.sorted().map { metric in
+            "\(metric): \(titles.first { $0.range(of: formats[metric]!, options: .regularExpression) != nil } ?? "-")"
+        }.joined(separator: "\n"))
         attachment.name = "Status item titles"
         attachment.lifetime = .keepAlways
         add(attachment)
-    }
-
-    /// MoniMac's status items by metric (the button's identifier), with their titles.
-    @MainActor
-    private func statusItemTitles(_ app: XCUIApplication) -> [String: String] {
-        var titles: [String: String] = [:]
-        for item in app.statusItems.allElementsBoundByIndex where !item.identifier.isEmpty {
-            titles[item.identifier] = item.title.isEmpty ? (item.value as? String ?? item.label) : item.title
-        }
-        return titles
     }
 }

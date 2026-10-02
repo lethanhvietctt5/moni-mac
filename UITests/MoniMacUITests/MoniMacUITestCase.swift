@@ -5,8 +5,9 @@ import XCTest
 /// - always passes `--mute-notifications`, so no permission prompt or banner appears;
 /// - snapshots MoniMac's settings and restores them exactly once MoniMac has quit, even on failure.
 ///
-/// Screenshots come only from `XCUIElement.screenshot()` on MoniMac's own windows or popover, never the
-/// whole screen, which would record the user's other apps.
+/// The tests take no screenshots. Xcode's automatic screen capture records the whole screen, including the
+/// user's other apps, so the scheme turns it off; without it `XCUIElement.screenshot()` fails too. Tests
+/// assert on accessibility state and attach the text they read instead.
 class MoniMacUITestCase: XCTestCase {
     static let bundleID = "io.github.lethanhvietctt5.MoniMac"
     static let dummyBundleID = "io.github.lethanhvietctt5.MoniMacUITestDummy"
@@ -48,21 +49,34 @@ class MoniMacUITestCase: XCTestCase {
     func mainWindow(of app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let window = app.windows.containing(.any, identifier: "window.title").firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 15), "The main window didn't open", file: file, line: line)
+        // MoniMac opens it from the background, so it may sit behind the user's windows; clicks need it in front.
+        app.activate()
         return window
     }
 
     /// The toolbar title, e.g. "CPU": the tab the main window shows.
     @MainActor
     func windowTitle(_ window: XCUIElement) -> String {
-        let title = window.staticTexts["window.title"]
-        return title.exists ? title.label : ""
+        text(of: window.staticTexts["window.title"])
     }
 
-    /// Attaches a screenshot of one of MoniMac's own elements (a window, the popover, a sheet).
+    /// The text element in `element` that shows `text`.
     @MainActor
-    func attachScreenshot(of element: XCUIElement, named name: String) {
-        guard element.exists else { return }
-        let attachment = XCTAttachment(screenshot: element.screenshot())
+    func staticText(_ text: String, in element: XCUIElement) -> XCUIElement {
+        element.staticTexts.matching(NSPredicate(format: "value == %@ OR label == %@", text, text)).firstMatch
+    }
+
+    /// What a text element shows. SwiftUI text on macOS reports it as the value, not the label.
+    @MainActor
+    func text(of element: XCUIElement) -> String {
+        guard element.exists else { return "" }
+        if let value = element.value as? String, !value.isEmpty { return value }
+        return element.label
+    }
+
+    /// Attaches what a test read off MoniMac's UI, as evidence in the result bundle.
+    func attach(_ text: String, named name: String) {
+        let attachment = XCTAttachment(string: text)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
@@ -87,12 +101,12 @@ class MoniMacUITestCase: XCTestCase {
 
     // MARK: The throwaway app
 
-    /// Launches MoniMacUITestDummy, a throwaway regular app built next to the test runner, so quit tests
-    /// never touch the user's apps. It's launched through LaunchServices (so macOS sees it as its own app,
+    /// Launches MoniMacUITestDummy, a throwaway regular app built next to the test runner that keeps one
+    /// core busy (so it tops Top Apps and shows watts), so quit tests never touch the user's apps. It's launched through LaunchServices (so macOS sees it as its own app,
     /// not a child of the runner) and without activating, so it doesn't close MoniMac's popover.
     /// It's force-quit in teardown if a test left it running.
     @MainActor
-    func launchDummy(spinning: Bool) throws -> NSRunningApplication {
+    func launchDummy() throws -> NSRunningApplication {
         let url = Bundle(for: MoniMacUITestCase.self).bundleURL // …/MoniMacUITests-Runner.app/Contents/PlugIns/X.xctest
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -103,7 +117,6 @@ class MoniMacUITestCase: XCTestCase {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.createsNewApplicationInstance = true
-        configuration.arguments = spinning ? ["--spin"] : []
         let launched = XCTestExpectation(description: "dummy launched")
         nonisolated(unsafe) var result: NSRunningApplication?
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, _ in

@@ -4,9 +4,9 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** done pending a manual look at the menu bar (macOS doesn't expose status items to the window-capture script). Unchecked boxes are built but not yet observed in the real app.
+**Status:** done. The menu bar item was read from the real menu bar by a UI test (`UITests/`).
 
-- [ ] A Temperature menu bar item can be shown (built and covered by `ThermalMenuBarTests`: `58°C`/`136°F`, 20–100 °C sparkline; not yet seen in the menu bar)
+- [x] A Temperature menu bar item can be shown (covered by `ThermalMenuBarTests`; in the real menu bar by UI test `MenuBarItemTests.testMemoryNetworkAndTemperatureItemsCanBeShown`, which reads the item's title, e.g. "61°C")
 - [x] Temperature cards and the sensor list show live values
 - [x] The Fans card shows each fan's speed and has no controls
 - [x] With a fake sampler reporting no fans, the Fans card is hidden (`ThermalDetailTests.fanlessMacHidesTheFansCard`)

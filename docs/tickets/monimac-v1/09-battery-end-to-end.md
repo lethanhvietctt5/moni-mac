@@ -8,7 +8,7 @@
 
 - [x] The popover and window Battery tabs show live values
 - [ ] The charge history chart distinguishes charging from on-battery periods (built and covered by `BatteryDetailTests`/`BatteryHistoryTests`; not seen on screen because this Mac stayed plugged in)
-- [ ] Power figures are labelled as estimates in tooltips (`.help` on Power Draw and every app watts value, asserted in tests; hovering can't be automated, so the tooltips weren't seen)
+- [ ] Power figures are labelled as estimates in tooltips (`.help` on Power Draw and every app watts value, asserted in tests. UI test `WindowTests.testPowerDrawShowsTooltipOnHover` hovers Power Draw and sees a tooltip appear, but XCUITest exposes a tooltip only as a help tag with a frame, never its text, so "estimate" wasn't read. Hovering an app's watts or the "Watts (est.)" header showed no tooltip within 10 s; check both by hand)
 - [x] With a fake sampler reporting no battery, the Battery tab and popover tab are hidden (`Monitor.hasBattery` is false in `aMacWithoutABatteryHidesBattery`; both tab lists filter on it)
 
 **Notes:** The legend says "On power" rather than the design's "Charging", because the 1/0 series records whether an adapter is connected (a Mac held at 100% isn't charging, but it isn't on battery either). Health is nominal ÷ design capacity (87% on the M4 test Mac), while System Settings shows 89% from a private, smoothed metric.

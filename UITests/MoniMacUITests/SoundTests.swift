@@ -22,11 +22,12 @@ final class SoundTests: MoniMacUITestCase {
         let window = mainWindow(of: app)
         let slider = window.sliders["sound.systemVolume"]
         XCTAssertTrue(slider.waitForExistence(timeout: 15), "No volume slider on the Sound tab")
+        let before = "\(slider.value ?? "-") at \(slider.normalizedSliderPosition)"
         slider.adjust(toNormalizedSliderPosition: CGFloat(target))
+        let after = "\(slider.value ?? "-") at \(slider.normalizedSliderPosition)"
         XCTAssertTrue(waitUntil(timeout: 5) {
             SystemAudio.volume(of: device).map { abs($0 - target) < 0.06 } ?? false
-        }, "The volume is \(SystemAudio.volume(of: device) ?? -1), not about \(target)")
-        attachScreenshot(of: window, named: "Sound tab after setting the volume")
+        }, "The volume is \(SystemAudio.volume(of: device) ?? -1), not about \(target); slider \(before) → \(after)")
     }
 
     /// Picking another device in the output menu makes it the default output.
@@ -49,7 +50,10 @@ final class SoundTests: MoniMacUITestCase {
 
         let app = launchMoniMac(["--show-window", "--tab", "sound"])
         let window = mainWindow(of: app)
-        let menu = window.descendants(matching: .any)["sound.outputDevice"]
+        // SwiftUI also hands the menu's identifier to its scroll view, so match the menu's own types only.
+        let types = [XCUIElement.ElementType.menuButton, .popUpButton, .button].map(\.rawValue)
+        let menu = window.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier == %@ AND elementType IN %@", "sound.outputDevice", types)).firstMatch
         XCTAssertTrue(menu.waitForExistence(timeout: 15), "No output device menu on the Sound tab")
         menu.click()
         let item = app.menuItems[name]
@@ -57,8 +61,9 @@ final class SoundTests: MoniMacUITestCase {
         item.click()
         XCTAssertTrue(waitUntil(timeout: 5) { SystemAudio.defaultOutput == target },
                       "The default output is still \(SystemAudio.defaultOutput.flatMap(SystemAudio.name) ?? "?")")
-        XCTAssertTrue(waitUntil(timeout: 10) { window.staticTexts[name].exists }, "The Sound tab doesn't show \(name)")
-        attachScreenshot(of: window, named: "Sound tab after switching output")
+        // The device's name is the menu's own title.
+        XCTAssertTrue(waitUntil(timeout: 10) { [menu.title, menu.label].contains { $0.contains(name) } },
+                      "The output menu reads \"\(menu.title)\" / \"\(menu.label)\", not \(name)")
     }
 }
 

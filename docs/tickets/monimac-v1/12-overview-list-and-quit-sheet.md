@@ -9,7 +9,7 @@
 **Reopen windows:** the checkbox sends the quit Apple event with `kAEQuitPreserveState` (what ⌥⌘Q uses), but macOS gates that event behind Automation consent like any scripting event, and MoniMac doesn't ask for it. So the option takes effect only where the user already allowed MoniMac to control the app; otherwise the app quits normally. The checkbox is off by default.
 
 - [x] Sorting, search, and grouping work together, and the footer counts stay correct
-- [ ] Show All from a Top Apps section opens the List view sorted by that metric (built; `showAll(sortedBy:)` tested; the click isn't exercised)
+- [x] Show All from a Top Apps section opens the List view sorted by that metric (UI test `WindowTests.testShowAllOpensListSortedByThatMetric`, for CPU, Memory, GPU, Network, and Disk)
 - [x] Quit records a graceful quit; Force Quit records a force quit; Cancel records nothing (verified with the recording fake)
 - [x] Quitting a grouped app targets the responsible app, not individual helpers
-- [ ] The popover × now opens the quit sheet instead of quitting directly (built; the standalone sheet was seen via `--show-quit-sheet`, which uses the same presenter; the × click isn't exercised)
+- [x] The popover × now opens the quit sheet instead of quitting directly (UI test `PopoverTests.testPopoverQuitButtonOpensQuitSheetAndCancelKeepsAppRunning`, which presses Cancel and checks the app is still running)
