@@ -64,13 +64,8 @@ struct ShareCardView: View {
     private var top: some View {
         HStack {
             HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(LinearGradient(colors: [Color(rgb: 0x3A3A3C), Color(rgb: 0x111113)], startPoint: .top,
-                                         endPoint: .bottom))
-                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(theme.stroke, lineWidth: 1))
-                    .overlay(Image(systemName: "waveform.path.ecg").font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color(rgb: 0x30D158)))
-                    .frame(width: 36, height: 36)
+                // The app icon's artwork fills about 80% of its canvas, so 44 pt draws a ~36 pt square.
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 44, height: 44)
                 Text("MoniMac").font(.system(size: 20, weight: .bold)).foregroundStyle(theme.textPrimary)
             }
             Spacer()
