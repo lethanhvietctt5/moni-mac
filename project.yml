@@ -78,7 +78,7 @@ targets:
         SUFeedURL: https://github.com/lethanhvietctt5/moni-mac/releases/latest/download/appcast.xml
         # The project's EdDSA public key. scripts/release/setup-wizard.sh replaces the placeholder;
         # scripts/release/check-update-key.sh fails the release while it's still here.
-        SUPublicEDKey: PLACEHOLDER_SPARKLE_PUBLIC_ED_KEY
+        SUPublicEDKey: sF60e+ebb6hCMp1/M5/xE3pzOaFve+rGs/ew1W8hcnU=
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMac
