@@ -119,7 +119,7 @@ struct AlertFormat {
     /// A rule's threshold as Settings shows it, e.g. "80%", "1 GB", "10 GB", "10 MB/s".
     func threshold(_ value: Double, for rule: AlertRule) -> String {
         switch rule {
-        case .appCPU: cpu(cores: value)
+        case .appCPU: cpu(cores: value).replacingOccurrences(of: ".0%", with: "%")
         case .memoryGrowth: Format.memorySize(UInt64(max(value, 0)))
         case .diskWrites: DiskFormat.bytes(value)
         case .network: networkRate(value, trimmed: true)
