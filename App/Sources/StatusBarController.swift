@@ -83,7 +83,8 @@ final class StatusBarController: NSObject {
             items[item.metric] = statusItem
             guard let button = statusItem.button else { continue }
 
-            let sizing = Sizing(style: item.style, widestText: item.widestText)
+            let sizing = Sizing(style: item.style, widestText: item.warning?.widestText ?? item.widestText,
+                                isWarning: item.warning != nil)
             if sizedFor[item.metric] != sizing {
                 // Size for the widest possible value so the item never changes width as values change.
                 apply(item, text: item.widestText, to: button)
@@ -96,6 +97,17 @@ final class StatusBarController: NSObject {
     }
 
     private func apply(_ item: MenuBarItem, text: String, to button: NSStatusBarButton) {
+        // Under strain the item becomes the warning badge; hovering names the culprit.
+        button.toolTip = item.warning.map { "\($0.title)\n\($0.detail)" }
+        if let warning = item.warning {
+            // The badge is as wide as its widest text, so the item never jumps as the figure changes.
+            button.image = MenuBarGraphics.warningBadge(warning.text, widestText: warning.widestText)
+            button.title = ""
+            button.imagePosition = .imageOnly
+            button.setAccessibilityLabel("\(warning.title). \(warning.detail)")
+            return
+        }
+        button.setAccessibilityLabel(nil)
         switch item.style {
         case .value:
             button.image = MenuBarGraphics.icon(for: item.metric)
@@ -229,6 +241,7 @@ private final class StyleChoice: NSObject {
 private struct Sizing: Equatable {
     var style: MenuBarStyle
     var widestText: String
+    var isWarning: Bool
 }
 
 private extension MenuBarStyle {

@@ -41,41 +41,43 @@ public enum AppGrouping {
     /// count toward Chrome). Processes outside any bundle are grouped by executable.
     public static func apps(from processes: [ProcessSample]) -> [AppUsage] {
         let byPID = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
-        var groups: [String: AppUsage] = [:]
-        var order: [String] = []
-        var hasRegularApp: Set<String> = []
-        var hasOwnProcess: Set<String> = []
+        // Groups in first-seen order. Ids are long paths, so each process hashes its id once.
+        var groups: [AppUsage] = []
+        var indexByID: [String: Int] = [:]
+        var hasRegularApp: [Bool] = []
+        var hasOwnProcess: [Bool] = []
 
         for process in processes {
             let (id, name, bundle) = owner(of: process, byPID: byPID)
-
-            if groups[id] == nil {
-                groups[id] = AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0)
-                order.append(id)
-            }
-            groups[id]!.processCount += 1
-            groups[id]!.cpu += process.cpu
-            groups[id]!.resources = groups[id]!.resources + process.resources
+            let index = indexByID[id] ?? {
+                indexByID[id] = groups.count
+                groups.append(AppUsage(id: id, name: name, bundlePath: bundle, processCount: 0, cpu: 0))
+                hasRegularApp.append(false)
+                hasOwnProcess.append(false)
+                return groups.count - 1
+            }()
+            groups[index].processCount += 1
+            groups[index].cpu += process.cpu
+            groups[index].resources = groups[index].resources + process.resources
             if process.isRegularApp, let bundle, outermostAppBundle(in: process.path) == bundle {
-                groups[id]!.quitPID = process.pid
+                groups[index].quitPID = process.pid
             }
-            if process.isRegularApp { hasRegularApp.insert(id) }
-            if !process.isOtherUser { hasOwnProcess.insert(id) }
+            if process.isRegularApp { hasRegularApp[index] = true }
+            if !process.isOtherUser { hasOwnProcess[index] = true }
         }
-        for id in order {
-            groups[id]!.kind = if hasRegularApp.contains(id) {
+        for index in groups.indices {
+            groups[index].kind = if hasRegularApp[index] {
                 .app
-            } else if !hasOwnProcess.contains(id) || isSystemLocation(groups[id]!.bundlePath ?? id) {
+            } else if !hasOwnProcess[index] || isSystemLocation(groups[index].bundlePath ?? groups[index].id) {
                 .system
             } else {
                 .agent
             }
         }
         // Stable for equal CPU: first seen first.
-        return order.enumerated()
-            .map { (index: $0.offset, app: groups[$0.element]!) }
-            .sorted { $0.app.cpu != $1.app.cpu ? $0.app.cpu > $1.app.cpu : $0.index < $1.index }
-            .map(\.app)
+        return groups.enumerated()
+            .sorted { $0.element.cpu != $1.element.cpu ? $0.element.cpu > $1.element.cpu : $0.offset < $1.offset }
+            .map(\.element)
     }
 
     /// Each group's processes, in input order, keyed by the ids `apps(from:)` gives the groups.
@@ -97,7 +99,7 @@ public enum AppGrouping {
         let responsible = process.responsiblePID.flatMap { byPID[$0] }
         let bundle = responsible.flatMap { outermostAppBundle(in: $0.path) } ?? outermostAppBundle(in: process.path)
         let id = bundle ?? process.path ?? process.name
-        let name = bundle.map(appName(forBundle:)) ?? process.path.map(lastComponent) ?? process.name
+        let name = bundle.map(appName(forBundle:)) ?? process.path.map { String(lastComponent($0)) } ?? process.name
         return (id, name, bundle)
     }
 
@@ -128,8 +130,10 @@ public enum AppGrouping {
         String(lastComponent(bundle).dropLast(".app".count))
     }
 
-    private static func lastComponent(_ path: String) -> String {
-        path.split(separator: "/").last.map(String.init) ?? path
+    private static func lastComponent(_ path: String) -> Substring {
+        let trimmed = path.hasSuffix("/") ? path.dropLast() : Substring(path)
+        guard let slash = trimmed.lastIndex(of: "/") else { return trimmed }
+        return trimmed[trimmed.index(after: slash)...]
     }
 }
 

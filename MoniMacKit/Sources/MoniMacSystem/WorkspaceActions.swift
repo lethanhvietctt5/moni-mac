@@ -9,7 +9,13 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 /// The real SystemActions, through NSWorkspace, signals, and the Docker API.
 @MainActor
 public final class WorkspaceActions: SystemActions {
-    public init() {}
+    private let notifications: NotificationDelivery
+
+    /// `notificationsMuted` logs alerts instead of posting them and never asks for permission
+    /// (the `--mute-notifications` development flag).
+    public init(notificationsMuted: Bool = false) {
+        notifications = NotificationDelivery(isMuted: notificationsMuted)
+    }
 
     public func quitApp(pid: Int32, reopenWindows: Bool) {
         guard let app = NSRunningApplication(processIdentifier: pid) else { return }
@@ -125,5 +131,13 @@ public final class WorkspaceActions: SystemActions {
         } catch {
             log.error("Launch at login \(enabled ? "on" : "off", privacy: .public) failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    public func requestNotificationAuthorization() {
+        notifications.requestAuthorization()
+    }
+
+    public func deliver(_ alert: Alert) {
+        notifications.deliver(alert)
     }
 }

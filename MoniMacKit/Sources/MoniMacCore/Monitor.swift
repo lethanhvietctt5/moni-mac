@@ -28,6 +28,7 @@ public final class Monitor {
     @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored let projectActivity: ProjectActivity
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
+    @ObservationIgnored var alerts = AlertState()
     /// When this Monitor started, e.g. for "this session" totals.
     public let startedAt: Date
 
@@ -52,6 +53,7 @@ public final class Monitor {
         let snapshot = sampler.sample()
         latest = snapshot
         observeProjects(snapshot)
+        evaluateAlerts(snapshot)
         do {
             try history.record(snapshot)
         } catch {
@@ -115,6 +117,9 @@ public final class Monitor {
         var shown = Metric.allCases.filter(preferences.isMenuBarItemEnabled)
         // Never leave the app without a menu bar item, even if settings were edited by hand.
         if shown.isEmpty { shown = [.cpu] }
+        // Under strain the CPU item (or, without one, the first item) becomes the warning badge.
+        let warning = menuBarWarning
+        let warned = shown.contains(.cpu) ? .cpu : shown[0]
         menuBarItems = shown.map { metric in
             let style = preferences.menuBarStyle(for: metric)
             let source = metric.menuBar
@@ -123,7 +128,8 @@ public final class Monitor {
                 style: style,
                 text: source.text(latest, preferences: preferences),
                 bars: style == .value ? [] : source.bars(history: history, endingAt: latest?.timestamp),
-                widestText: source.widestText(preferences: preferences)
+                widestText: source.widestText(preferences: preferences),
+                warning: metric == warned ? warning : nil
             )
         }
     }

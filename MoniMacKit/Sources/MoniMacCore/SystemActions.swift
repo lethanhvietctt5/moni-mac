@@ -24,4 +24,9 @@ public protocol SystemActions: AnyObject {
     var launchAtLogin: LaunchAtLogin { get }
     /// Adds MoniMac to, or removes it from, the user's login items.
     func setLaunchAtLogin(_ enabled: Bool)
+    /// Asks for permission to post notifications. macOS prompts only the first time; Monitor calls this
+    /// only on first use (an alert firing or a rule being turned on), never at launch.
+    func requestNotificationAuthorization()
+    /// Posts an alert as a system notification, with "Quit <App>" (when offered) and "Show" actions.
+    func deliver(_ alert: Alert)
 }

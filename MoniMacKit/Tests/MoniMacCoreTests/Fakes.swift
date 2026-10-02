@@ -52,6 +52,8 @@ final class RecordingActions: SystemActions {
         case openURL(URL)
         case revealInFinder(path: String)
         case setLaunchAtLogin(Bool)
+        case requestNotificationAuthorization
+        case deliver(Alert)
     }
 
     private(set) var recorded: [Action] = []
@@ -69,6 +71,13 @@ final class RecordingActions: SystemActions {
     func setLaunchAtLogin(_ enabled: Bool) {
         recorded.append(.setLaunchAtLogin(enabled))
         launchAtLogin = enabled ? (loginNeedsApproval ? .needsApproval : .on) : .off
+    }
+    func requestNotificationAuthorization() { recorded.append(.requestNotificationAuthorization) }
+    func deliver(_ alert: Alert) { recorded.append(.deliver(alert)) }
+
+    /// The alerts delivered so far.
+    var delivered: [Alert] {
+        recorded.compactMap { if case .deliver(let alert) = $0 { alert } else { nil } }
     }
 }
 

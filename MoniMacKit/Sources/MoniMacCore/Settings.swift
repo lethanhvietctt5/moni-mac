@@ -97,6 +97,8 @@ public struct SettingsPanel: Equatable, Sendable {
     public var menuBarRows: [MenuBarRow]
     public var windowTabs: [WindowTabChip]
     public var keepHistory: HistoryRetention
+    /// Settings › Notifications, one row per rule.
+    public var alertRules: [AlertRuleRow]
     /// e.g. "MoniMac 1.4.2".
     public var about: String
 
@@ -127,6 +129,7 @@ extension Monitor {
             menuBarRows: menuBarRows,
             windowTabs: windowTabChips,
             keepHistory: preferences.keepHistory,
+            alertRules: alertRuleRows,
             about: SettingsPanel.about(version: version)
         )
     }

@@ -63,9 +63,12 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         self.quitSheet = quitSheet
     }
 
-    func show(tab: WindowTab? = nil, layout: OverviewLayout? = nil, expanding expanded: Set<AppUsage.ID> = []) {
+    /// `sortedBy` opens Overview › List with every app, sorted by that column (as "Show All" does).
+    func show(tab: WindowTab? = nil, layout: OverviewLayout? = nil, sortedBy column: OverviewListColumn? = nil,
+              expanding expanded: Set<AppUsage.ID> = []) {
         if let tab { state.tab = tab }
         if let layout { state.overviewLayout = layout }
+        if let column { state.showList(sortedBy: column) }
         state.listQuery.expanded.formUnion(expanded)
         let window = window ?? makeWindow()
         self.window = window
