@@ -18,6 +18,7 @@ public struct Snapshot: Equatable, Sendable {
     public var battery: Reading<BatteryReading>
     public var thermal: Reading<ThermalReading>
     public var devServers: Reading<DevServerReading>
+    public var bluetooth: Reading<BluetoothReading>
 
     public init(
         timestamp: Date,
@@ -33,7 +34,8 @@ public struct Snapshot: Equatable, Sendable {
         disk: Reading<DiskReading> = .unavailable(.unsupported),
         battery: Reading<BatteryReading> = .unavailable(.unsupported),
         thermal: Reading<ThermalReading> = .unavailable(.unsupported),
-        devServers: Reading<DevServerReading> = .unavailable(.unsupported)
+        devServers: Reading<DevServerReading> = .unavailable(.unsupported),
+        bluetooth: Reading<BluetoothReading> = .unavailable(.unsupported)
     ) {
         self.timestamp = timestamp
         self.system = system
@@ -49,6 +51,7 @@ public struct Snapshot: Equatable, Sendable {
         self.battery = battery
         self.thermal = thermal
         self.devServers = devServers
+        self.bluetooth = bluetooth
     }
 }
 

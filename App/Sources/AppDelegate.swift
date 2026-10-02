@@ -12,16 +12,23 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Development aid: `--mute-notifications` evaluates alerts but only logs them: no permission prompt, no banners.
     private static let notificationsMuted = CommandLine.arguments.contains("--mute-notifications")
-    private let monitor = Monitor(
-        sampler: HostSampler(storageScanCache: .standard), history: makeHistory(), preferences: Preferences(),
-        actions: WorkspaceActions(notificationsMuted: notificationsMuted)
+    /// Development aid: `--bluetooth-fixture <path>` reads Bluetooth devices from a saved
+    /// `system_profiler SPBluetoothDataType -json` file, to check the tab with devices this Mac doesn't have.
+    private let sampler = HostSampler(storageScanCache: .standard,
+                                      bluetoothFixture: launchValue("--bluetooth-fixture").map(URL.init(fileURLWithPath:)))
+    private lazy var monitor = Monitor(
+        sampler: sampler, history: Self.makeHistory(), preferences: Preferences(),
+        actions: WorkspaceActions(notificationsMuted: Self.notificationsMuted)
     )
     private var statusBar: StatusBarController?
     /// The quit confirmation, shared by the popover, the window, and (later) notifications.
     private lazy var quitSheet = QuitSheetPresenter(monitor: monitor)
     private lazy var mainWindow = MainWindowController(monitor: monitor, quitSheet: quitSheet)
-    private lazy var alertResponder = AlertNotificationResponder(quitSheet: quitSheet) { [weak self] column, app in
-        self?.mainWindow.show(sortedBy: column, expanding: [app])
+    private lazy var alertResponder = AlertNotificationResponder(quitSheet: quitSheet) { [weak self] target in
+        switch target {
+        case .app(let app, let column): self?.mainWindow.show(sortedBy: column, expanding: [app])
+        case .tab(let tab): self?.mainWindow.show(tab: tab)
+        }
     }
     private var refresh: Task<Void, Never>?
     /// The interval the refresh loop runs at; the loop restarts when the setting changes.
@@ -58,6 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openWindow: { [weak self] in self?.mainWindow.show() },
             openSettings: { [weak self] in self?.mainWindow.show(tab: .settings) }
         )
+        // Bluetooth is read only while its tab shows or low-battery notifications are on.
+        sampler.bluetoothDemand = { [weak self] in
+            guard let self else { return .none }
+            return monitor.bluetoothDemand(isTabShowing: mainWindow.isShowing(.bluetooth))
+        }
         observeSettings()
         UpdateController.shared.start()
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.

@@ -76,6 +76,12 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// Whether `tab` is on screen: the window is open on it and not minimized or fully covered.
+    func isShowing(_ tab: WindowTab) -> Bool {
+        guard let window, state.tab == tab else { return false }
+        return window.occlusionState.contains(.visible)
+    }
+
     private func makeWindow() -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
@@ -138,11 +144,12 @@ struct MainWindowView: View {
         case .network: monitor.networkSubtitle
         case .disk: monitor.diskSubtitle
         case .battery: monitor.batterySubtitle
+        case .bluetooth: monitor.bluetoothSubtitle
         case .temperature: monitor.temperatureSubtitle
         case .overview: monitor.overviewSubtitle
         case .projects: monitor.projectsSubtitle
         case .settings: SettingsWindowTab.subtitle
-        case .bluetooth, .sound: nil
+        case .sound: nil
         }
     }
 
@@ -183,11 +190,12 @@ struct MainWindowView: View {
         case .network: NetworkWindowTab(monitor: monitor, range: range)
         case .disk: DiskWindowTab(monitor: monitor, range: range)
         case .battery: BatteryWindowTab(monitor: monitor, range: range)
+        case .bluetooth: BluetoothWindowTab(monitor: monitor)
         case .temperature: TemperatureWindowTab(monitor: monitor, range: range)
         case .overview: OverviewWindowTab(monitor: monitor)
         case .projects: ProjectsWindowTab(monitor: monitor)
         case .settings: SettingsWindowTab(monitor: monitor)
-        case .bluetooth, .sound: ComingSoon(title: state.tab.title)
+        case .sound: ComingSoon(title: state.tab.title)
         }
     }
 }

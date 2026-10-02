@@ -18,12 +18,20 @@ public final class HostSampler: SystemSampler {
     private let battery = BatteryReader()
     private let thermal = ThermalReader()
     private let devServers = DevServerReader()
+    private let bluetooth: BluetoothReader
+    /// What needs Bluetooth read, asked on every tick; the app answers from the window and the settings.
+    /// Until it's set, nothing does, and Bluetooth is never read.
+    public var bluetoothDemand: @MainActor () -> BluetoothDemand = { .none }
     /// The latest process list with GPU and network figures added. Annotation runs only when the
     /// process list is refreshed, so readers see the same cadence and can compute their own rates.
     private var annotatedProcesses: Reading<[ProcessSample]> = .unavailable(.warmingUp)
 
     /// `storageScanCache` keeps the storage scan across launches; the app passes `.standard`.
-    public init(storageScanCache: StorageScanCache? = nil) {
+    /// `bluetoothFixture` (the `--bluetooth-fixture` development flag) reads Bluetooth devices from a saved
+    /// `system_profiler SPBluetoothDataType -json` file instead, so the tab can be checked with devices this
+    /// Mac doesn't have.
+    public init(storageScanCache: StorageScanCache? = nil, bluetoothFixture: URL? = nil) {
+        bluetooth = BluetoothReader(fixture: bluetoothFixture)
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
         disk = DiskReader(storageScanCache: storageScanCache)
     }
@@ -43,7 +51,8 @@ public final class HostSampler: SystemSampler {
             disk: disk.sample(),
             battery: battery.sample(),
             thermal: thermal.sample(),
-            devServers: sampleDevServers()
+            devServers: sampleDevServers(),
+            bluetooth: sampleBluetooth()
         )
     }
 
@@ -58,6 +67,11 @@ public final class HostSampler: SystemSampler {
     private func sampleDevServers() -> Reading<DevServerReading> {
         devServers.refreshIfDue()
         return devServers.latest()
+    }
+
+    private func sampleBluetooth() -> Reading<BluetoothReading> {
+        bluetooth.refreshIfDue(demand: bluetoothDemand())
+        return bluetooth.latest()
     }
 
     private func sampleCPU() -> Reading<CPUUsage> {

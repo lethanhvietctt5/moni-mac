@@ -27,6 +27,7 @@ public final class Monitor {
     @ObservationIgnored let preferences: Preferences
     @ObservationIgnored let actions: any SystemActions
     @ObservationIgnored let projectActivity: ProjectActivity
+    @ObservationIgnored let bluetoothTracker: BluetoothTracker
     @ObservationIgnored private var appsCache: (timestamp: Date, apps: [AppUsage])?
     @ObservationIgnored var alerts = AlertState()
     /// When this Monitor started, e.g. for "this session" totals.
@@ -42,6 +43,7 @@ public final class Monitor {
         self.preferences = preferences
         self.actions = actions
         projectActivity = ProjectActivity(preferences: preferences)
+        bluetoothTracker = BluetoothTracker(preferences: preferences)
         launchAtLogin = actions.launchAtLogin
         let retention = preferences.keepHistory.duration
         if history.retention != retention { history.retention = retention }
@@ -53,6 +55,7 @@ public final class Monitor {
         let snapshot = sampler.sample()
         latest = snapshot
         observeProjects(snapshot)
+        observeBluetooth(snapshot)
         evaluateAlerts(snapshot)
         do {
             try history.record(snapshot)
