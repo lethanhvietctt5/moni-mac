@@ -405,6 +405,21 @@ struct BluetoothTests {
         #expect(delivered.count == 2)
     }
 
+    @Test func anEarbudThatComesBackChargedCountsAsACharge() throws {
+        let (monitor, sampler) = try makeMonitor()
+        for (left, right) in [(60, 15), (60, nil), (59, 100)] as [(Int, Int?)] {
+            clock.advance(by: 300)
+            sampler.set([airPods(left: left, right: right, case: 50)])
+            monitor.tick()
+            if right == nil {
+                // Put away, it keeps its last level.
+                #expect(monitor.bluetoothTracker.records[airPodsAddress]?.battery.right == 15)
+                #expect(monitor.bluetoothTracker.records[airPodsAddress]?.chargedAt == nil)
+            }
+        }
+        #expect(monitor.bluetoothTracker.records[airPodsAddress]?.chargedAt == clock.now)
+    }
+
     @Test func disconnectingWhileLowDoesNotStartANewEpisode() throws {
         let (monitor, sampler) = try makeMonitor()
         for (level, connected) in [(15, true), (15, false), (12, true)] {

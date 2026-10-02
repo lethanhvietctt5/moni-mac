@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Main window with CPU tab; 14 — Alerts and notifications
 
-**Status:** done pending checks with real connected devices. No Bluetooth device was connected to the Mac this was built on, so connected devices, AirPods levels, and "last seen" were exercised through tests and the `--bluetooth-fixture` flag, not real hardware.
+**Status:** done pending checks with real connected devices. No Bluetooth device was connected to the Mac this was built on, so connected devices, AirPods levels, and "last seen" were exercised through tests and the `--bluetooth-fixture` flag, not real hardware. The on-screen 30 s cadence wasn't observed either: in both UI sessions the window was covered (the app can't bring itself to the front), so reads ran on the background cadence.
 
 **Notes:**
 - **Sources (no prompt, no usage description):**

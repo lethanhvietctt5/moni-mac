@@ -122,13 +122,17 @@ final class BluetoothTracker {
                 record.drain = .init(from: battery, since: now)
             }
         }
-        if !battery.isEmpty { record.battery = battery }
+        // Part by part: an earbud that stops reporting keeps its last level, so it's still known when it
+        // comes back (and a charge in between shows as a rise).
+        for part in BluetoothBattery.inUse + [\.case] {
+            if let level = battery[keyPath: part] { record.battery[keyPath: part] = level }
+        }
     }
 }
 
 extension BluetoothBattery {
     /// The parts that run out in use: everything but the case.
-    static var inUse: [KeyPath<BluetoothBattery, Int?>] { [\.main, \.left, \.right] }
+    static var inUse: [WritableKeyPath<BluetoothBattery, Int?>] { [\.main, \.left, \.right] }
 }
 
 extension Preferences {
