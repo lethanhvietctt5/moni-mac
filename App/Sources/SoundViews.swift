@@ -39,10 +39,12 @@ private struct SoundWindowContent: View {
             case .apps: apps
             case .duck:
                 OptionCard(title: SoundDetail.duckTitle, description: SoundDetail.duckDescription,
-                           isOn: Binding(get: { detail.duck }, set: monitor.setSoundDuckDuringCalls))
+                           isOn: Binding(get: { detail.duck }, set: monitor.setSoundDuckDuringCalls),
+                           enabled: detail.duckEnabled)
             case .muteNew:
                 OptionCard(title: SoundDetail.muteNewTitle, description: SoundDetail.muteNewDescription,
-                           isOn: Binding(get: { detail.muteNewApps }, set: monitor.setSoundMuteNewApps))
+                           isOn: Binding(get: { detail.muteNewApps }, set: monitor.setSoundMuteNewApps),
+                           enabled: detail.muteNewEnabled)
             }
         }
     }
@@ -71,7 +73,7 @@ private struct SoundWindowContent: View {
             if !detail.rows.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(detail.rows.enumerated()), id: \.element.id) { index, row in
-                        AppRow(row: row, enabled: detail.controlsEnabled, monitor: monitor)
+                        SoundAppRow(row: row, enabled: detail.controlsEnabled, monitor: monitor)
                             .overlay(alignment: .bottom) {
                                 if index < detail.rows.count - 1 {
                                     Rectangle().fill(Palette.separator).frame(height: 1)
@@ -152,7 +154,7 @@ private struct OutputCard: View {
 
 // MARK: Per-App Volume
 
-private struct AppRow: View {
+private struct SoundAppRow: View {
     let row: SoundDetail.Row
     let enabled: Bool
     let monitor: Monitor
@@ -279,6 +281,7 @@ private struct OptionCard: View {
     let title: String
     let description: String
     let isOn: Binding<Bool>
+    let enabled: Bool
 
     var body: some View {
         HStack(spacing: 14) {
@@ -292,6 +295,7 @@ private struct OptionCard: View {
                 .controlSize(.small)
                 .labelsHidden()
                 .tint(Palette.success)
+                .disabled(!enabled)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)

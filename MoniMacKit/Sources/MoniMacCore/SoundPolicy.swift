@@ -20,6 +20,14 @@ public struct SoundDucking: Equatable, Sendable {
 
     public init() {}
 
+    /// The apps lowered right now: every app but the call's, while ducking.
+    func duckedApps(among apps: [SoundApp]) -> Set<String> {
+        isActive ? Set(apps.map(\.id)).subtracting(callApps) : []
+    }
+
+    /// e.g. "50%", for the switch's description and the ducked rows' tooltip.
+    static var reductionText: String { Format.percent(1 - factor) }
+
     mutating func update(callApps current: Set<String>, enabled: Bool, at now: Date) {
         guard enabled else {
             self = SoundDucking()
@@ -102,7 +110,7 @@ final class SoundPolicy {
     /// The gains to apply now.
     var mix: SoundMix {
         let settings = preferences.soundAppSettings
-        let ducked = ducking.isActive ? Set(apps.map(\.id)).subtracting(ducking.callApps) : []
+        let ducked = ducking.duckedApps(among: apps)
         var gains: [SoundTarget: Double] = [:]
         for id in Set(settings.keys).union(ducked) {
             let setting = settings[id] ?? SoundAppSetting()

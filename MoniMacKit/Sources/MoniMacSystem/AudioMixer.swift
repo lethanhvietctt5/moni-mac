@@ -15,8 +15,8 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 ///   starts playing, without waiting for the refresh loop.
 /// - **Following the output.** When the default output device or its sample rate changes, every tap is
 ///   rebuilt on the new device after it settles (taps are tied to the device they were built on).
-/// - **Watchdog.** A tap that stops getting IO callbacks, or goes silent while its app plays after it
-///   was heard, is rebuilt, at most once a minute.
+/// - **Watchdog.** A tap that stops getting IO callbacks, or (within a minute of an output change) goes
+///   silent while its app plays after it was heard, is rebuilt, at most once a minute.
 /// - **Permission.** macOS has no API to read the audio capture permission and a denied tap delivers
 ///   silence. Until a tap has delivered sound, taps that hear only zeros while their apps play for
 ///   `accessVerdictDelay` mean "not working": every tap is stopped (so apps are heard as usual) and none
@@ -82,6 +82,11 @@ public final class AudioMixer: @unchecked Sendable {
     private var failures: [SoundTarget: Date] = [:]
     /// Why the last tap couldn't be built, for the Sound tab; cleared when one is.
     private var problem: String?
+    /// When the output last changed. Taps going silent after a device or rate change is a known Core Audio
+    /// problem, so silence is treated as a fault only for `silentAfterChange` after one; otherwise it's a
+    /// paused app that keeps its stream open.
+    private var outputChangedAt: Date?
+    static let silentAfterChange: TimeInterval = 60
 
     /// What the watchdog last saw of a tap.
     private struct Health {
@@ -152,9 +157,12 @@ public final class AudioMixer: @unchecked Sendable {
         published.withLock { $0.status }
     }
 
-    /// Destroys every tap and stops listening, waiting until done. Called when MoniMac quits.
+    /// Destroys every tap and stops listening. Called when MoniMac quits; waits at most 2 s, since a tap
+    /// build can be blocked behind the permission prompt. Private taps end with the process anyway.
     public func shutdown() {
-        queue.sync { [self] in
+        let done = DispatchSemaphore(value: 0)
+        queue.async { [self] in
+            defer { done.signal() }
             isShutDown = true
             pendingRebuild?.cancel()
             stopWatchdog()
@@ -168,6 +176,7 @@ public final class AudioMixer: @unchecked Sendable {
                 log.notice("Destroyed \(count) taps on quit; taps still listed for MoniMac: \(left)")
             }
         }
+        if done.wait(timeout: .now() + 2) == .timedOut { log.notice("Quitting without waiting for the audio queue") }
     }
 
     // MARK: Reconciling
@@ -207,7 +216,14 @@ public final class AudioMixer: @unchecked Sendable {
             }
         }
         failures = failures.filter { wanted[$0.key] != nil }
-        pipelines.isEmpty ? stopWatchdog() : startWatchdog()
+        if pipelines.isEmpty {
+            stopWatchdog()
+            // No tap is left to judge by: the next one starts the verdict afresh.
+            silentSince = nil
+            if access == .checking { setAccess(.unused) }
+        } else {
+            startWatchdog()
+        }
         publish()
     }
 
@@ -261,12 +277,12 @@ public final class AudioMixer: @unchecked Sendable {
         }
     }
 
-    /// Rebuilds every tap on the new output once it has settled; Bluetooth takes longer.
+    /// Rebuilds every tap on the new output once it has settled: 2 s, or 5 s for Bluetooth (FineTune's figures).
     private func scheduleRebuild() {
         pendingRebuild?.cancel()
+        outputChangedAt = Date()
         guard !pipelines.isEmpty else { return }
-        let bluetooth = [kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE]
-            .contains(watcher.output?.transport ?? 0)
+        let bluetooth = AudioHAL.isBluetooth(transport: watcher.output?.transport ?? 0)
         let work = DispatchWorkItem { [weak self] in
             guard let self, !isShutDown else { return }
             log.notice("Output changed; rebuilding \(self.pipelines.count) taps")
@@ -274,7 +290,7 @@ public final class AudioMixer: @unchecked Sendable {
             publish()
         }
         pendingRebuild = work
-        queue.asyncAfter(deadline: .now() + (bluetooth ? 3 : 1), execute: work)
+        queue.asyncAfter(deadline: .now() + (bluetooth ? 5 : 2), execute: work)
     }
 
     // MARK: Watchdog and permission
@@ -310,7 +326,9 @@ public final class AudioMixer: @unchecked Sendable {
 
             guard access == .working, canRebuild(record, now: now) else { continue }
             let stalled = now.timeIntervalSince(record.progressAt) >= Self.stalledAfter
-            let wentSilent = playing && record.audibleAt.map { now.timeIntervalSince($0) >= Self.silentAfter } == true
+            let afterChange = outputChangedAt.map { now.timeIntervalSince($0) < Self.silentAfterChange } == true
+            let wentSilent = afterChange && playing
+                && record.audibleAt.map { now.timeIntervalSince($0) >= Self.silentAfter } == true
             if stalled || wentSilent {
                 log.notice("Tap for \(String(describing: target), privacy: .public) \(stalled ? "stalled" : "went silent", privacy: .public); rebuilding")
                 rebuild(target, objects: pipeline.objects, gain: pipeline.gain)

@@ -45,7 +45,7 @@ struct AudioOutputInfo: Equatable, Sendable {
 final class AudioWatcher: @unchecked Sendable {
     enum User: Hashable { case reading, mixer }
 
-    /// `output`: the default output device or its sample rate changed, so taps need rebuilding.
+    /// `output`: the default output device, its sample rate, or its streams changed, so taps need rebuilding.
     /// `volume`: only its volume did.
     enum Change { case clients, output, devices, volume }
 
@@ -78,6 +78,8 @@ final class AudioWatcher: @unchecked Sendable {
     private static let outputProperties: [(AudioObjectPropertySelector, AudioObjectPropertyScope)] = [
         (kAudioHardwareServiceDeviceProperty_VirtualMainVolume, kAudioObjectPropertyScopeOutput),
         (kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal),
+        // A headset switching to hands-free adds its microphone's input stream.
+        (kAudioDevicePropertyStreams, kAudioObjectPropertyScopeGlobal),
     ]
 
     init(queue: DispatchQueue) {
@@ -241,10 +243,12 @@ final class AudioWatcher: @unchecked Sendable {
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             guard let self, isRunning, output?.id == id else { return }
             let rate = AudioHAL.float64(id, kAudioDevicePropertyNominalSampleRate)
-            let rateChanged = rate != output?.sampleRate
+            let inputs = AudioHAL.streamCount(id, kAudioObjectPropertyScopeInput)
+            let reshaped = rate != output?.sampleRate || inputs != output?.inputStreams
             output?.sampleRate = rate
+            output?.inputStreams = inputs
             readOutputDevice()
-            onChange?(rateChanged ? .output : .volume)
+            onChange?(reshaped ? .output : .volume)
         }
         for (selector, scope) in Self.outputProperties {
             var address = AudioHAL.address(selector, scope)

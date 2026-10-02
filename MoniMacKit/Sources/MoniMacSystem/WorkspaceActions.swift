@@ -16,7 +16,7 @@ public final class WorkspaceActions: SystemActions {
 
     /// `notificationsMuted` logs alerts instead of posting them and never asks for permission
     /// (the `--mute-notifications` development flag). `audio` is shared with `HostSampler`.
-    public init(notificationsMuted: Bool = false, audio: AudioMixer = AudioMixer()) {
+    public init(notificationsMuted: Bool = false, audio: AudioMixer) {
         notifications = NotificationDelivery(isMuted: notificationsMuted)
         self.audio = audio
     }

@@ -101,6 +101,10 @@ enum AudioHAL {
         float32(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume, kAudioObjectPropertyScopeOutput).map(Double.init)
     }
 
+    static func isBluetooth(transport: UInt32) -> Bool {
+        transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE
+    }
+
     static func kind(transport: UInt32) -> SoundDevice.Kind {
         switch transport {
         case kAudioDeviceTransportTypeBuiltIn: .builtIn

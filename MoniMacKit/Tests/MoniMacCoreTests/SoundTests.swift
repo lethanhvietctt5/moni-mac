@@ -371,6 +371,9 @@ struct SoundTests {
         }
         #expect(title == "Per-app volume needs System Audio Recording access")
         #expect(!monitor.soundDetail.controlsEnabled)
+        #expect(!monitor.soundDetail.duckEnabled && !monitor.soundDetail.muteNewEnabled)
+        monitor.setSoundMuteNewApps(true)
+        #expect(monitor.soundDetail.muteNewEnabled)
 
         monitor.openSoundPrivacySettings()
         monitor.retrySoundAccess()

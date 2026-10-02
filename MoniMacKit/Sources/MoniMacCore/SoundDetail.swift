@@ -73,8 +73,12 @@ public struct SoundDetail: Equatable, Sendable {
     /// Other apps are lowered for a call right now.
     public var isDucking: Bool
 
+    /// While per-app volume isn't working, the switches can be turned off but not on.
+    public var duckEnabled: Bool { controlsEnabled || duck }
+    public var muteNewEnabled: Bool { controlsEnabled || muteNewApps }
+
     public static let duckTitle = "Duck background apps"
-    public static let duckDescription = "Lower other apps by 50% while a call is active"
+    public static let duckDescription = "Lower other apps by \(SoundDucking.reductionText) while a call is active"
     public static let muteNewTitle = "Mute new apps by default"
     public static let muteNewDescription = "Apps that start playing for the first time stay muted"
     public static let appsTitle = "Per-App Volume"
@@ -110,7 +114,7 @@ public struct SoundDetail: Equatable, Sendable {
             )
         }
         let apps = SoundApps.group(sound.processes)
-        let ducked = ducking.isActive ? Set(apps.map(\.id)).subtracting(ducking.callApps) : []
+        let ducked = ducking.duckedApps(among: apps)
         let rows = apps.map { app in
             row(app, setting: settings[app.id], tap: sound.taps[app.id], isDucked: ducked.contains(app.id))
         }
@@ -143,7 +147,7 @@ public struct SoundDetail: Equatable, Sendable {
         return Row(
             id: app.id, name: app.name, path: app.path, state: state, stateText: stateText,
             volume: volume, volumeText: muted ? "—" : Format.percent(volume), isMuted: muted,
-            isDucked: isDucked && !muted, help: isDucked && !muted ? "Lowered 50% during the call" : nil
+            isDucked: isDucked && !muted, help: isDucked && !muted ? "Lowered \(SoundDucking.reductionText) during the call" : nil
         )
     }
 

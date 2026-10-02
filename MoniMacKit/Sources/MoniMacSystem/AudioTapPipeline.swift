@@ -67,7 +67,6 @@ final class AudioTapPipeline {
     private(set) var objects: [AudioObjectID]
     let output: AudioOutputInfo
     let shared: AudioTapShared
-    let createdAt = Date()
 
     private let tapUUID = UUID()
     private var tapID = AudioObjectID(kAudioObjectUnknown)
@@ -116,8 +115,8 @@ final class AudioTapPipeline {
 
         // Drift compensation crackles on Bluetooth and virtual devices (FineTune's finding); elsewhere it
         // keeps the tap in step with the output clock.
-        let drift = ![kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE,
-                      kAudioDeviceTransportTypeVirtual, kAudioDeviceTransportTypeAggregate].contains(output.transport)
+        let drift = !AudioHAL.isBluetooth(transport: output.transport)
+            && ![kAudioDeviceTransportTypeVirtual, kAudioDeviceTransportTypeAggregate].contains(output.transport)
         let settings: [String: Any] = [
             kAudioAggregateDeviceNameKey: "MoniMac volume",
             kAudioAggregateDeviceUIDKey: Self.uidPrefix + tapUUID.uuidString,
@@ -208,8 +207,8 @@ final class AudioTapPipeline {
     // MARK: Real-time IO
 
     /// Copies the tap's stereo mixdown to the output times the gain: left and right to the first two
-    /// output channels (both averaged on a mono output), silence on the rest. Runs on the IO thread:
-    /// no locks, no allocation, no Objective-C.
+    /// output channels (both averaged on a mono output), silence on the rest. Runs once per IO cycle on the
+    /// pipeline's own high-priority queue, inside Core Audio's IO deadline: no locks, no allocation, no Objective-C.
     private static func process(input: UnsafePointer<AudioBufferList>, output: UnsafeMutablePointer<AudioBufferList>,
                                 tapIndex: Int, rampPerFrame: Float, shared: AudioTapShared) {
         let inputs = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
@@ -234,16 +233,13 @@ final class AudioTapPipeline {
 
         var totalChannels = 0
         var frames = 0
-        for buffer in outputs {
+        for buffer in outputs where buffer.mNumberChannels > 0 {
             totalChannels += Int(buffer.mNumberChannels)
-            if frames == 0, buffer.mNumberChannels > 0 {
-                frames = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / Int(buffer.mNumberChannels)
-            }
+            frames = max(frames, Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / Int(buffer.mNumberChannels))
         }
         let start = shared.applied.pointee
         let limit = rampPerFrame * Float(max(frames, 1))
         let end = start + min(max(shared.target.pointee - start, -limit), limit)
-        let step = (end - start) / Float(max(frames, 1))
 
         var channelBase = 0
         for buffer in outputs {
@@ -253,6 +249,8 @@ final class AudioTapPipeline {
                 continue
             }
             let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / channels
+            // Each buffer ramps from start to end over its own frames (non-interleaved outputs have one per channel).
+            let step = (end - start) / Float(max(count, 1))
             var gain = start
             for frame in 0..<count {
                 gain += step
