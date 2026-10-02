@@ -10,19 +10,20 @@ import {
   gpu,
   gpuHistory,
   historyAxis,
-  live,
+  perCore,
   mac,
   memory,
   metricColor,
   network,
   pressureHistory,
   processTotals,
+  thermal,
   topCPU,
   topGPU,
   topMemory,
   topNetwork,
 } from '../../data/sample'
-import { fixed, series, wobble } from '../../lib/live'
+import { fixed, liveValue, series, wobble } from '../../lib/live'
 import { LayersIcon } from '../icons'
 import { AppRow, Axis, Bars, Card, Meter, MetricLabel, RangePicker, SectionTitle } from '../ui'
 
@@ -50,12 +51,13 @@ function Tile({
 }
 
 export function OverviewTab({ tick }: TabProps) {
-  const c = wobble(live.cpu.total, 0.3, 1, tick)
-  const m = wobble(live.memory.usedGB, 0.015, 2, tick)
-  const g = wobble(live.gpu.percent, 0.35, 4, tick)
-  const n = wobble(live.network.downMBps, 0.35, 3, tick)
-  const t = wobble(live.temp.cpuC, 0.04, 5, tick)
-  const w = wobble(live.disk.writeMBps, 0.5, 7, tick)
+  const c = liveValue('cpuPercent', tick)
+  const m = liveValue('memoryGB', tick)
+  const g = liveValue('gpuPercent', tick)
+  const n = liveValue('networkDownMBps', tick)
+  const up = liveValue('networkUpKBps', tick)
+  const t = liveValue('cpuTempC', tick)
+  const w = liveValue('diskWriteMBps', tick)
   const { split } = processTotals
   const total = split.app + split.agent + split.system
 
@@ -71,7 +73,7 @@ export function OverviewTab({ tick }: TabProps) {
         <Tile label={<MetricLabel metric="gpu">GPU</MetricLabel>} value={`${Math.round(g)}%`} caption={`${gpu.memory} VRAM · 4 apps`}>
           <Bars values={series(4, 16, tick, 4, 55)} color={metricColor.gpu} className="h-7" />
         </Tile>
-        <Tile label={<MetricLabel metric="network">Network</MetricLabel>} value={`${fixed(n + 0.38)} MB/s`} caption={`↓ ${fixed(n)} MB/s · ↑ 380 KB/s`}>
+        <Tile label={<MetricLabel metric="network">Network</MetricLabel>} value={`${fixed(n + up / 1000)} MB/s`} caption={`↓ ${fixed(n)} MB/s · ↑ ${Math.round(up)} KB/s`}>
           <Bars values={series(3, 16, tick, 8, 90)} color={metricColor.network} className="h-7" />
         </Tile>
         <Tile label={<MetricLabel metric="disk">Disk</MetricLabel>} value={`${disk.freeGB} GB`} caption={`free of ${disk.totalGB} GB · W ${Math.round(w)} MB/s`}>
@@ -80,7 +82,7 @@ export function OverviewTab({ tick }: TabProps) {
         <Tile label={<MetricLabel metric="battery">Battery</MetricLabel>} value={`${battery.percent}%`} caption={`Charging · Full in ${battery.fullIn}`}>
           <Bars values={series(8, 16, tick, 80, 86)} color={metricColor.battery} className="h-7" />
         </Tile>
-        <Tile label={<MetricLabel metric="temp">Temperature</MetricLabel>} value={`${Math.round(t)}°C`} caption="CPU die · Fans 2,140 rpm">
+        <Tile label={<MetricLabel metric="temp">Temperature</MetricLabel>} value={`${Math.round(t)}°C`} caption={`CPU die · Fans ${thermal.fans[0].rpm.toLocaleString('en-US')} rpm`}>
           <Bars values={series(5, 16, tick, 62, 78)} color={metricColor.temp} className="h-7" />
         </Tile>
         <Card className="flex min-w-0 flex-col">
@@ -130,10 +132,10 @@ function Stat({ label, value, note, dot }: { label: string; value: string; note:
 }
 
 export function CPUTab({ tick }: TabProps) {
-  const total = wobble(live.cpu.total, 0.3, 1, tick)
+  const total = liveValue('cpuPercent', tick)
   const user = total * 0.66
   const system = total - user
-  const cores = live.perCore.map((v, i) => Math.min(98, wobble(v, 0.35, 20 + i, tick)))
+  const cores = perCore.map((v, i) => Math.min(98, wobble(v, 0.35, 20 + i, tick)))
 
   return (
     <div className="space-y-5">
@@ -249,7 +251,7 @@ function SegmentBar({
 }
 
 export function MemoryTab({ tick }: TabProps) {
-  const used = wobble(live.memory.usedGB, 0.015, 2, tick)
+  const used = liveValue('memoryGB', tick)
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.3fr_1fr_1fr_1fr]">
@@ -297,7 +299,7 @@ export function MemoryTab({ tick }: TabProps) {
 }
 
 export function GPUTab({ tick }: TabProps) {
-  const util = wobble(live.gpu.percent, 0.35, 4, tick)
+  const util = liveValue('gpuPercent', tick)
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -343,8 +345,8 @@ export function GPUTab({ tick }: TabProps) {
 }
 
 export function NetworkTab({ tick }: TabProps) {
-  const down = wobble(live.network.downMBps, 0.35, 3, tick)
-  const up = wobble(live.network.upKBps, 0.3, 6, tick)
+  const down = liveValue('networkDownMBps', tick)
+  const up = liveValue('networkUpKBps', tick)
   const maxDay = Math.max(...network.week.downGB)
   return (
     <div className="space-y-5">
@@ -391,8 +393,8 @@ export function NetworkTab({ tick }: TabProps) {
 }
 
 export function DiskTab({ tick }: TabProps) {
-  const read = wobble(live.disk.readMBps, 0.5, 9, tick)
-  const write = wobble(live.disk.writeMBps, 0.5, 7, tick)
+  const read = liveValue('diskReadMBps', tick)
+  const write = liveValue('diskWriteMBps', tick)
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

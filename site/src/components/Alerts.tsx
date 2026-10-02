@@ -19,8 +19,7 @@ export function Alerts() {
           <div
             role="img"
             aria-label="Illustration: three MoniMac notifications. Xcode is using a lot of CPU, with Quit Xcode and Show buttons; Google Chrome memory is growing fast; heavy disk writes from Photos."
-            className="relative overflow-hidden rounded-2xl border border-line p-5 sm:p-8"
-            style={{ background: 'var(--wallpaper)' }}
+            className="bg-wallpaper relative overflow-hidden rounded-2xl border border-line p-5 sm:p-8"
           >
             <div className="flex flex-col items-end gap-3">
               {notifications.map((n, i) => (
@@ -51,7 +50,7 @@ export function Alerts() {
                 </div>
               ))}
             </dl>
-            <p className="mt-6 text-[14px] text-ink-3">Defaults shown. Every rule can be turned off or given its own threshold in Settings.</p>
+            <p className="mt-6 text-[14px] text-ink-3">Defaults shown. Every rule can be turned off in Settings, and the CPU, memory, disk, and network thresholds can be changed.</p>
           </Reveal>
         </div>
       </Section>

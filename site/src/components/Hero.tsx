@@ -74,8 +74,7 @@ export function Hero() {
           <div
             role="img"
             aria-label="Illustration: the macOS menu bar with MoniMac showing CPU, memory, and network, and its popover listing every metric and the busiest apps. Values are simulated."
-            className="relative h-[600px] overflow-hidden rounded-[18px] border border-white/10 shadow-[0_40px_120px_-30px_rgba(20,90,255,0.55)] sm:h-[620px]"
-            style={{ background: 'var(--wallpaper)' }}
+            className="bg-wallpaper relative h-[600px] overflow-hidden rounded-[18px] border border-white/10 shadow-[0_40px_120px_-30px_rgba(20,90,255,0.55)] sm:h-[620px]"
           >
             <MenuBar metrics={['cpu', 'memory', 'network']} style="both" tick={tick} activeMetric="cpu" className="pr-3" compactClock />
             <m.div

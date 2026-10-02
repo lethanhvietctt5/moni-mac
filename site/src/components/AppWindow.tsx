@@ -1,6 +1,7 @@
 import { AnimatePresence, m } from 'motion/react'
-import { useRef, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from 'react'
-import { bluetooth, cpu, disk, gpu, mac, memory, network, projects, release, sound, thermal } from '../data/sample'
+import { useRef, type KeyboardEvent, type ReactNode } from 'react'
+import type { IconComponent } from '../lib/metricIcons'
+import { battery, bluetooth, cpu, disk, gpu, mac, memory, network, projects, release, sound, thermal } from '../data/sample'
 import {
   BatteryIcon,
   BluetoothIcon,
@@ -22,13 +23,11 @@ import { CPUTab, DiskTab, GPUTab, MemoryTab, NetworkTab, OverviewTab } from './t
 import { ProjectsView } from './tabs/ProjectsView'
 import { SettingsTab } from './tabs/SettingsTab'
 
-type Icon = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
-
 interface WindowTab {
   id: string
   label: string
   group: 'Monitor' | 'Devices' | 'Developer' | 'Settings'
-  icon: Icon
+  icon: IconComponent
   subtitle: string
   render: (tick: number) => ReactNode
 }
@@ -40,10 +39,10 @@ const windowTabs: WindowTab[] = [
   { id: 'gpu', label: 'GPU', group: 'Monitor', icon: GpuIcon, subtitle: gpu.name, render: (t) => <GPUTab tick={t} /> },
   { id: 'network', label: 'Network', group: 'Monitor', icon: NetworkIcon, subtitle: network.link, render: (t) => <NetworkTab tick={t} /> },
   { id: 'disk', label: 'Disk', group: 'Monitor', icon: DiskIcon, subtitle: disk.volume, render: (t) => <DiskTab tick={t} /> },
-  { id: 'battery', label: 'Battery', group: 'Devices', icon: BatteryIcon, subtitle: 'Charging · 1 h 12 min until full', render: (t) => <BatteryTab tick={t} /> },
+  { id: 'battery', label: 'Battery', group: 'Devices', icon: BatteryIcon, subtitle: `${battery.state} · ${battery.fullIn} until full`, render: (t) => <BatteryTab tick={t} /> },
   { id: 'bluetooth', label: 'Bluetooth', group: 'Devices', icon: BluetoothIcon, subtitle: `${bluetooth.devices.filter((d) => d.connected).length + 1} devices connected`, render: () => <BluetoothTab /> },
   { id: 'sound', label: 'Sound', group: 'Devices', icon: SpeakerIcon, subtitle: sound.summary, render: () => <SoundTab /> },
-  { id: 'temperature', label: 'Temperature & Fans', group: 'Devices', icon: ThermometerIcon, subtitle: `Thermal state: ${thermal.state} · 2 fans`, render: (t) => <TemperatureTab tick={t} /> },
+  { id: 'temperature', label: 'Temperature & Fans', group: 'Devices', icon: ThermometerIcon, subtitle: `Thermal state: ${thermal.state} · ${thermal.fans.length} fans`, render: (t) => <TemperatureTab tick={t} /> },
   { id: 'projects', label: 'Projects', group: 'Developer', icon: FolderCodeIcon, subtitle: projects.summary, render: () => <ProjectsView /> },
   { id: 'settings', label: 'Settings', group: 'Settings', icon: GearIcon, subtitle: `MoniMac ${release.version}`, render: () => <SettingsTab /> },
 ]

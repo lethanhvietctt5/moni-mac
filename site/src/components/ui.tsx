@@ -101,10 +101,13 @@ export function MetricLabel({ metric, children }: { metric: Metric; children: Re
 }
 
 /** The window's 12H / 24H / 7D / 30D control, drawn as part of a picture. */
-export function RangePicker({ options = ['12H', '24H', '7D', '30D'], selected = '24H' }: { options?: string[]; selected?: string }) {
+type HistoryRange = '12H' | '24H' | '7D' | '30D'
+const historyRanges: HistoryRange[] = ['12H', '24H', '7D', '30D']
+
+export function RangePicker({ selected = '24H' }: { selected?: HistoryRange }) {
   return (
     <span className="inline-flex rounded-md bg-track/70 p-0.5 text-[11px] font-medium text-text-2" aria-hidden="true">
-      {options.map((o) => (
+      {historyRanges.map((o) => (
         <span
           key={o}
           className={`rounded-[5px] px-2 py-0.5 ${o === selected ? 'bg-surface-raised text-text shadow-sm' : ''}`}

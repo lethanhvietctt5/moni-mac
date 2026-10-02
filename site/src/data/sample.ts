@@ -48,23 +48,33 @@ export const mac = {
 
 export const clock = 'Wed 1 Oct  9:41'
 
-/** Live values the hook wobbles around. */
+/**
+ * The simulated live readings: each drifts around `base` by up to ±`spread`
+ * (a fraction of base). `seed` keeps every reading's drift independent, and
+ * the same reading on every surface. Read them with `liveValue`.
+ */
 export const live = {
-  cpu: { total: 32, user: 21, system: 11 },
-  memory: { usedGB: 11.4 },
-  gpu: { percent: 18 },
-  network: { downMBps: 4.2, upKBps: 380 },
-  disk: { readMBps: 48, writeMBps: 12 },
-  temp: { cpuC: 58, fanRPM: 2140 },
-  perCore: [72, 64, 51, 38, 22, 14, 46, 41, 33, 29, 18, 12],
+  cpuPercent: { base: 32, spread: 0.3, seed: 1 },
+  memoryGB: { base: 11.4, spread: 0.015, seed: 2 },
+  networkDownMBps: { base: 4.2, spread: 0.35, seed: 3 },
+  gpuPercent: { base: 18, spread: 0.35, seed: 4 },
+  cpuTempC: { base: 58, spread: 0.04, seed: 5 },
+  networkUpKBps: { base: 380, spread: 0.3, seed: 6 },
+  diskWriteMBps: { base: 12, spread: 0.5, seed: 7 },
+  diskReadMBps: { base: 48, spread: 0.5, seed: 9 },
+  batteryDrawW: { base: 14.2, spread: 0.15, seed: 40 },
 } as const
+
+export type LiveReading = keyof typeof live
+
+/** CPU load per core, P1–P6 then E1–E6. */
+export const perCore = [72, 64, 51, 38, 22, 14, 46, 41, 33, 29, 18, 12] as const
 
 export const battery = {
   percent: 86,
   state: 'Charging',
   fullIn: '1 h 12 min',
   adapter: '96 W',
-  drawW: 14.2,
   systemW: 21.6,
   health: 92,
   designMah: '5,030',
@@ -155,7 +165,8 @@ export const batteryHistory: Array<[number, boolean]> = [
   [100, true], [93, false], [85, false], [77, false], [70, false], [63, false], [56, false], [49, false], [44, false],
   [52, true], [63, true], [71, true], [78, true], [83, true], [86, true],
 ]
-export const batteryAxis = ['10:00', '16:00', '22:00', '04:00', 'Now'] as const
+/** Axis for the Battery and Temperature history charts. */
+export const devicesHistoryAxis = ['10:00', '16:00', '22:00', '04:00', 'Now'] as const
 /** CPU temperature °C, hourly. */
 export const tempHistory = [
   52, 51, 50, 54, 63, 70, 77, 81, 72, 64, 60, 58, 55, 52, 49, 47, 46, 46, 45, 47, 50, 54, 57, 58,
@@ -343,7 +354,7 @@ export const sound = {
 export const thermal = {
   state: 'Nominal',
   cards: [
-    { label: 'CPU', value: 58, note: 'Peak 81° today' },
+    { label: 'CPU', value: 58, note: 'Peak 81° today' }, // live: cpuTempC
     { label: 'GPU', value: 54, note: 'Peak 73° today' },
     { label: 'SSD', value: 41, note: 'Normal' },
     { label: 'Battery', value: 31, note: 'Normal' },

@@ -212,6 +212,11 @@
   }
 }
 
+/* The desktop picture behind menu bar and notification mockups. */
+@utility bg-wallpaper {
+  background: var(--wallpaper);
+}
+
 @keyframes live-pulse {
   0%,
   100% {

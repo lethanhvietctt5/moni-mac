@@ -1,6 +1,6 @@
 import {
   battery,
-  batteryAxis,
+  devicesHistoryAxis,
   batteryHistory,
   bluetooth,
   energy,
@@ -9,7 +9,7 @@ import {
   tempHistory,
   thermal,
 } from '../../data/sample'
-import { fixed, wobble } from '../../lib/live'
+import { fixed, liveValue, wobble } from '../../lib/live'
 import {
   FanIcon,
   GamepadIcon,
@@ -36,7 +36,7 @@ function Figure({ label, value, note }: { label: string; value: string; note: st
 }
 
 export function BatteryTab({ tick }: TabProps) {
-  const draw = wobble(battery.drawW, 0.15, 40, tick)
+  const draw = liveValue('batteryDrawW', tick)
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] sm:items-stretch">
@@ -67,7 +67,7 @@ export function BatteryTab({ tick }: TabProps) {
               />
             ))}
           </div>
-          <Axis labels={batteryAxis} />
+          <Axis labels={devicesHistoryAxis} />
           <div className="mt-2 flex gap-4 text-[10.5px] text-text-2">
             <span className="flex items-center gap-1.5"><span className="size-2 rounded-[2px] bg-battery" />Charging</span>
             <span className="flex items-center gap-1.5"><span className="size-2 rounded-[2px] bg-battery/40" />On battery</span>
@@ -238,7 +238,7 @@ function Gauge({ value }: { value: number }) {
 }
 
 export function TemperatureTab({ tick }: TabProps) {
-  const cpuTemp = Math.round(wobble(thermal.cards[0].value, 0.04, 5, tick))
+  const cpuTemp = Math.round(liveValue('cpuTempC', tick))
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -273,7 +273,7 @@ export function TemperatureTab({ tick }: TabProps) {
               />
             ))}
           </div>
-          <Axis labels={['10:00', '16:00', '22:00', '04:00', 'Now']} />
+          <Axis labels={devicesHistoryAxis} />
         </Card>
         <Card>
           <div className="mb-2 flex items-baseline justify-between">

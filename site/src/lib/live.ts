@@ -4,6 +4,8 @@
  * consistent numbers without keeping its own random state.
  */
 
+import { live, type LiveReading } from '../data/sample'
+
 function hash(seed: number, n: number): number {
   let h = (seed * 374761393 + n * 668265263) | 0
   h = Math.imul(h ^ (h >>> 13), 1274126177)
@@ -30,6 +32,12 @@ export function wobble(base: number, spread: number, seed: number, tick: number)
  */
 export function series(seed: number, length: number, tick: number, lo: number, hi: number): number[] {
   return Array.from({ length }, (_, i) => lo + (hi - lo) * wave(seed, (tick + i) / 1.6))
+}
+
+/** The current value of a simulated live reading (see `live` in sample.ts). */
+export function liveValue(reading: LiveReading, tick: number): number {
+  const { base, spread, seed } = live[reading]
+  return wobble(base, spread, seed, tick)
 }
 
 export function clamp(value: number, lo = 0, hi = 1): number {

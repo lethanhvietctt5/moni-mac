@@ -1,26 +1,29 @@
 import { AnimatePresence, m } from 'motion/react'
 import { clock } from '../data/sample'
-import { fixed, series, wobble } from '../lib/live'
-import { CpuIcon, GpuIcon, MemoryIcon, NetworkIcon, SlidersIcon, ThermometerIcon, WarningIcon, WifiIcon } from './icons'
+import { fixed, liveValue, series } from '../lib/live'
+import type { ReactNode } from 'react'
+import type { Metric } from '../data/sample'
+import { metricIcon } from '../lib/metricIcons'
+import { SlidersIcon, WarningIcon, WifiIcon } from './icons'
 
-export type MenuMetric = 'cpu' | 'memory' | 'network' | 'gpu' | 'temp'
+/** The metrics that can be menu bar items. */
+export type MenuMetric = Exclude<Metric, 'disk' | 'battery'>
 export type MenuStyle = 'value' | 'graph' | 'both'
 
-const icons = { cpu: CpuIcon, memory: MemoryIcon, network: NetworkIcon, gpu: GpuIcon, temp: ThermometerIcon }
 
 /** The live value and 60-second sparkline for a menu bar item. */
 function reading(metric: MenuMetric, tick: number): { text: string; spark: number[] } {
   switch (metric) {
     case 'cpu':
-      return { text: `${Math.round(wobble(32, 0.3, 1, tick))}%`, spark: series(1, 12, tick, 15, 70) }
+      return { text: `${Math.round(liveValue('cpuPercent', tick))}%`, spark: series(1, 12, tick, 15, 70) }
     case 'memory':
-      return { text: `${fixed(wobble(11.4, 0.015, 2, tick))} GB`, spark: series(2, 12, tick, 60, 66) }
+      return { text: `${fixed(liveValue('memoryGB', tick))} GB`, spark: series(2, 12, tick, 60, 66) }
     case 'network':
-      return { text: `${fixed(wobble(4.2, 0.35, 3, tick))} MB/s`, spark: series(3, 12, tick, 5, 90) }
+      return { text: `${fixed(liveValue('networkDownMBps', tick))} MB/s`, spark: series(3, 12, tick, 5, 90) }
     case 'gpu':
-      return { text: `${Math.round(wobble(18, 0.35, 4, tick))}%`, spark: series(4, 12, tick, 5, 50) }
+      return { text: `${Math.round(liveValue('gpuPercent', tick))}%`, spark: series(4, 12, tick, 5, 50) }
     case 'temp':
-      return { text: `${Math.round(wobble(58, 0.04, 5, tick))}°C`, spark: series(5, 12, tick, 40, 60) }
+      return { text: `${Math.round(liveValue('cpuTempC', tick))}°C`, spark: series(5, 12, tick, 40, 60) }
   }
 }
 
@@ -60,7 +63,7 @@ export function MenuItem({
   active?: boolean
   showIcon?: boolean
 }) {
-  const Icon = icons[metric]
+  const Icon = metricIcon[metric]
   const { text, spark } = reading(metric, tick)
   const withIcon = showIcon ?? style !== 'both'
   return (
@@ -88,6 +91,17 @@ export function WarningItem({ text = 'CPU 98%' }: { text?: string }) {
   )
 }
 
+/** The translucent menu bar itself; items line up on the right. */
+export function MenuBarStrip({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
+
 /**
  * A macOS menu bar holding MoniMac items, followed by the system's own
  * Wi-Fi, Control Center, and clock. No Apple logo or other brand marks.
@@ -110,9 +124,7 @@ export function MenuBar({
   compactClock?: boolean
 }) {
   return (
-    <div
-      className={`flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl ${className}`}
-    >
+    <MenuBarStrip className={className}>
       <AnimatePresence initial={false}>
         {metrics.map((metric) => (
           <m.span
@@ -138,6 +150,6 @@ export function MenuBar({
       <span className={`shrink-0 whitespace-pre px-1.5 tabular-nums ${compactClock ? 'hidden md:inline' : 'hidden sm:inline'}`}>
         {clock}
       </span>
-    </div>
+    </MenuBarStrip>
   )
 }

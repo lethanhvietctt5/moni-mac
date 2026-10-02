@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveTick } from '../hooks/useLiveTick'
 import { CommandIcon, WarningIcon } from './icons'
-import { MenuBar, MenuItem, WarningItem, type MenuMetric, type MenuStyle } from './MenuBar'
+import { MenuBar, MenuBarStrip, MenuItem, WarningItem, type MenuMetric, type MenuStyle } from './MenuBar'
 import { Reveal, Section } from './Section'
 
 const styles: Array<{ id: MenuStyle; label: string; hint: string }> = [
@@ -33,7 +33,7 @@ export function MenuBarSection() {
     >
       <div ref={ref} className="mt-12 grid grid-cols-1 gap-5 sm:mt-16 lg:grid-cols-2">
         <Reveal className="lg:col-span-2">
-          <div className="overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
+          <div className="bg-wallpaper overflow-hidden rounded-2xl border border-line">
             <MenuBar metrics={metrics} style={style} tick={tick} className="rounded-none" />
             <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-7">
               <fieldset>
@@ -85,11 +85,11 @@ export function MenuBarSection() {
         </Reveal>
 
         <Reveal>
-          <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
-            <div className="flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
+          <div className="bg-wallpaper flex h-full flex-col overflow-hidden rounded-2xl border border-line">
+            <MenuBarStrip>
               <WarningItem />
               <MenuItem metric="memory" style="both" tick={tick} />
-            </div>
+            </MenuBarStrip>
             <div className="flex justify-end px-3 pt-2">
               <div className="flex max-w-[300px] gap-2.5 rounded-xl border border-black/5 bg-white/90 p-3 text-[#1d1d1f] shadow-lg backdrop-blur dark:border-white/10 dark:bg-[#2a2a2e]/90 dark:text-[#f5f5f7]">
                 <WarningIcon size={17} className="mt-0.5 shrink-0 text-[#e08600] dark:text-[#ffb340]" />
@@ -109,15 +109,15 @@ export function MenuBarSection() {
         </Reveal>
 
         <Reveal delay={0.08}>
-          <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
-            <div className="flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
+          <div className="bg-wallpaper flex h-full flex-col overflow-hidden rounded-2xl border border-line">
+            <MenuBarStrip>
               <span className="rounded-[5px] bg-white/80 shadow-sm ring-1 ring-black/5 dark:bg-white/20">
                 <MenuItem metric="memory" style="value" tick={tick} />
               </span>
               <span className="h-4 w-[2px] rounded bg-accent" aria-hidden="true" />
               <MenuItem metric="cpu" style="value" tick={tick} />
               <MenuItem metric="network" style="value" tick={tick} />
-            </div>
+            </MenuBarStrip>
             <div className="flex justify-end px-3 pt-2">
               <div className="flex items-center gap-2.5 rounded-xl border border-black/5 bg-white/90 p-3 text-[13px] text-[#1d1d1f] shadow-lg dark:border-white/10 dark:bg-[#2a2a2e]/90 dark:text-[#f5f5f7]">
                 <kbd className="flex size-7 items-center justify-center rounded-md border border-black/10 bg-white font-sans shadow-sm dark:border-white/15 dark:bg-white/10">
@@ -130,8 +130,8 @@ export function MenuBarSection() {
             <div className="mt-auto p-5 pt-6">
               <h3 className="text-[17px] font-semibold text-menubar-fg">Reorder like any menu bar icon</h3>
               <p className="mt-1 text-[14px] leading-relaxed text-menubar-fg/80">
-                Hold ⌘ and drag a MoniMac item to move it, or drag it off the menu bar to hide it. That's macOS's own behavior,
-                so nothing new to learn. Hidden items come back from Settings.
+                Hold ⌘ and drag a MoniMac item to move it, the same way you arrange any menu bar icon. Turn items on or
+                off in Settings.
               </p>
             </div>
           </div>

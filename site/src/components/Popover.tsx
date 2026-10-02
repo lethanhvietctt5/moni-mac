@@ -1,5 +1,5 @@
 import { battery, disk, mac, metricColor, popoverBusiest, type Metric } from '../data/sample'
-import { fixed, wobble } from '../lib/live'
+import { fixed, liveValue, wobble } from '../lib/live'
 import { GearIcon, WindowIcon } from './icons'
 import { AppGlyph, Meter, MetricBadge } from './ui'
 
@@ -7,12 +7,12 @@ const tabs = ['Overview', 'CPU', 'Memory', 'GPU', 'Network', 'Disk', 'Battery']
 
 /** The popover's Overview tab, with simulated live values. */
 export function Popover({ tick, className = '' }: { tick: number; className?: string }) {
-  const cpu = wobble(32, 0.3, 1, tick)
-  const memory = wobble(11.4, 0.015, 2, tick)
-  const gpu = wobble(18, 0.35, 4, tick)
-  const down = wobble(4.2, 0.35, 3, tick)
-  const up = wobble(0.38, 0.3, 6, tick)
-  const temp = wobble(58, 0.04, 5, tick)
+  const cpu = liveValue('cpuPercent', tick)
+  const memory = liveValue('memoryGB', tick)
+  const gpu = liveValue('gpuPercent', tick)
+  const down = liveValue('networkDownMBps', tick)
+  const up = liveValue('networkUpKBps', tick) / 1000
+  const temp = liveValue('cpuTempC', tick)
   const usedDisk = disk.totalGB - disk.freeGB
 
   const rows: Array<{ metric: Metric; label: string; value: string; fraction: number }> = [
