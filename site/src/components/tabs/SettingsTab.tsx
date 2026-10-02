@@ -15,7 +15,7 @@ function Row({ label, value, detail }: { label: string; value: string; detail?: 
 
 export function SettingsTab() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <Card>
         <div className="mb-1 text-[13px] font-semibold">General</div>
         <Row label="Launch at login" value="On" />

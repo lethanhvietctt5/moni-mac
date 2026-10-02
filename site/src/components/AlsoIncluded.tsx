@@ -28,7 +28,7 @@ const features = [
 export function AlsoIncluded() {
   return (
     <Section eyebrow="Also included" title="The details add up." className="bg-page-alt">
-      <ul className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:mt-14 sm:grid-cols-2 lg:grid-cols-5">
+      <ul className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:mt-14 sm:grid-cols-2 lg:grid-cols-5">
         {features.map(({ icon: Icon, color, title, body }, i) => (
           <li key={title} className="bg-card">
             <Reveal delay={(i % 5) * 0.05} className="h-full p-5">

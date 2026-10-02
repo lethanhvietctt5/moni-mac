@@ -5,7 +5,7 @@ import { Reveal, Section } from './Section'
 export function OpenSource() {
   return (
     <Section eyebrow="Free and open source" title="No price tag. No catch." className="bg-page-alt">
-      <div className="mt-12 grid gap-4 sm:mt-16 md:grid-cols-2">
+      <div className="mt-12 grid grid-cols-1 gap-4 sm:mt-16 md:grid-cols-2">
         <Reveal className="relative overflow-hidden rounded-3xl border border-line bg-card p-7 sm:p-9">
           <div aria-hidden="true" className="absolute -top-24 -right-24 size-64 rounded-full bg-[radial-gradient(closest-side,rgba(10,132,255,0.22),transparent)]" />
           <div className="text-[13px] font-semibold tracking-wide text-accent uppercase">Free</div>

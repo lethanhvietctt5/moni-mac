@@ -39,7 +39,7 @@ export function BatteryTab({ tick }: TabProps) {
   const draw = wobble(battery.drawW, 0.15, 40, tick)
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] sm:items-stretch">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] sm:items-stretch">
         <Card className="col-span-full sm:col-span-1">
           <MetricLabel metric="battery">Power Adapter · {battery.adapter}</MetricLabel>
           <div className="mt-1 text-[34px] leading-none font-semibold tracking-tight">{battery.percent}%</div>
@@ -51,7 +51,7 @@ export function BatteryTab({ tick }: TabProps) {
         <Figure label="Cycle Count" value={`${battery.cycles}`} note={`of ${battery.ratedCycles} rated`} />
         <Figure label="Temperature" value={`${battery.tempC} °C`} note="Within normal range" />
       </div>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <SectionTitle>Charge Level</SectionTitle>
@@ -207,7 +207,7 @@ export function SoundTab() {
           })}
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Toggle title="Duck background apps" detail="Lower other apps by 50% while a call is active" on />
         <Toggle title="Mute new apps by default" detail="Apps that start playing for the first time stay muted" />
       </div>
@@ -257,7 +257,7 @@ export function TemperatureTab({ tick }: TabProps) {
           )
         })}
       </div>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <SectionTitle>CPU Temperature</SectionTitle>
@@ -304,7 +304,7 @@ export function TemperatureTab({ tick }: TabProps) {
           </p>
         </Card>
       </div>
-      <div className="grid gap-x-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-3">
         {thermal.sensors.map(([name, value]) => (
           <div key={name} className="flex justify-between border-b border-sep py-1.5 text-[12px]">
             <span className="text-text-2">{name}</span>

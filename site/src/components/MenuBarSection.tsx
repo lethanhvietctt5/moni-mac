@@ -31,7 +31,7 @@ export function MenuBarSection() {
       title="Only what you want, where you want it."
       intro="Each metric is its own menu bar item. Turn on the ones you care about and pick how each one looks. Click any of them for the popover."
     >
-      <div ref={ref} className="mt-12 grid gap-5 sm:mt-16 lg:grid-cols-2">
+      <div ref={ref} className="mt-12 grid grid-cols-1 gap-5 sm:mt-16 lg:grid-cols-2">
         <Reveal className="lg:col-span-2">
           <div className="overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
             <MenuBar metrics={metrics} style={style} tick={tick} className="rounded-none" />
@@ -86,7 +86,7 @@ export function MenuBarSection() {
 
         <Reveal>
           <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
-            <div className="flex h-[30px] items-center justify-end gap-1 bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
+            <div className="flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
               <WarningItem />
               <MenuItem metric="memory" style="both" tick={tick} />
             </div>
@@ -110,7 +110,7 @@ export function MenuBarSection() {
 
         <Reveal delay={0.08}>
           <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-line" style={{ background: 'var(--wallpaper)' }}>
-            <div className="flex h-[30px] items-center justify-end gap-1 bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
+            <div className="flex h-[30px] items-center justify-end gap-1 overflow-hidden bg-menubar-bg px-2 text-[13px] font-medium text-menubar-fg backdrop-blur-xl">
               <span className="rounded-[5px] bg-white/80 shadow-sm ring-1 ring-black/5 dark:bg-white/20">
                 <MenuItem metric="memory" style="value" tick={tick} />
               </span>

@@ -44,7 +44,7 @@ function Tile({
       {label}
       <div className="mt-1.5 text-[24px] leading-none font-semibold tracking-tight tabular-nums">{value}</div>
       <div className="mt-3 mb-2.5">{children}</div>
-      <div className="truncate text-[11px] text-text-2">{caption}</div>
+      <div className="line-clamp-2 text-[11px] text-text-2 sm:truncate">{caption}</div>
     </Card>
   )
 }
@@ -106,7 +106,7 @@ export function OverviewTab({ tick }: TabProps) {
 
       <div>
         <SectionTitle aside={<span className="text-accent">Show All {processTotals.apps} Apps</span>}>Busiest Right Now</SectionTitle>
-        <div className="grid gap-x-8 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
           {busiest.map((b) => (
             <AppRow key={b.app.name} app={b.app} value={b.label} fraction={b.fraction} color={metricColor[b.metric]} />
           ))}
@@ -171,7 +171,7 @@ export function CPUTab({ tick }: TabProps) {
         <Axis labels={historyAxis} />
       </Card>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div>
           <SectionTitle aside="6 performance · 6 efficiency">Per-Core Load</SectionTitle>
           <div className="flex h-28 gap-[5px]" aria-hidden="true">
@@ -252,7 +252,7 @@ export function MemoryTab({ tick }: TabProps) {
   const used = wobble(live.memory.usedGB, 0.015, 2, tick)
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-[1.3fr_1fr_1fr_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.3fr_1fr_1fr_1fr]">
         <div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-[34px] leading-none font-semibold tracking-tight tabular-nums">{fixed(used)}</span>
@@ -268,7 +268,7 @@ export function MemoryTab({ tick }: TabProps) {
         <SegmentBar items={memory.segments} color={metricColor.memory} />
         <Legend items={memory.segments} color={metricColor.memory} />
       </div>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <SectionTitle>Memory Pressure</SectionTitle>
@@ -322,7 +322,7 @@ export function GPUTab({ tick }: TabProps) {
           <div className="truncate text-[11px] text-text-2">{gpu.peakWhen}</div>
         </Card>
       </div>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <SectionTitle aside={`Avg ${gpu.avg24h}% · Peak ${gpu.peak24h}%`}>Utilization History</SectionTitle>
@@ -366,7 +366,7 @@ export function NetworkTab({ tick }: TabProps) {
           />
         </div>
       </Card>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <SectionTitle aside={`↓ ${network.week.down} · ↑ ${network.week.up}`}>Last 7 Days</SectionTitle>
           <div className="flex h-28 items-end gap-3" aria-hidden="true">
@@ -411,7 +411,7 @@ export function DiskTab({ tick }: TabProps) {
         <SegmentBar items={disk.breakdown} color={metricColor.disk} />
         <Legend items={disk.breakdown} color={metricColor.disk} />
       </div>
-      <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.4fr_1fr]">
         <Card className="bg-transparent">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <SectionTitle>Read &amp; Write</SectionTitle>

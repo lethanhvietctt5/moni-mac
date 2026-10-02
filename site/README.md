@@ -1,75 +1,44 @@
-# React + TypeScript + Vite
+# MoniMac website
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The landing page for MoniMac: React, Vite, TypeScript, Tailwind CSS, and Motion. It makes no external requests (no fonts, scripts, trackers, or analytics), and the page says so, so keep it that way.
 
-Currently, two official plugins are available:
+## Develop
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+cd site
+npm install
+npm run dev       # http://localhost:5173
+npm run build     # type-checks, then builds to dist/
+npm run lint
+npm run preview   # serves dist/
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## Layout
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `src/components/`: one file per section, plus the mockups (`MenuBar`, `Popover`, `AppWindow` with its tabs in `tabs/`, `ShareCard`, `Notification`, `CodeBlock`, `FAQ`).
+- `src/data/sample.ts`: every number the mockups show, so they agree with each other. The mockups follow the Pencil designs; metric colors come from `App/Sources/Palette.swift`.
+- `src/hooks/useLiveTick.ts`: drives the simulated live values. It ticks only while a mockup is on screen and the tab is visible, and not at all with reduced motion.
+- `public/`: icons made from `App/Icon/AppIcon-source.png`, and `og.png`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Open Graph image
 
+`public/og.png` (1200 × 630) is rendered from `og/og.html` with headless Chrome:
+
+```bash
+npm run og
 ```
+
+Commit the new PNG. Once the site has a domain, make `og:image` and `twitter:image` in `index.html` absolute and add the canonical link (both are marked TODO).
+
+## Deploy on Vercel
+
+Import the repository and set:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `site` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+`vercel.json` caches the hashed files in `assets/` for a year and sets a strict Content Security Policy (self only), which also guards the no-external-requests promise.

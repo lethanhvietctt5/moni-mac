@@ -22,7 +22,7 @@ export function Nav() {
   }, [open])
 
   return (
-    <header className="scheme-dark sticky top-0 z-50 border-b border-white/[0.08] bg-[#0c0c10]/75 text-ink backdrop-blur-xl backdrop-saturate-150">
+    <header className="scheme-dark sticky top-0 z-50 border-b border-white/[0.08] bg-[#08090d]/90 text-ink backdrop-blur-xl backdrop-saturate-150">
       <nav aria-label="Main" className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <a href="#top" className="flex items-center gap-2 font-semibold tracking-tight">
           <img src="/icon-256.webp" alt="" width={28} height={28} className="size-7" />

@@ -27,7 +27,7 @@ export function Privacy() {
       title="Your Mac's business stays your business."
       intro="A system monitor sees a lot. MoniMac keeps all of it on your machine."
     >
-      <div className="mt-12 grid gap-4 sm:mt-16 md:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-4 sm:mt-16 md:grid-cols-3">
         {cards.map(({ icon: Icon, title, body }, i) => (
           <Reveal key={title} delay={i * 0.08} className="rounded-2xl border border-line bg-card p-6">
             <span className="flex size-10 items-center justify-center rounded-xl bg-success/12 text-success">

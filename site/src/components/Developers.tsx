@@ -32,10 +32,10 @@ export function Developers() {
       id="developers"
       eyebrow="For developers"
       title="Find the dev server you forgot about."
-      intro={`That Vite server from last week is still holding a port and most of a gigabyte. Projects shows every dev server and container you're running, grouped by project. Right now: ${projects.summary}.`}
+      intro={`That Vite server from last week is still holding a port and most of a gigabyte. Projects shows every dev server and container you're running, grouped by project.`}
       className="bg-page-alt"
     >
-      <div className="mt-12 grid gap-10 sm:mt-16 lg:grid-cols-[1fr_1.9fr] lg:gap-12">
+      <div className="mt-12 grid grid-cols-1 gap-10 sm:mt-16 lg:grid-cols-[1fr_1.9fr] lg:gap-12">
         <Reveal>
           <ul className="space-y-6">
             {points.map(({ icon: Icon, title, body }) => (

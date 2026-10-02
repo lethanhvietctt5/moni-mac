@@ -15,7 +15,7 @@ export function Alerts() {
         title="Hear about it while it's happening."
         intro="When one app keeps the CPU busy, grows its memory fast, or hammers the disk, MoniMac sends a notification that says who and how much. Quit the app right from the banner, or open MoniMac on it. One alert per problem, not one a minute."
       >
-        <div className="mt-12 grid items-center gap-10 sm:mt-16 lg:grid-cols-2">
+        <div className="mt-12 grid grid-cols-1 items-center gap-10 sm:mt-16 lg:grid-cols-2">
           <div
             role="img"
             aria-label="Illustration: three MoniMac notifications. Xcode is using a lot of CPU, with Quit Xcode and Show buttons; Google Chrome memory is growing fast; heavy disk writes from Photos."
@@ -38,7 +38,7 @@ export function Alerts() {
             </div>
           </div>
           <Reveal>
-            <dl className="grid gap-6 sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {[
                 ['CPU', 'One app keeping most of a core busy for 2 minutes.'],
                 ['Memory', 'An app growing by 1 GB within 10 minutes.'],

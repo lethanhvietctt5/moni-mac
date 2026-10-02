@@ -68,7 +68,7 @@ export function Grouping() {
       }
       intro="A modern Mac runs a thousand processes, most of them helpers with names you've never seen. MoniMac rolls every helper up into the app it works for, so the list reads like your Dock."
     >
-      <div className="mt-12 grid items-start gap-10 sm:mt-16 lg:grid-cols-[1fr_1.25fr] lg:gap-14">
+      <div className="mt-12 grid grid-cols-1 items-start gap-10 sm:mt-16 lg:grid-cols-[1fr_1.25fr] lg:gap-14">
         <Reveal className="space-y-6 lg:pt-6">
           <div>
             <div className="flex h-3 gap-[3px] overflow-hidden rounded-full" aria-hidden="true">
@@ -150,8 +150,8 @@ export function Grouping() {
                             {open && (
                               <m.ul {...rowMotion} transition={{ duration: 0.25 }} className="overflow-hidden">
                                 {g.helpers.map((h) => (
-                                  <li key={h.name} className="flex items-center gap-2.5 py-1.5 pr-2 pl-[62px] text-[12px] text-text-2">
-                                    <span className="min-w-0 flex-1 truncate">{h.name}</span>
+                                  <li key={h.name} className="flex items-center gap-2.5 py-1.5 pr-2 pl-9 text-[12px] text-text-2 sm:pl-[62px]">
+                                    <span className="min-w-0 flex-1 sm:truncate">{h.name}</span>
                                     <span className="w-14 text-right tabular-nums">{h.count}</span>
                                     <span className="w-12 text-right tabular-nums">{h.cpu}</span>
                                   </li>
