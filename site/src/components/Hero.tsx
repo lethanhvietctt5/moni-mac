@@ -1,20 +1,16 @@
 import { Download } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import { DOWNLOAD_URL, MIN_MACOS, REPO_URL, VERSION } from '../site'
 import { GithubIcon } from './ui'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
 export function Hero() {
-  const reduce = useReducedMotion()
-  const rise = (delay: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 20 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.8, delay, ease },
-        }
+  const rise = (delay: number) => ({
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.8, delay, ease },
+  })
 
   return (
     <section id="top" className="overflow-x-clip bg-gradient-to-b from-white to-sidebar">
@@ -39,8 +35,8 @@ export function Hero() {
         </motion.h1>
 
         <motion.p {...rise(0.16)} className="max-w-[640px] text-[18px]/[28px] text-ink-2 sm:text-[20px]/[30px]">
-          MoniMac keeps CPU, memory, network and battery one glance away in your menu bar — and tells you the
-          moment an app starts dragging your Mac down.
+          MoniMac is a free system monitor for macOS. It keeps CPU, memory, GPU, network and temperature one
+          glance away in your menu bar — and tells you the moment an app starts dragging your Mac down.
         </motion.p>
 
         <motion.div {...rise(0.24)} className="flex flex-col items-center gap-7">
@@ -71,7 +67,7 @@ export function Hero() {
       <div className="px-6 pt-14 pb-16 sm:px-10 lg:px-20 lg:pt-[72px] lg:pb-24">
         <motion.div
           className="mx-auto max-w-[1280px]"
-          initial={reduce ? false : { opacity: 0, y: 48, scale: 0.98 }}
+          initial={{ opacity: 0, y: 48, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 1.1, delay: 0.35, ease }}
         >
