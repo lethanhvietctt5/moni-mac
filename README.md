@@ -34,6 +34,12 @@ MoniMac updates itself with [Sparkle](https://sparkle-project.org). On its secon
 
 Development builds (anything you build yourself) never check for updates.
 
+## Support
+
+MoniMac is free. If it's useful to you, you can [buy me a coffee](https://buymeacoffee.com/viet.le) or scan the code below.
+
+<p><a href="https://buymeacoffee.com/viet.le"><img src="docs/images/buymeacoffee-qr.png" width="200" height="200" alt="Buy Me a Coffee QR code for buymeacoffee.com/viet.le"></a></p>
+
 ## Build from source
 
 Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
