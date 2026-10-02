@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings: { [weak self] in self?.mainWindow.show(tab: .settings) }
         )
         observeSettings()
+        UpdateController.shared.start()
         // Development aid: `--show-popover` opens the popover on launch, so it can be screenshotted.
         // `--show-window` opens the main window on launch, for the same reason; `--tab` picks its tab,
         // `--overview-list` shows Overview as a List, and `--expand <app name>` opens that app's group.

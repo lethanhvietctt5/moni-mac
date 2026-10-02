@@ -124,7 +124,8 @@ private struct SettingsContent: View {
     }
 
     private var dataAndAbout: some View {
-        SettingsGroup(title: "Data & About") {
+        let updates = UpdateController.shared
+        return SettingsGroup(title: "Data & About") {
             SettingsRow(label: "Keep history", description: "Per-app CPU, memory, network and disk") {
                 Picker("Keep history", selection: Binding(get: { panel.keepHistory }, set: monitor.setKeepHistory)) {
                     ForEach(HistoryRetention.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -133,14 +134,13 @@ private struct SettingsContent: View {
                 .pickerStyle(.menu)
                 .fixedSize()
             }
-            SettingsRow(label: panel.about, description: "Free and open source", isLast: true) {
+            SettingsRow(label: panel.about, description: SettingsPanel.aboutDetail(updates.status), isLast: true) {
                 Button("Source", action: monitor.openSourceCode).buttonStyle(.link).font(.system(size: 12))
                 Button("Release Notes", action: monitor.openReleaseNotes).buttonStyle(.link).font(.system(size: 12))
-                // Update checks arrive with ticket 20.
-                Button("Check for Updates…") {}
+                Button("Check for Updates…", action: updates.checkForUpdates)
                     .controlSize(.small)
-                    .disabled(true)
-                    .help("Coming soon")
+                    .disabled(!updates.status.canCheck)
+                    .help(updates.status.canCheck ? "" : "Development builds don't check for updates; releases do")
             }
         }
     }

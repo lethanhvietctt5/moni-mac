@@ -1,0 +1,54 @@
+# Publishes a release when a version tag is pushed (git tag v1.2.3 && git push origin v1.2.3).
+# The logic lives in scripts/release/*.sh, which run locally too (make-release.sh --dry-run).
+# Setup (certificate, EdDSA key, secrets): scripts/release/setup-wizard.sh.
+#
+# Untested until the first tag: written and checked locally, but no runner has executed it yet.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags and history, for "What's changed"
+
+      - name: Select the newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Import the signing certificate
+        env:
+          MONIMAC_CERT_P12: ${{ secrets.MONIMAC_CERT_P12 }}
+          MONIMAC_CERT_PASSWORD: ${{ secrets.MONIMAC_CERT_PASSWORD }}
+        run: scripts/release/import-certificate.sh
+
+      - name: Build, sign, and package
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: scripts/release/make-release.sh "$GITHUB_REF_NAME"
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release/publish.sh "$GITHUB_REF_NAME"
+
+      - name: Remove the temporary keychain
+        if: always()
+        run: scripts/release/remove-certificate.sh

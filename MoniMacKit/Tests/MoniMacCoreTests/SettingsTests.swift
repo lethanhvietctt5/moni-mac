@@ -238,6 +238,15 @@ struct SettingsTests {
         ])
     }
 
+    @Test func aboutSaysFreeAndOpenSourceAndWhatTheUpdaterFound() {
+        #expect(SettingsPanel.aboutDetail(.idle) == "Free and open source")
+        #expect(SettingsPanel.aboutDetail(.upToDate) == "Free and open source · You're up to date")
+        #expect(SettingsPanel.aboutDetail(.available("0.2.0")) == "Free and open source · MoniMac 0.2.0 is available")
+        #expect(SettingsPanel.aboutDetail(.off) == "Free and open source · Development build")
+        #expect(!UpdateStatus.off.canCheck)
+        #expect(UpdateStatus.idle.canCheck)
+    }
+
     // MARK: Menu bar items
 
     @Test func menuBarRowsShareStateWithTheMenuBar() throws {

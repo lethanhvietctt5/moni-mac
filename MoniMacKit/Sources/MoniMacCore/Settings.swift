@@ -22,6 +22,20 @@ public enum HistoryRetention: Int, CaseIterable, Sendable {
     public var title: String { "\(rawValue) days" }
 }
 
+/// What the updater last learned. Only release builds check for updates.
+public enum UpdateStatus: Equatable, Sendable {
+    /// A development build: no update key, so no checks.
+    case off
+    /// Checks are on, but none has finished since launch.
+    case idle
+    case upToDate
+    /// e.g. "0.2.0".
+    case available(String)
+
+    /// Whether "Check for Updates…" can be pressed.
+    public var canCheck: Bool { self != .off }
+}
+
 /// Whether MoniMac opens at login, as the system reports it.
 public enum LaunchAtLogin: Sendable {
     case off, on
@@ -72,6 +86,17 @@ public struct SettingsPanel: Equatable, Sendable {
 
     /// The window toolbar subtitle and the About row, e.g. "MoniMac 1.4.2".
     public static func about(version: String) -> String { "MoniMac \(version)" }
+
+    /// The About row's second line, e.g. "Free and open source · You're up to date".
+    public static func aboutDetail(_ updates: UpdateStatus) -> String {
+        let note: String? = switch updates {
+        case .off: "Development build"
+        case .idle: nil
+        case .upToDate: "You're up to date"
+        case .available(let version): "MoniMac \(version) is available"
+        }
+        return (["Free and open source"] + [note].compactMap { $0 }).joined(separator: " · ")
+    }
 
     static let sourceCode = URL(string: "https://github.com/lethanhvietctt5/moni-mac")!
     static let releaseNotes = URL(string: "https://github.com/lethanhvietctt5/moni-mac/releases")!
