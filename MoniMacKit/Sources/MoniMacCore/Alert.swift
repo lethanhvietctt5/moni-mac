@@ -39,11 +39,6 @@ public struct Alert: Equatable, Sendable, Identifiable {
     public var appID: AppUsage.ID? {
         if case .app(let id, _) = target { id } else { nil }
     }
-
-    /// The List column a per-app alert's "Show" sorts by.
-    public var showColumn: OverviewListColumn? {
-        if case .app(_, let column) = target { column } else { nil }
-    }
 }
 
 /// Where a notification's "Show" (or clicking the banner) lands.

@@ -74,6 +74,8 @@ public struct BluetoothDetail: Equatable, Sendable {
     /// Why there are no devices to show, or that Bluetooth is off; nil when devices show normally.
     public var message: String?
     public var lowBatteryAlerts: Bool
+    /// "Other Devices" under a featured card, "Devices" without one.
+    public var devicesTitle: String { featured == nil ? "Devices" : "Other Devices" }
 
     public static let lowBatteryTitle = "Low battery notifications"
     public static let lowBatteryDescription =
@@ -83,14 +85,14 @@ public struct BluetoothDetail: Equatable, Sendable {
     static let sourceHelp = "macOS doesn't tell MoniMac which app is playing to a Bluetooth device."
     static let noiseControlHelp = "macOS doesn't share the noise-control mode with other apps."
     static let firmwareHelp = "The device didn't report a firmware version."
-    static let listeningHelp = """
-        Estimated from how fast the battery drains while connected, once it has dropped \
-        \(BluetoothTracker.minimumDrop)% over at least 10 minutes.
-        """
     static let noLevelHelp = "This device doesn't report its battery level to the Mac."
     /// Listening time is estimated after this long, peripheral days left after a day.
     static let listeningMinimumTime: TimeInterval = 600
     static let daysLeftMinimumTime: TimeInterval = 86400
+    static let listeningHelp = """
+        Estimated from how fast the earbuds have drained since they were last charged, once they've dropped \
+        \(BluetoothTracker.minimumDrop)% over at least \(Int(listeningMinimumTime / 60)) minutes.
+        """
 
     /// e.g. "4 devices connected", "Bluetooth is off".
     public static func subtitle(for reading: Reading<BluetoothReading>) -> String {
@@ -147,8 +149,8 @@ public struct BluetoothDetail: Equatable, Sendable {
             device.firmware.map { Fact(text: "Firmware \($0)", isKnown: true) }
                 ?? Fact(text: "Firmware unknown", isKnown: false, help: firmwareHelp),
         ]
-        if device.isConnected, let level = battery.lowest {
-            let left = known.record?.timeLeft(at: level, now: clock.now, minimumTime: listeningMinimumTime)
+        if device.isConnected, battery.lowest != nil {
+            let left = known.record?.timeLeft(battery, now: clock.now, minimumTime: listeningMinimumTime)
             facts.append(left.map {
                 // Rounded to 10 minutes: it's an estimate.
                 let minutes = Int(($0 / 600).rounded()) * 10
@@ -165,7 +167,7 @@ public struct BluetoothDetail: Equatable, Sendable {
             source: device.isConnected ? Fact(text: "Audio source unknown", isKnown: false, help: sourceHelp) : nil,
             facts: facts,
             rings: parts.map { label, value in
-                Ring(label: label, level: value.map { Double($0) / 100 }, text: value.map { "\($0)%" } ?? Format.placeholder,
+                Ring(label: label, level: fraction(value), text: percent(value),
                      tone: tone(value, isConnected: device.isConnected, warnsBelowHalf: true))
             }
         )
@@ -188,8 +190,8 @@ public struct BluetoothDetail: Equatable, Sendable {
             id: device.address, name: device.name, kind: known.kind,
             status: "\(known.kind.title) · \(device.isConnected ? "Connected" : "Not connected")",
             isConnected: device.isConnected,
-            level: level.map { Double($0) / 100 },
-            levelText: level.map { "\($0)%" } ?? Format.placeholder,
+            level: fraction(level),
+            levelText: percent(level),
             levelHelp: level == nil && device.isConnected ? noLevelHelp : nil,
             tone: tone, hint: hint, isHintLow: tone == .low
         )
@@ -204,7 +206,7 @@ public struct BluetoothDetail: Equatable, Sendable {
         }
         if let level, level < BluetoothLowBatteryRule.threshold { return "Low — charge soon" }
         if device.isCharging == true { return "Charging" }
-        if let level, let left = known.record?.timeLeft(at: level, now: clock.now, minimumTime: daysLeftMinimumTime) {
+        if let left = known.record?.timeLeft(known.battery, now: clock.now, minimumTime: daysLeftMinimumTime) {
             let days = Int((left / 86400).rounded(.down))
             return switch days {
             case 0: "Est. under a day left"
@@ -218,6 +220,16 @@ public struct BluetoothDetail: Equatable, Sendable {
         case 1: "Charged yesterday"
         case let days: "Charged \(days) days ago"
         }
+    }
+
+    /// A whole percent as 0...1.
+    private static func fraction(_ level: Int?) -> Double? {
+        level.map { Double($0) / 100 }
+    }
+
+    /// e.g. "64%", or "—".
+    private static func percent(_ level: Int?) -> String {
+        level.map { "\($0)%" } ?? Format.placeholder
     }
 
     private static func tone(_ level: Int?, isConnected: Bool, warnsBelowHalf: Bool) -> Tone {
@@ -286,22 +298,15 @@ private struct Clock {
         calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
     }
 
-    /// e.g. "today, 09:15", "yesterday, 22:42", "Tue 22:42" within a week, else "24 Sep".
+    /// e.g. "today, 09:15", "yesterday, 22:42", "Tue 22:42" within a week, else "24 Sep": `Format.time`'s
+    /// clock, weekday, and date forms.
     func moment(_ date: Date) -> String {
-        let days = daysAgo(date)
-        switch days {
-        case ...0: return "today, \(format(date, "HH:mm"))"
-        case 1: return "yesterday, \(format(date, "HH:mm"))"
-        case 2..<7: return format(date, "EEE HH:mm")
-        default: return format(date, "d MMM")
+        let zone = calendar.timeZone
+        return switch daysAgo(date) {
+        case ...0: "today, \(Format.time(date, within: .oneHour, timeZone: zone))"
+        case 1: "yesterday, \(Format.time(date, within: .oneHour, timeZone: zone))"
+        case 2..<7: Format.time(date, within: .sevenDays, timeZone: zone)
+        default: Format.time(date, within: .thirtyDays, timeZone: zone)
         }
-    }
-
-    private func format(_ date: Date, _ pattern: String) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = calendar.timeZone
-        formatter.dateFormat = pattern
-        return formatter.string(from: date)
     }
 }

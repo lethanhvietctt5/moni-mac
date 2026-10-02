@@ -185,15 +185,17 @@ struct BluetoothTests {
     }
 
     @Test func listeningTimeIsEstimatedFromTheDrainOnceItHasDroppedEnough() throws {
-        var record = BluetoothDeviceRecord(name: "AirPods", drainFrom: 90, drainSince: now - 3600)
-        // 90% → 80% in an hour: 80% lasts 8 hours.
-        let featured = try #require(detail([airPods(left: 80, right: 85)], records: [airPodsAddress: record]).featured)
-        #expect(featured.facts.last?.text == "Approx. 8 h listening left")
-
+        func listening(from: BluetoothBattery, now left: Int?, _ right: Int?) throws -> String? {
+            let record = BluetoothDeviceRecord(name: "AirPods", drain: .init(from: from, since: now - 3600))
+            let featured = try #require(detail([airPods(left: left, right: right)], records: [airPodsAddress: record]).featured)
+            return featured.facts.last?.text
+        }
+        // Left 90% → 80% in an hour: 80% lasts 8 hours. Right drained slower, so left runs out first.
+        #expect(try listening(from: BluetoothBattery(left: 90, right: 90), now: 80, 85) == "Approx. 8 h listening left")
         // 2 points isn't enough to go on.
-        record.drainFrom = 82
-        let early = try #require(detail([airPods(left: 80, right: 85)], records: [airPodsAddress: record]).featured)
-        #expect(early.facts.last?.text == "Listening time left: estimating…")
+        #expect(try listening(from: BluetoothBattery(left: 82, right: 86), now: 80, 85) == "Listening time left: estimating…")
+        // Each earbud is measured against itself: the left one dropping out leaves the right one's estimate.
+        #expect(try listening(from: BluetoothBattery(left: 50, right: 90), now: nil, 80) == "Approx. 8 h listening left")
     }
 
     // MARK: Other Devices
@@ -266,10 +268,10 @@ struct BluetoothTests {
         #expect(hint(BluetoothDeviceRecord(name: "K")) == nil)
         #expect(hint(BluetoothDeviceRecord(name: "K"), charging: true) == "Charging")
         // 100% → 91% in 6 days: 91% lasts about 60 days.
-        let draining = BluetoothDeviceRecord(name: "K", chargedAt: now - 6 * 86400, drainFrom: 100, drainSince: now - 6 * 86400)
+        let draining = BluetoothDeviceRecord(name: "K", chargedAt: now - 6 * 86400, drain: .init(from: BluetoothBattery(main: 100), since: now - 6 * 86400))
         #expect(hint(draining, level: 91) == "Est. 60 days left")
         // Under a day of drain says nothing yet, however steep.
-        let fresh = BluetoothDeviceRecord(name: "K", chargedAt: now - 3600, drainFrom: 100, drainSince: now - 3600)
+        let fresh = BluetoothDeviceRecord(name: "K", chargedAt: now - 3600, drain: .init(from: BluetoothBattery(main: 100), since: now - 3600))
         #expect(hint(fresh, level: 80) == "Charged today")
         // Low beats everything.
         #expect(hint(draining, level: 12) == "Low — charge soon")
@@ -302,7 +304,7 @@ struct BluetoothTests {
         sampler.set([keyboard(50)])
         monitor.tick()
         #expect(monitor.bluetoothTracker.records[address]?.chargedAt == nil)
-        #expect(monitor.bluetoothTracker.records[address]?.drainFrom == 50)
+        #expect(monitor.bluetoothTracker.records[address]?.drain?.from.main == 50)
 
         clock.advance(by: 3600)
         sampler.set([keyboard(52)])  // jitter, not a charge
@@ -313,8 +315,8 @@ struct BluetoothTests {
         sampler.set([keyboard(80)])
         monitor.tick()
         #expect(monitor.bluetoothTracker.records[address]?.chargedAt == clock.now)
-        #expect(monitor.bluetoothTracker.records[address]?.drainFrom == 80)
-        #expect(monitor.bluetoothTracker.records[address]?.drainSince == clock.now)
+        #expect(monitor.bluetoothTracker.records[address]?.drain?.from.main == 80)
+        #expect(monitor.bluetoothTracker.records[address]?.drain?.since == clock.now)
 
         clock.advance(by: 3600)
         sampler.set([device("Magic Keyboard", address, type: "Keyboard", level: 79, charging: true)])
@@ -381,6 +383,28 @@ struct BluetoothTests {
         #expect(alert.body == "Left 40%, Right 18%. Charge it soon, before it turns off.")
     }
 
+    @Test func anEarbudDroppingOutIsNeitherAChargeNorTheEndOfAnEpisode() throws {
+        let (monitor, sampler) = try makeMonitor()
+        // Right is low; then it goes into the case and stops reporting, so the lowest level jumps to left's.
+        for (left, right) in [(60, 15), (60, nil), (59, 14)] as [(Int, Int?)] {
+            clock.advance(by: 300)
+            sampler.set([airPods(left: left, right: right, case: 50)])
+            monitor.tick()
+        }
+        #expect(delivered.count == 1)
+        #expect(monitor.bluetoothTracker.records[airPodsAddress]?.chargedAt == nil)
+
+        // Charged in the case: right back at 100% ends the episode and counts as a charge.
+        clock.advance(by: 300)
+        sampler.set([airPods(left: 59, right: 100, case: 40)])
+        monitor.tick()
+        #expect(monitor.bluetoothTracker.records[airPodsAddress]?.chargedAt == clock.now)
+        clock.advance(by: 300)
+        sampler.set([airPods(left: 59, right: 12, case: 40)])
+        monitor.tick()
+        #expect(delivered.count == 2)
+    }
+
     @Test func disconnectingWhileLowDoesNotStartANewEpisode() throws {
         let (monitor, sampler) = try makeMonitor()
         for (level, connected) in [(15, true), (15, false), (12, true)] {
@@ -410,7 +434,7 @@ struct BluetoothTests {
     }
 
     @Test func tabNotificationsRoundTripThroughTheirPayload() {
-        let alert = Alert.bluetoothLowBattery(trackpad(14))
+        let alert = Alert.bluetoothLowBattery(trackpad(14), level: 14)
         #expect(AlertNotification.target(from: AlertNotification.userInfo(for: alert)) == .tab(.bluetooth))
         #expect(AlertNotification.target(from: ["tab": "nonsense"]) == nil)
     }

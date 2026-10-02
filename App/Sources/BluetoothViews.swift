@@ -38,7 +38,7 @@ private struct BluetoothWindowContent: View {
     private var devices: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(detail.featured == nil ? "Devices" : "Other Devices")
+                Text(detail.devicesTitle)
                     .font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                 Spacer()
                 Button("Open Bluetooth Settings…", action: monitor.openBluetoothSettings)

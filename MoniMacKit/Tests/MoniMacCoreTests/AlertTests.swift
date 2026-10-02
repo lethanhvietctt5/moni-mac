@@ -101,7 +101,7 @@ struct AlertTests {
         #expect(alert.chip == "6.7%")
         #expect(alert.body == "6.7% for the last 2 minutes. Your Mac may feel slower and run warmer.")
         #expect(alert.quitTitle == "Quit Xcode")
-        #expect(alert.showColumn == .cpu)
+        #expect(alert.target == .app(Self.xcodeID, column: .cpu))
         #expect(alert.bundlePath == Self.xcodeID)
     }
 
@@ -150,7 +150,7 @@ struct AlertTests {
         #expect(alert.title == "Xcode memory is growing fast")
         #expect(alert.chip == "+1 GB")
         #expect(alert.body == "+1 GB within 10 minutes, now 3 GB. A steady climb can mean a memory leak.")
-        #expect(alert.showColumn == .memory)
+        #expect(alert.target == .app(Self.xcodeID, column: .memory))
     }
 
     @Test func aSteadyLeakOfExactlyOneGigabytePerTenMinutesFires() throws {
@@ -195,7 +195,7 @@ struct AlertTests {
         #expect(alert.title == "Heavy disk writes from Xcode")
         #expect(alert.chip == "6 MB/s")
         #expect(alert.body.hasSuffix("written in the last hour. Heavy writing wears out an SSD over time."))
-        #expect(alert.showColumn == .disk)
+        #expect(alert.target == .app(Self.xcodeID, column: .disk))
     }
 
     @Test func diskWritesDoNotFireBelowTenGigabytesAnHour() throws {
@@ -222,7 +222,7 @@ struct AlertTests {
         #expect(alert.title == "Xcode is using the network heavily")
         #expect(alert.chip == "18 MB/s")
         #expect(alert.body == "Sustained 18 MB/s for 4 minutes.")
-        #expect(alert.showColumn == .network)
+        #expect(alert.target == .app(Self.xcodeID, column: .network))
     }
 
     @Test func networkDoesNotFireBelowItsThreshold() throws {

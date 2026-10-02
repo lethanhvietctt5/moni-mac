@@ -7,44 +7,61 @@ public struct BluetoothDeviceRecord: Equatable, Sendable, Codable {
     public var lastSeen: Date?
     /// Its levels at that reading.
     public var battery: BluetoothBattery
-    /// The last reading that found it charging, or its level risen since the reading before.
+    /// The last reading that found it charging, or a level risen since the reading before.
     public var chargedAt: Date?
-    /// Where the drain is measured from: the level after the last charge (or when first seen) and when.
-    public var drainFrom: Int?
-    public var drainSince: Date?
+    /// Where the drain is measured from: the levels after the last charge (or when first seen).
+    public var drain: Drain?
+
+    /// Levels at a moment, to measure the drain since.
+    public struct Drain: Equatable, Sendable, Codable {
+        public var from: BluetoothBattery
+        public var since: Date
+
+        public init(from: BluetoothBattery, since: Date) {
+            self.from = from
+            self.since = since
+        }
+    }
 
     public init(name: String, lastSeen: Date? = nil, battery: BluetoothBattery = BluetoothBattery(),
-                chargedAt: Date? = nil, drainFrom: Int? = nil, drainSince: Date? = nil) {
+                chargedAt: Date? = nil, drain: Drain? = nil) {
         self.name = name
         self.lastSeen = lastSeen
         self.battery = battery
         self.chargedAt = chargedAt
-        self.drainFrom = drainFrom
-        self.drainSince = drainSince
+        self.drain = drain
     }
 
-    /// How long `level` lasts at the rate it has drained since the last charge, or nil until the drain says
-    /// enough: at least `BluetoothTracker.minimumDrop` points over at least `minimumTime`.
-    public func timeLeft(at level: Int, now: Date, minimumTime: TimeInterval) -> TimeInterval? {
-        guard let drainFrom, let drainSince else { return nil }
-        let drop = drainFrom - level
-        let elapsed = now.timeIntervalSince(drainSince)
-        guard drop >= BluetoothTracker.minimumDrop, elapsed >= minimumTime else { return nil }
-        return Double(level) / (Double(drop) / elapsed)
+    /// How long `battery` lasts at the rate it has drained since the last charge: the first of its parts in
+    /// use (main, left, right) to run out. Each part is measured against its own earlier level, so an earbud
+    /// that stops reporting doesn't skew the other. Nil until a part has dropped at least
+    /// `BluetoothTracker.minimumDrop` points over at least `minimumTime`.
+    public func timeLeft(_ battery: BluetoothBattery, now: Date, minimumTime: TimeInterval) -> TimeInterval? {
+        guard let drain else { return nil }
+        let elapsed = now.timeIntervalSince(drain.since)
+        guard elapsed >= minimumTime else { return nil }
+        return BluetoothBattery.inUse.compactMap { part -> TimeInterval? in
+            guard let level = battery[keyPath: part], let from = drain.from[keyPath: part],
+                  from - level >= BluetoothTracker.minimumDrop else { return nil }
+            return Double(level) / (Double(from - level) / elapsed)
+        }.min()
     }
 }
 
 /// Remembers each paired device across readings and relaunches: when it was last seen connected, its
 /// last levels, when it was last charged, and how fast it has drained since.
 ///
+/// Records change only when the reader runs, so "last seen" is the last time MoniMac looked and found it
+/// connected: while the Bluetooth tab is open or low-battery notifications are on.
+///
 /// Only connected devices update a record: a disconnected device's levels (macOS keeps AirPods' last ones)
-/// are old news. A charge is a reading that says the device is charging, or a level at least `chargeRise`
-/// points above the one before (levels jitter by a point). Records are saved in Preferences only when a
-/// new reading changed them, which is at most every 30 s while the tab shows and every 5 min otherwise.
-/// Devices that are no longer paired are forgotten.
+/// are old news. A charge is a reading that says the device is charging, or a part (main, left, right)
+/// at least `chargeRise` points above its level the reading before (levels jitter by a point). Parts are
+/// compared one by one, so an earbud dropping out of a reading isn't mistaken for a charge. Records are
+/// saved in Preferences only when a new reading changed them. Devices that are no longer paired are forgotten.
 @MainActor
 final class BluetoothTracker {
-    /// A level this many points above the last one means the device was charged in between.
+    /// A part this many points above its last level means the device was charged in between.
     nonisolated static let chargeRise = 3
     /// The drain must fall this many points before it's used for an estimate; levels move in steps.
     nonisolated static let minimumDrop = 5
@@ -88,19 +105,30 @@ final class BluetoothTracker {
 
     private static func update(_ record: inout BluetoothDeviceRecord, with device: BluetoothDevice, at now: Date) {
         record.lastSeen = now
-        if let level = device.battery.lowest {
-            let previous = record.battery.lowest
-            let charged = device.isCharging == true || previous.map { level >= $0 + chargeRise } ?? false
-            if charged {
+        let battery = device.battery
+        if battery.lowest != nil {
+            let rose = BluetoothBattery.inUse.contains { part in
+                guard let level = battery[keyPath: part], let before = record.battery[keyPath: part] else { return false }
+                return level >= before + chargeRise
+            }
+            let measurable = record.drain.map { drain in
+                BluetoothBattery.inUse.contains { drain.from[keyPath: $0] != nil && battery[keyPath: $0] != nil }
+            } ?? false
+            if device.isCharging == true || rose {
                 record.chargedAt = now
-                (record.drainFrom, record.drainSince) = (level, now)
-            } else if record.drainFrom == nil || level > record.drainFrom! {
-                // First sight, or a level that crept up without counting as a charge: start the drain here.
-                (record.drainFrom, record.drainSince) = (level, now)
+                record.drain = .init(from: battery, since: now)
+            } else if !measurable {
+                // First sight, or no part in common with where the drain started: start it here.
+                record.drain = .init(from: battery, since: now)
             }
         }
-        if !device.battery.isEmpty { record.battery = device.battery }
+        if !battery.isEmpty { record.battery = battery }
     }
+}
+
+extension BluetoothBattery {
+    /// The parts that run out in use: everything but the case.
+    static var inUse: [KeyPath<BluetoothBattery, Int?>] { [\.main, \.left, \.right] }
 }
 
 extension Preferences {
