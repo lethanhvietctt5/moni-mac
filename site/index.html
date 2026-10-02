@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MoniMac · Never wonder why your Mac is slow again</title>
+    <title>MoniMac · Free System Monitor for Mac: CPU, Memory, GPU, Temperature</title>
     <meta
       name="description"
-      content="MoniMac shows CPU, memory, GPU, network, disk, battery, and temperatures in your menu bar and a full window, with history and per-app usage. Free and open source for Apple silicon Macs."
+      content="MoniMac is a free, open-source system monitor for macOS. See CPU, memory, GPU, network, disk, battery and temperature in your menu bar, broken down by app, with 30 days of history."
     />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="%VITE_SITE_URL%/" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ffffff" />
-    <!-- TODO: add <link rel="canonical" href="https://<domain>/" /> once the domain is known. -->
 
     <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
@@ -18,34 +19,30 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="%VITE_SITE_URL%/" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="MoniMac" />
-    <meta property="og:title" content="MoniMac · See what your Mac is really doing" />
+    <meta property="og:title" content="MoniMac · The free system monitor for your Mac" />
     <meta
       property="og:description"
       content="A free, open-source system monitor for the macOS menu bar: live metrics, history, and every number broken down by app."
     />
-    <!-- TODO: make og:image and twitter:image absolute (https://<domain>/og.png) once the domain is known. -->
-    <meta property="og:image" content="/og.png" />
+    <meta property="og:image" content="%VITE_SITE_URL%/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="MoniMac: See what your Mac is really doing. The menu bar with CPU, memory, and network, and the MoniMac popover." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MoniMac · See what your Mac is really doing" />
+    <meta name="twitter:title" content="MoniMac · The free system monitor for your Mac" />
     <meta
       name="twitter:description"
       content="A free, open-source system monitor for the macOS menu bar: live metrics, history, and every number broken down by app."
     />
-    <meta name="twitter:image" content="/og.png" />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/og.png" />
   </head>
   <body>
     <div id="root"></div>
-    <noscript>
-      <p style="font-family: -apple-system, sans-serif; padding: 24px">
-        MoniMac is a free, open-source system monitor for the macOS menu bar.
-        <a href="https://github.com/lethanhvietctt5/moni-mac/releases/latest/download/MoniMac.dmg">Download for Mac</a> ·
-        <a href="https://github.com/lethanhvietctt5/moni-mac">View on GitHub</a>
-      </p>
-    </noscript>
+    <!-- The prerendered sections start hidden for their entrance animations, which need JavaScript. -->
+    <noscript><style>#root [style*="opacity"] { opacity: 1 !important; transform: none !important; }</style></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

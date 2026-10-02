@@ -4,6 +4,7 @@ import { GithubIcon, Reveal } from './ui'
 
 const footerLinks = [
   { label: 'Features', href: '#menu-bar' },
+  { label: 'FAQ', href: '#faq' },
   { label: 'Changelog', href: CHANGELOG_URL },
   { label: 'GitHub', href: REPO_URL },
 ]
