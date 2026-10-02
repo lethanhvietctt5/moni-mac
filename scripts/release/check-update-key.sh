@@ -10,7 +10,7 @@ KEY="$(plist_value "$APP" SUPublicEDKey 2>/dev/null || true)"
 
 [ "$(plist_value "$APP" MoniMacUpdatesEnabled 2>/dev/null || true)" = YES ] || die "MoniMacUpdatesEnabled isn't YES; build with build.sh"
 [ -n "$(plist_value "$APP" SUFeedURL 2>/dev/null || true)" ] || die "SUFeedURL is missing"
-[ "$KEY" != "$PLACEHOLDER_KEY" ] || die "SUPublicEDKey is still the placeholder. Run scripts/release/setup-wizard.sh (step 5) and commit project.yml."
+[ "$KEY" != "$PLACEHOLDER_KEY" ] || die "SUPublicEDKey is still the placeholder. Run scripts/release/setup-wizard.sh (stage 6) and commit project.yml."
 # An Ed25519 public key is 32 bytes, base64-encoded.
 [ "$(printf '%s' "$KEY" | base64 -D 2>/dev/null | wc -c | tr -d ' ')" = 32 ] || die "SUPublicEDKey '$KEY' isn't a base64 Ed25519 public key"
 echo "Update key OK: $KEY"

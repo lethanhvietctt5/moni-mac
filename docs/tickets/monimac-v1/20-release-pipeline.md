@@ -32,6 +32,10 @@
 - **Release build with updates on and the placeholder key:** start fails, is logged ("The EdDSA public key is not valid"), and shows no alert.
 - **Screenshot:** Settings › Data & About.
 
+**Deferred:**
+- **The criterion 3 fallback** ("Update available" linking to the release page) isn't built. Sparkle clears quarantine on the update it installs (`Documentation/Installation.md`; `SUPlainInstaller.m`), so it shouldn't be needed. Wizard stage 10 checks this on a real update and points to the fallback if Gatekeeper prompts anyway.
+- **Permission persistence** is exercised with Location only. Notifications (ticket 14) and audio capture (ticket 17) aren't in this build; the wizard asks the maintainer to grant them too once they are.
+
 **Unverified until the first tags:**
 - the workflow on a runner (`macos-26`, newest Xcode)
 - the certificate import and trust on the runner

@@ -25,9 +25,9 @@ jobs:
         with:
           fetch-depth: 0 # tags and history, for "What's changed"
 
-      - name: Select the newest Xcode
+      - name: Select the newest released Xcode
         run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | grep -viE 'beta|rc' | sort -V | tail -1)"
           xcodebuild -version
 
       - name: Install XcodeGen

@@ -32,8 +32,24 @@ public enum UpdateStatus: Equatable, Sendable {
     /// e.g. "0.2.0".
     case available(String)
 
-    /// Whether "Check for Updates…" can be pressed.
+    /// Whether this build checks for updates at all; the updater also disables the button while a check runs.
     public var canCheck: Bool { self != .off }
+
+    /// The About row's second line, e.g. "Free and open source · You're up to date".
+    public var aboutDetail: String {
+        let note: String? = switch self {
+        case .off: "Development build"
+        case .idle: nil
+        case .upToDate: "You're up to date"
+        case .available(let version): "MoniMac \(version) is available"
+        }
+        return (["Free and open source"] + [note].compactMap { $0 }).joined(separator: " · ")
+    }
+
+    /// The disabled button's tooltip, or nil when it can be pressed.
+    public var checkHelp: String? {
+        canCheck ? nil : "Development builds don't check for updates; releases do"
+    }
 }
 
 /// Whether MoniMac opens at login, as the system reports it.
@@ -86,17 +102,6 @@ public struct SettingsPanel: Equatable, Sendable {
 
     /// The window toolbar subtitle and the About row, e.g. "MoniMac 1.4.2".
     public static func about(version: String) -> String { "MoniMac \(version)" }
-
-    /// The About row's second line, e.g. "Free and open source · You're up to date".
-    public static func aboutDetail(_ updates: UpdateStatus) -> String {
-        let note: String? = switch updates {
-        case .off: "Development build"
-        case .idle: nil
-        case .upToDate: "You're up to date"
-        case .available(let version): "MoniMac \(version) is available"
-        }
-        return (["Free and open source"] + [note].compactMap { $0 }).joined(separator: " · ")
-    }
 
     static let sourceCode = URL(string: "https://github.com/lethanhvietctt5/moni-mac")!
     static let releaseNotes = URL(string: "https://github.com/lethanhvietctt5/moni-mac/releases")!

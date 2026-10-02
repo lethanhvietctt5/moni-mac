@@ -134,13 +134,13 @@ private struct SettingsContent: View {
                 .pickerStyle(.menu)
                 .fixedSize()
             }
-            SettingsRow(label: panel.about, description: SettingsPanel.aboutDetail(updates.status), isLast: true) {
+            SettingsRow(label: panel.about, description: updates.status.aboutDetail, isLast: true) {
                 Button("Source", action: monitor.openSourceCode).buttonStyle(.link).font(.system(size: 12))
                 Button("Release Notes", action: monitor.openReleaseNotes).buttonStyle(.link).font(.system(size: 12))
                 Button("Check for Updates…", action: updates.checkForUpdates)
                     .controlSize(.small)
-                    .disabled(!updates.status.canCheck)
-                    .help(updates.status.canCheck ? "" : "Development builds don't check for updates; releases do")
+                    .disabled(!updates.canCheck)
+                    .help(updates.status.checkHelp ?? "")
             }
         }
     }

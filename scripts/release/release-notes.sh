@@ -12,7 +12,7 @@ cd "$ROOT"
 
 changes() {
     local previous
-    previous="$(git tag --merged HEAD --list 'v*' --sort=-v:refname | grep -vx "$TAG" | head -1 || true)"
+    previous="$(git tag --merged HEAD --list 'v*' --sort=-v:refname | grep -vxF "$TAG" | head -1 || true)"
     if [ -z "$previous" ]; then
         echo "- First release."
         return
@@ -48,7 +48,7 @@ MoniMac is free and open source, and isn't notarized by Apple (that needs a paid
 
 ## Updates
 
-MoniMac checks this page's update feed and offers new versions itself (**Settings › Data & About › Check for Updates…**). Updates are verified with the project's signing key and open without the Open Anyway step, and the permissions you've granted carry over.
+MoniMac checks this page's update feed and offers new versions itself (**Settings › Data & About › Check for Updates…**). Updates are verified with the project's signing key. Sparkle clears the quarantine flag from the update it installs, so it shouldn't need the Open Anyway step, and every release is signed with the same certificate, so the permissions you've granted should carry over.
 
 ## What's changed
 

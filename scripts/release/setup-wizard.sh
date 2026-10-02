@@ -187,24 +187,26 @@ finish() {
 
 TOTAL_STAGES=10
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# ROOT, REPO, DERIVED, PLACEHOLDER_KEY, and plist_value come from the release scripts' shared settings.
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 cd "$ROOT"
-REPO_URL="https://github.com/lethanhvietctt5/moni-mac"
+REPO_URL="https://github.com/$REPO"
 IDENTITY_NAME="MoniMac Self-Signed"
-SPARKLE_BIN="$ROOT/build/release/SourcePackages/artifacts/sparkle/Sparkle/bin"
-PLACEHOLDER="PLACEHOLDER_SPARKLE_PUBLIC_ED_KEY"
+SPARKLE_BIN="$DERIVED/SourcePackages/artifacts/sparkle/Sparkle/bin"
 WORK="$(mktemp -d)"   # the exported EdDSA private key lives here only while the wizard runs
 trap 'rm -rf "$WORK"' EXIT
 SPARKLE_KEY_FILE="$WORK/sparkle-private-key"
 ENV_FILE="$WORK/unused.env" # nothing here belongs in a .env: secrets go to GitHub only
 
-# skip_if_done "question" — on re-runs, lets the maintainer skip a stage already finished.
-skip_if_done() { confirm "$1 Skip this stage?"; }
 
 # run "command" — show a command, run it only after a yes.
 run() {
   printf '  %s$ %s%s\n' "$BOLD" "$1" "$RESET"
-  if confirm "Run it now?"; then bash -c "$1"; else warn "not run — run it yourself before continuing"; pause; fi
+  if ! confirm "Run it now?"; then
+    warn "not run — run it yourself before continuing"; pause
+  elif ! bash -c "$1"; then
+    warn "that failed — fix it (or run it yourself), then continue"; pause
+  fi
 }
 
 wait_for_release() {
@@ -319,12 +321,12 @@ pause
 
 # ── 6 ────────────────────────────────────────────────────────────────────
 stage "Put the public key in the app"
-if ! grep -q "$PLACEHOLDER" project.yml; then
+if ! grep -q "$PLACEHOLDER_KEY" project.yml; then
   step "project.yml no longer has the placeholder ✓ ($(grep 'SUPublicEDKey:' project.yml | xargs))"
 else
-  say "Replacing $PLACEHOLDER in project.yml with $PUBLIC_KEY and regenerating App/Info.plist."
+  say "Replacing $PLACEHOLDER_KEY in project.yml with $PUBLIC_KEY and regenerating App/Info.plist."
   if confirm "Edit project.yml?"; then
-    sed -i '' "s|$PLACEHOLDER|$PUBLIC_KEY|" project.yml
+    sed -i '' "s|$PLACEHOLDER_KEY|$PUBLIC_KEY|" project.yml
     xcodegen generate --quiet
     git --no-pager diff --stat
   fi
@@ -374,6 +376,7 @@ step "Open System Settings › Privacy & Security, scroll to Security. Screensho
 step "  \"MoniMac was blocked…\" and Open Anyway: save as docs/images/install-open-anyway.png."
 step "Click Open Anyway, confirm, and enter your password. MoniMac opens."
 step "Grant a permission: open MoniMac's window › Network tab and allow Location (for the Wi-Fi name)."
+step "If this build has them, also allow notifications (Alerts) and audio capture (Sound), so stage 10 checks them too."
 step "Check: System Settings › Privacy & Security › Location Services lists MoniMac, on."
 pause "Press Enter when MoniMac is running with Location allowed."
 say "For the record (the update must not change these):"
@@ -400,15 +403,16 @@ step "In the installed MoniMac 0.1.0: Settings › Data & About › Check for Up
 note "  (On its second launch Sparkle also asks whether to check automatically; either answer is fine.)"
 step "Sparkle offers 0.1.1: Install Update, then Install and Relaunch."
 pause "Press Enter when MoniMac has relaunched."
-check "the installed app is 0.1.1" "[ \"\$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/MoniMac.app/Contents/Info.plist 2>/dev/null)\" = 0.1.1 ]"
+installed_version() { plist_value /Applications/MoniMac.app CFBundleShortVersionString 2>/dev/null || true; }
+check "the installed app is 0.1.1" '[ "$(installed_version)" = 0.1.1 ]'
 check "the update carries no quarantine flag" "! xattr -p com.apple.quarantine /Applications/MoniMac.app >/dev/null 2>&1"
 say "Designated requirement now (must match the one in stage 9):"
 codesign -d -r- /Applications/MoniMac.app 2>&1 | grep designated | sed 's/^/    /' || true
 confirm "Did the updated MoniMac open WITHOUT a Gatekeeper prompt?" && G=yes || G=no
-confirm "Does its Network tab show the Wi-Fi name without asking for Location again?" && P=yes || P=no
+confirm "Does its Network tab show the Wi-Fi name without asking for Location again (and any other permission you granted)?" && P=yes || P=no
 say "Results for docs/tickets/monimac-v1/20-release-pipeline.md:"
 step "Tag → signed build and feed entry: $(gh release view v0.1.1 >/dev/null 2>&1 && echo yes || echo no)"
-step "Installed build detects and installs the update: $( [ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/MoniMac.app/Contents/Info.plist 2>/dev/null)" = 0.1.1 ] && echo yes || echo no)"
+step "Installed build detects and installs the update: $( [ "$(installed_version)" = 0.1.1 ] && echo yes || echo no)"
 step "Updated app opens without Gatekeeper: $G"
 step "Permissions survive the update: $P"
 if [ "$G" = no ]; then

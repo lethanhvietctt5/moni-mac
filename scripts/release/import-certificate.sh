@@ -24,7 +24,8 @@ security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
 security import "$P12" -k "$KEYCHAIN" -P "$MONIMAC_CERT_PASSWORD" -f pkcs12 -T /usr/bin/codesign
 # Lets codesign use the key without a GUI prompt.
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
-# Put it first in the search list, keeping the runner's own keychains.
+# Put it first in the search list, keeping the runner's own keychains (their paths have no spaces).
+# shellcheck disable=SC2046
 security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
 
 # A self-signed certificate isn't trusted by default; trust it for code signing on this runner only.

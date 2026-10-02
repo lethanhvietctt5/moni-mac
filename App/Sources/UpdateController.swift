@@ -17,7 +17,10 @@ final class UpdateController: NSObject {
     static let shared = UpdateController()
 
     private(set) var status: UpdateStatus = .off
+    /// False in development builds and while Sparkle is already checking.
+    private(set) var canCheck = false
     @ObservationIgnored private var controller: SPUStandardUpdaterController?
+    @ObservationIgnored private var canCheckObservation: NSKeyValueObservation?
 
     /// Starts Sparkle if this is a release build. Errors are logged, never shown: a misconfigured build just has no updates.
     func start() {
@@ -32,6 +35,11 @@ final class UpdateController: NSObject {
         }
         self.controller = controller
         status = .idle
+        // Sparkle changes this on the main thread.
+        canCheckObservation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] _, change in
+            let canCheck = change.newValue ?? false
+            MainActor.assumeIsolated { self?.canCheck = canCheck }
+        }
     }
 
     /// Sparkle's own window shows progress, the release notes, and the result.
