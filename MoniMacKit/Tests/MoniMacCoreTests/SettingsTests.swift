@@ -238,6 +238,17 @@ struct SettingsTests {
         ])
     }
 
+    @Test func aboutSaysFreeAndOpenSourceAndWhatTheUpdaterFound() {
+        #expect(UpdateStatus.idle.aboutDetail == "Free and open source")
+        #expect(UpdateStatus.upToDate.aboutDetail == "Free and open source · You're up to date")
+        #expect(UpdateStatus.available("0.2.0").aboutDetail == "Free and open source · MoniMac 0.2.0 is available")
+        #expect(UpdateStatus.off.aboutDetail == "Free and open source · Development build")
+        #expect(!UpdateStatus.off.canCheck)
+        #expect(UpdateStatus.off.checkHelp == "Development builds don't check for updates; releases do")
+        #expect(UpdateStatus.idle.canCheck)
+        #expect(UpdateStatus.idle.checkHelp == nil)
+    }
+
     // MARK: Menu bar items
 
     @Test func menuBarRowsShareStateWithTheMenuBar() throws {
