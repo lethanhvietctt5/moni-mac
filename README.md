@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/icon.png" width="128" height="128" alt="MoniMac icon"></p>
+
 # MoniMac
 
 A free, open-source system monitor for your Mac's menu bar. MoniMac shows CPU, memory, GPU, network, disk, battery, and temperatures as menu bar items, in a popover, and in a main window with history, per-app usage, and dev servers and containers grouped by project.
