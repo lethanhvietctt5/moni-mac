@@ -37,6 +37,7 @@
 - **Permission persistence** is exercised with Location only. Notifications (ticket 14) and audio capture (ticket 17) aren't in this build; the wizard asks the maintainer to grant them too once they are.
 
 **Unverified until the first tags:**
+- the "Check for Updates…" press and Sparkle's check window; the About line's "You're up to date" and "is available" transitions; the button disabling during a check. All of these need a real key, and wizard stage 10 exercises them.
 - the workflow on a runner (`macos-26`, newest Xcode)
 - the certificate import and trust on the runner
 - Sparkle accepting a self-signed update on another Mac
