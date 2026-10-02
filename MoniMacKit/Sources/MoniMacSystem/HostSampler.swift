@@ -18,7 +18,7 @@ public final class HostSampler: SystemSampler {
     private let battery = BatteryReader()
     private let thermal = ThermalReader()
     private let devServers = DevServerReader()
-    private let bluetooth = BluetoothReader()
+    private let bluetooth: BluetoothReader
     /// What needs Bluetooth read, asked on every tick; the app answers from the window and the settings.
     /// Until it's set, nothing does, and Bluetooth is never read.
     public var bluetoothDemand: @MainActor () -> BluetoothDemand = { .none }
@@ -27,7 +27,11 @@ public final class HostSampler: SystemSampler {
     private var annotatedProcesses: Reading<[ProcessSample]> = .unavailable(.warmingUp)
 
     /// `storageScanCache` keeps the storage scan across launches; the app passes `.standard`.
-    public init(storageScanCache: StorageScanCache? = nil) {
+    /// `bluetoothFixture` (the `--bluetooth-fixture` development flag) reads Bluetooth devices from a saved
+    /// `system_profiler SPBluetoothDataType -json` file instead, so the tab can be checked with devices this
+    /// Mac doesn't have.
+    public init(storageScanCache: StorageScanCache? = nil, bluetoothFixture: URL? = nil) {
+        bluetooth = BluetoothReader(fixture: bluetoothFixture)
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
         disk = DiskReader(storageScanCache: storageScanCache)
     }

@@ -12,7 +12,10 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Development aid: `--mute-notifications` evaluates alerts but only logs them: no permission prompt, no banners.
     private static let notificationsMuted = CommandLine.arguments.contains("--mute-notifications")
-    private let sampler = HostSampler(storageScanCache: .standard)
+    /// Development aid: `--bluetooth-fixture <path>` reads Bluetooth devices from a saved
+    /// `system_profiler SPBluetoothDataType -json` file, to check the tab with devices this Mac doesn't have.
+    private let sampler = HostSampler(storageScanCache: .standard,
+                                      bluetoothFixture: launchValue("--bluetooth-fixture").map(URL.init(fileURLWithPath:)))
     private lazy var monitor = Monitor(
         sampler: sampler, history: Self.makeHistory(), preferences: Preferences(),
         actions: WorkspaceActions(notificationsMuted: Self.notificationsMuted)

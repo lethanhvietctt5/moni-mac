@@ -36,9 +36,12 @@ final class BluetoothReader: Sendable {
     private let started: Date
     /// Background reads wait this long after launch, so launch stays light. A showing tab reads at once.
     private let backgroundDelay: TimeInterval
+    /// A saved system_profiler output to read instead of running it (a development aid). HID isn't read then.
+    private let fixture: URL?
 
-    init(timeout: TimeInterval = 15, backgroundDelay: TimeInterval = 10, now: Date = Date()) {
+    init(timeout: TimeInterval = 15, backgroundDelay: TimeInterval = 10, fixture: URL? = nil, now: Date = Date()) {
         self.timeout = timeout
+        self.fixture = fixture
         self.backgroundDelay = backgroundDelay
         started = now
     }
@@ -60,7 +63,8 @@ final class BluetoothReader: Sendable {
         guard due else { return }
         DispatchQueue.global(qos: .utility).async { [self] in
             let childBefore = Self.childCPUSeconds()
-            let reading = Self.read(timeout: timeout)
+            let reading = fixture.map { Self.parse((try? Data(contentsOf: $0)) ?? Data(), readAt: Date()) }
+                ?? Self.read(timeout: timeout)
             let childCPU = Self.childCPUSeconds() - childBefore
             let (runs, total) = state.withLock { state in
                 state.latest = reading
