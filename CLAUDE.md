@@ -26,6 +26,8 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
 - **Overview:** `--overview-list` opens the List view; `--expand <app>` expands that app's group.
 - **Quit sheet:** `--show-quit-sheet <app>` opens it without pressing a button.
 - **Share card:** `--show-share-card` opens the preview; `--export-share-card <path> [--dark]` writes the 1200×630 PNG.
+- **Notifications:** always launch with `--mute-notifications` while verifying, so MoniMac never asks for notification permission or posts one.
+- **Bluetooth:** `--bluetooth-fixture <path>` reads a saved `system_profiler SPBluetoothDataType -json` file instead of the real devices. It overwrites the remembered devices, so `defaults delete io.github.lethanhvietctt5.MoniMac bluetooth.devices` afterwards.
 
 **Settings you can't click:** `defaults write io.github.lethanhvietctt5.MoniMac <key> …`, launch, screenshot, then `defaults delete` the key.
 
@@ -117,7 +119,7 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
 - **No paid Apple Developer account.** There is no notarization and no Developer ID. Releases are signed with a stable self-signed certificate, so that granted permissions (notifications, audio capture, location) survive updates; ad-hoc signing breaks this. The official Homebrew cask repository is not an option.
 - **Not sandboxed, not on the Mac App Store, no licensing or payments.**
 - **Menu bar reorder and hide** use the system's ⌘-drag behavior. Don't build a custom drag UI in the menu bar.
-- **Per-app volume** (Core Audio process taps) needs a feasibility spike first. If it fails, Sound ships without per-app sliders.
+- **Per-app volume** uses Core Audio process taps feeding a private aggregate device. The spike (`docs/spikes/16-per-app-audio.md`) was a go. Each running tap costs about 3% CPU in `coreaudiod`, so tap only apps the user has adjusted and tear the tap down once an app is back at 100%. Sound's self-cost includes `coreaudiod`.
 - **Process sampling (no privileged helper):** own-user processes come from `proc_pid_rusage` (every 4 s; its times are Mach absolute units, converted with `mach_timebase_info`). Other users' processes come from the setuid `/bin/ps` in the background (every 15 s). Helpers are attributed via the private responsible-pid call, with a fallback to the outermost `.app` in the path. Quit (×) is offered only for running regular apps.
 - **Metric sources** (no privileges needed; each reader is throttled to how fast its value changes):
   - **Memory:** `host_statistics64` VM info, `vm.swapusage`, `kern.memorystatus_vm_pressure_level`. Sizes are binary (GB = 2³⁰); there's no cheap memory-type source, so it reads "unified memory".
@@ -144,6 +146,11 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **Thermal:**
     - SMC read-only calls, with sensor key tables per Apple silicon generation. Unknown keys are counted, never given guessed names.
     - IOHID is a fallback only
+  - **Bluetooth:**
+    - `system_profiler SPBluetoothDataType -json` lists every paired device, including AirPods Left/Right/Case levels and firmware. IOKit's `AppleDeviceManagementHIDEventService` adds the battery level of Apple's Magic peripherals.
+    - IOBluetooth isn't used: it triggers the Bluetooth permission prompt and has no AirPods levels.
+    - Reads run in the background: every 30 s while the tab is on screen, every 5 min while Low battery notifications are on, otherwise never.
+    - `ps` self-cost misses CPU spent in child processes such as `system_profiler`, so readers that spawn one log its cost.
 - **App kinds** (`AppGrouping`):
   - **app:** at least one process in the group is a Dock (regular) app.
   - **system:** every process belongs to another user, or the bundle or executable is under `/System`, `/usr` (not `/usr/local`), `/bin`, `/sbin`, or `/Library/Apple`.
@@ -166,6 +173,20 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - **Process cache:** cached details are keyed by pid, start time, and name, because `exec` (e.g. `env` → `python3`) keeps the pid and start time. Framework Python runs as `Python.app` inside `Python.framework`, so the app-bundle exclusion skips `.framework/` paths.
   - **Idle:** a new inbound connection on the server's ports since the previous read (every 12 s), or CPU at or above 3% of a core, counts as activity; watchers are judged by CPU alone. Last-active times and Ignore persist in Preferences (`projects.*`).
   - **Stop:** it sends only SIGTERM, and only after re-checking that the pid still belongs to the user and has the same start time.
-- **Side effects while verifying:** check actions (quit, stop, open, reveal, volume, login items) through `RecordingActions` in tests. In the running app, never quit, stop, signal, or open anything you didn't create yourself, and don't change system state (login items, output device, volume) without restoring it.
+- **Alerts (`AlertEngine`):**
+  - Per-app rules run at most every 4 s (`AlertEngine.appInterval`) on the cached `Monitor.apps` grouping. Their rolling windows live in memory, at most 60 buckets per app and rule, and are never queried from SQLite.
+  - App CPU thresholds are stored in **cores** (0.8 = 80% of one core) and only displayed per CPU mode, so flipping the mode never changes when a rule fires.
+  - macOS's own processes (`AppKind.system`) never alert. The 90% system rule drives only the menu bar badge.
+  - Alerts are delivered through `SystemActions`; an `Alert` carries an `AlertTarget` (`.app` or `.tab`) for its "Show" action. Settings keys are `alerts.<rule>.enabled` and `alerts.<rule>.threshold`.
+- **Releases and updates:**
+  - Sparkle 2 checks `releases/latest/download/appcast.xml`. Dev builds never start it.
+  - `.github/workflows/release.yml` runs only on `v*` tags and calls `scripts/release/*.sh`. The version comes from the tag. It refuses to ship while `SUPublicEDKey` is still the placeholder.
+  - Sparkle accepts an update when its EdDSA signature is valid, so losing the EdDSA key breaks updates. The stable certificate is what keeps granted permissions across updates.
+  - The hardened runtime is off: a self-signed certificate has no Team ID, so library validation would refuse Sparkle.framework.
+  - The maintainer's one-time setup is `scripts/release/setup-wizard.sh`.
+- **Side effects while verifying:**
+  - Check actions (quit, stop, open, reveal, volume, output device, login items, notifications) through `RecordingActions` in tests.
+  - In the running app, never quit, stop, signal, or open anything you didn't create yourself. Don't change system state (login items, output device, volume) without restoring it. Never request a permission or post a notification.
+  - Never push tags, create releases, set repository secrets or variables, or touch a keychain. Those are the maintainer's steps.
 - **Chart times** use 24-hour `HH:mm` everywhere (`Format.time`).
 - **Name:** the product is **MoniMac**; the repo is `moni-mac`. "Vitals" was its old name.
