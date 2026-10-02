@@ -345,11 +345,10 @@ struct AlertTests {
         let alert = try #require(delivered.first)
 
         let target = try #require(AlertNotification.target(from: AlertNotification.userInfo(for: alert)))
-        #expect(target.appID == Self.xcodeID)
-        #expect(target.column == .cpu)
+        #expect(target == .app(Self.xcodeID, column: .cpu))
         #expect(AlertNotification.target(from: ["app": "x"]) == nil)
         // "Quit Xcode" goes through the quit sheet, which acts only on the app's own process.
-        #expect(monitor.quitSheet(for: target.appID)?.title == "Quit Xcode?")
+        #expect(monitor.quitSheet(for: Self.xcodeID)?.title == "Quit Xcode?")
     }
 
     @Test func appsThatCannotBeQuitOfferOnlyShow() throws {

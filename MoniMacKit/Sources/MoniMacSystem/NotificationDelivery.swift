@@ -49,7 +49,7 @@ final class NotificationDelivery {
         content.subtitle = alert.chip
         content.body = alert.body
         content.categoryIdentifier = category
-        content.threadIdentifier = alert.rule.rawValue
+        content.threadIdentifier = alert.threadID
         content.userInfo = AlertNotification.userInfo(for: alert)
         if let icon = alert.bundlePath.flatMap(Self.iconAttachment) { content.attachments = [icon] }
         // One notification per condition: a re-armed condition replaces its earlier banner.
@@ -75,11 +75,11 @@ final class NotificationDelivery {
 
     private func category(for alert: Alert) -> UNNotificationCategory {
         let show = UNNotificationAction(identifier: AlertNotification.showAction, title: "Show", options: [.foreground])
-        guard let quitTitle = alert.quitTitle else {
+        guard let quitTitle = alert.quitTitle, let app = alert.appID else {
             return UNNotificationCategory(identifier: "alert.show", actions: [show], intentIdentifiers: [])
         }
         let quit = UNNotificationAction(identifier: AlertNotification.quitAction, title: quitTitle, options: [.foreground])
-        return UNNotificationCategory(identifier: "alert.quit.\(alert.appID)", actions: [quit, show], intentIdentifiers: [])
+        return UNNotificationCategory(identifier: "alert.quit.\(app)", actions: [quit, show], intentIdentifiers: [])
     }
 
     /// Registers a category the first time it's needed. Registration is asynchronous, so the very first

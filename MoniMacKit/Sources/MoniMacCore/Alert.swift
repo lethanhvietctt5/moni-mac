@@ -1,12 +1,14 @@
 import Foundation
 
-/// One notification: a per-app condition that just started, worded for the user at the moment it fired.
+/// One notification: a condition that just started, worded for the user at the moment it fired.
 public struct Alert: Equatable, Sendable, Identifiable {
-    /// The condition's stable identity, "<rule>:<app id>". It alerts once until the condition clears.
-    public var id: String { "\(rule.rawValue):\(appID)" }
-    public var rule: AlertRule
-    public var appID: AppUsage.ID
-    public var appName: String
+    /// The condition's stable identity, "<rule>:<subject>", e.g. "appCPU:/Applications/Xcode.app". It alerts
+    /// once until the condition clears, and a re-armed condition's banner replaces the earlier one.
+    public var id: String
+    /// Notification Center groups banners by this: the rule's name.
+    public var threadID: String
+    /// The per-app rule that fired; nil for the Bluetooth low-battery rule.
+    public var rule: AlertRule?
     /// The app's bundle, for its icon.
     public var bundlePath: String?
     /// e.g. "Xcode is using a lot of CPU".
@@ -15,10 +17,41 @@ public struct Alert: Equatable, Sendable, Identifiable {
     public var body: String
     /// The figure, e.g. "412%", "+2.1 GB", "24 MB/s".
     public var chip: String
-    /// "Quit Xcode", or nil when the app isn't a running regular app (only Show is offered then).
+    /// "Quit Xcode", or nil when there's no running regular app to quit (only Show is offered then).
     public var quitTitle: String?
-    /// Where "Show" lands: the Overview List sorted by this column, with the app expanded.
-    public var showColumn: OverviewListColumn
+    /// Where "Show" lands.
+    public var target: AlertTarget
+
+    public init(id: String, threadID: String, rule: AlertRule? = nil, bundlePath: String? = nil, title: String,
+                body: String, chip: String, quitTitle: String? = nil, target: AlertTarget) {
+        self.id = id
+        self.threadID = threadID
+        self.rule = rule
+        self.bundlePath = bundlePath
+        self.title = title
+        self.body = body
+        self.chip = chip
+        self.quitTitle = quitTitle
+        self.target = target
+    }
+
+    /// The app a per-app alert is about, which "Quit <App>" targets.
+    public var appID: AppUsage.ID? {
+        if case .app(let id, _) = target { id } else { nil }
+    }
+
+    /// The List column a per-app alert's "Show" sorts by.
+    public var showColumn: OverviewListColumn? {
+        if case .app(_, let column) = target { column } else { nil }
+    }
+}
+
+/// Where a notification's "Show" (or clicking the banner) lands.
+public enum AlertTarget: Equatable, Sendable {
+    /// Overview › List sorted by `column`, with the app expanded.
+    case app(AppUsage.ID, column: OverviewListColumn)
+    /// A window tab, e.g. Bluetooth for a low battery.
+    case tab(WindowTab)
 }
 
 /// The menu bar warning badge, shown while the whole CPU has been above 90% for 2 minutes.
@@ -40,14 +73,18 @@ public enum AlertNotification {
 
     /// The notification's payload.
     public static func userInfo(for alert: Alert) -> [String: String] {
-        ["app": alert.appID, "column": alert.showColumn.rawValue]
+        switch alert.target {
+        case .app(let app, let column): ["app": app, "column": column.rawValue]
+        case .tab(let tab): ["tab": tab.rawValue]
+        }
     }
 
-    /// The app and the List column a notification's actions act on, or nil for a payload MoniMac didn't write.
-    public static func target(from userInfo: [AnyHashable: Any]) -> (appID: AppUsage.ID, column: OverviewListColumn)? {
+    /// Where a notification's actions act, or nil for a payload MoniMac didn't write.
+    public static func target(from userInfo: [AnyHashable: Any]) -> AlertTarget? {
+        if let tab = (userInfo["tab"] as? String).flatMap(WindowTab.init(rawValue:)) { return .tab(tab) }
         guard let app = userInfo["app"] as? String,
               let column = (userInfo["column"] as? String).flatMap(OverviewListColumn.init(rawValue:)) else { return nil }
-        return (app, column)
+        return .app(app, column: column)
     }
 }
 
@@ -76,9 +113,9 @@ extension Alert {
             title = "\(name) is using the network heavily"
             body = "Sustained \(chip) for \(minutes(event.rule.duration))."
         }
-        return Alert(rule: event.rule, appID: app.id, appName: name, bundlePath: app.bundlePath, title: title,
-                     body: body, chip: chip, quitTitle: app.canQuit ? "Quit \(name)" : nil,
-                     showColumn: event.rule.column)
+        return Alert(id: "\(event.rule.rawValue):\(app.id)", threadID: event.rule.rawValue, rule: event.rule,
+                     bundlePath: app.bundlePath, title: title, body: body, chip: chip,
+                     quitTitle: app.canQuit ? "Quit \(name)" : nil, target: .app(app.id, column: event.rule.column))
     }
 
     private static func minutes(_ seconds: TimeInterval) -> String {
@@ -127,6 +164,8 @@ struct AlertState {
     var busiest: AppUsage?
     /// Whether this session has asked for notification permission yet.
     var hasRequestedPermission = false
+    /// Low-battery episodes of Bluetooth devices.
+    var bluetooth = BluetoothLowBatteryRule()
 }
 
 extension Monitor {
@@ -172,7 +211,7 @@ extension Monitor {
     }
 
     /// Asks once per session, and only on first use: when an alert first fires or a rule is turned on.
-    private func requestNotificationPermission() {
+    func requestNotificationPermission() {
         guard !alerts.hasRequestedPermission else { return }
         alerts.hasRequestedPermission = true
         actions.requestNotificationAuthorization()

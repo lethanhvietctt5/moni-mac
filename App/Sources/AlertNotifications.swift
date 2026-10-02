@@ -4,13 +4,13 @@ import MoniMacCore
 
 /// Handles the buttons on MoniMac's notifications. "Quit <App>" opens the quit sheet as a standalone panel
 /// (it never quits by itself); "Show", or clicking the banner, opens the window on Overview › List sorted by
-/// the alert's figure, with the app expanded.
+/// the alert's figure, with the app expanded, or on the alert's tab (Bluetooth for a low battery).
 @MainActor
 final class AlertNotificationResponder: NSObject, UNUserNotificationCenterDelegate {
     private let quitSheet: QuitSheetPresenter
-    private let show: (OverviewListColumn, AppUsage.ID) -> Void
+    private let show: (AlertTarget) -> Void
 
-    init(quitSheet: QuitSheetPresenter, show: @escaping (OverviewListColumn, AppUsage.ID) -> Void) {
+    init(quitSheet: QuitSheetPresenter, show: @escaping (AlertTarget) -> Void) {
         self.quitSheet = quitSheet
         self.show = show
     }
@@ -23,9 +23,9 @@ final class AlertNotificationResponder: NSObject, UNUserNotificationCenterDelega
         await MainActor.run {
             switch action {
             case AlertNotification.quitAction:
-                quitSheet.present(appID: target.appID, over: nil)
+                if case .app(let app, _) = target { quitSheet.present(appID: app, over: nil) }
             case AlertNotification.showAction, UNNotificationDefaultActionIdentifier:
-                show(target.column, target.appID)
+                show(target)
             default:
                 break
             }
