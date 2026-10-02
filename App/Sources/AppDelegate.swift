@@ -12,16 +12,23 @@ private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", categor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Development aid: `--mute-notifications` evaluates alerts but only logs them: no permission prompt, no banners.
     private static let notificationsMuted = CommandLine.arguments.contains("--mute-notifications")
+    /// Development aid: `--isolated-storage` keeps MoniMac away from the user's data, for the UI tests:
+    /// history lives in memory, settings (including Bluetooth and Sound state) in the `isolatedSuite`
+    /// defaults suite, no storage scan is loaded or saved, and window and menu bar positions aren't saved.
+    static let isolatedStorage = CommandLine.arguments.contains("--isolated-storage")
+    static let isolatedSuite = "io.github.lethanhvietctt5.MoniMac.isolated"
+    /// The user's settings, or the isolated suite.
+    private static let settings = isolatedStorage ? UserDefaults(suiteName: isolatedSuite) ?? .standard : .standard
     /// Development aid: `--bluetooth-fixture <path>` reads Bluetooth devices from a saved
     /// `system_profiler SPBluetoothDataType -json` file, to check the tab with devices this Mac doesn't have.
     /// Per-app volume's Core Audio taps, shared by the sampler (which reads audio through it) and the
     /// actions (which apply gains through it). It does nothing until something needs audio.
     private let audio = AudioMixer()
-    private lazy var sampler = HostSampler(storageScanCache: .standard,
+    private lazy var sampler = HostSampler(storageScanCache: Self.isolatedStorage ? nil : .standard,
                                            bluetoothFixture: Self.launchValue("--bluetooth-fixture").map(URL.init(fileURLWithPath:)),
                                            audio: audio)
     private lazy var monitor = Monitor(
-        sampler: sampler, history: Self.makeHistory(), preferences: Preferences(),
+        sampler: sampler, history: Self.makeHistory(), preferences: Preferences(defaults: Self.settings),
         actions: WorkspaceActions(notificationsMuted: Self.notificationsMuted, audio: audio)
     )
     private var soundSelfTest: SoundSelfTest?
@@ -50,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func main() {
         let app = NSApplication.shared
+        ProjectFolderAccess.defaults = settings
         let delegate = AppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
@@ -216,6 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// History lives in Application Support. If it can't be opened, MoniMac keeps working in memory.
     private static func makeHistory() -> MetricsHistory {
+        if isolatedStorage { return try! MetricsHistory(.inMemory) }
         let url = AppFiles.directory.appending(path: "History.sqlite")
         do {
             return try MetricsHistory(.file(url))

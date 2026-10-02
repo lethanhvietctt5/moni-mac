@@ -116,7 +116,7 @@ final class WindowTests: MoniMacUITestCase {
         chip.click()
         XCTAssertTrue(waitUntil(timeout: 5) { !window.buttons["sidebar.gpu"].exists }, "GPU is still in the sidebar")
         XCTAssertTrue(waitUntil(timeout: 5) { chip.label == "Show GPU" }, "The chip reads \"\(chip.label)\"")
-        XCTAssertTrue((MoniMacSettings.value("layout.tabs.hidden") as? [String] ?? []).contains("gpu"))
+        XCTAssertTrue((PreferenceDomain.isolated.value("layout.tabs.hidden") as? [String] ?? []).contains("gpu"))
 
         chip.click()
         XCTAssertTrue(waitUntil(timeout: 5) { window.buttons["sidebar.gpu"].exists }, "GPU didn't come back")
@@ -156,38 +156,57 @@ final class WindowTests: MoniMacUITestCase {
         return false
     }
 
-    /// 09: hovering Power Draw shows a tooltip over MoniMac's window.
+    /// 09: hovering Power Draw, the "Watts (est.)" header, and an app's watts each shows a tooltip over
+    /// MoniMac's window. The throwaway app keeps a core busy so at least one app shows watts.
     ///
-    /// What it can't check:
-    /// - The tooltip's text ("Estimated …"). macOS exposes the tooltip to XCUITest as a help tag with a
-    ///   frame, but with no title, label, value, or children, and reading it from pixels needs a screenshot,
-    ///   which needs the screen capture the scheme turns off (see `MoniMacUITestCase`). `BatteryDetailTests`
-    ///   cover the text.
-    /// - An app's watts. Hovering a watts value, or the "Watts (est.)" header, showed no tooltip within
-    ///   10 s, while Power Draw's appears in about a second. Whether a person sees it is a manual check.
+    /// What it can't check: the tooltip's text ("Estimated …"). macOS exposes the tooltip to XCUITest as a
+    /// help tag with a frame, but with no title, label, value, or children, and reading it from pixels needs
+    /// a screenshot, which needs the screen capture the scheme turns off (see `MoniMacUITestCase`).
+    /// `BatteryDetailTests` cover the text.
     @MainActor
-    func testPowerDrawShowsTooltipOnHover() throws {
-        let app = launchMoniMac(["--show-window", "--tab", "battery"])
+    func testPowerFiguresShowTooltipsOnHover() throws {
+        _ = try launchDummy()
+        // A slower refresh: a tooltip that hasn't shown yet doesn't survive the re-render a refresh causes.
+        let app = launchMoniMac(["--show-window", "--tab", "battery"], settings: ["general.refreshInterval": 5])
         let window = mainWindow(of: app)
         let powerDraw = staticText("Power Draw", in: window)
         XCTAssertTrue(powerDraw.waitForExistence(timeout: 10), "No Power Draw on the Battery tab")
-        let tip = tooltipFrame(hovering: powerDraw, in: window, app: app)
-        attach("Power Draw at \(powerDraw.frame): tooltip at \(tip)", named: "Tooltip frame")
+        let header = staticText("Watts (est.)", in: window)
+        XCTAssertTrue(header.waitForExistence(timeout: 10), "No Watts (est.) header")
+        let watts = window.staticTexts.matching(identifier: "battery.energy.watts").firstMatch
+        XCTAssertTrue(watts.waitForExistence(timeout: 30), "No app shows watts")
+        var seen: [String] = []
+        for (name, element) in [("Power Draw", powerDraw), ("Watts (est.)", header), ("App watts", watts)] {
+            let tip = tooltipFrame(hovering: element, in: window, app: app)
+            seen.append("\(name) at \(element.frame): tooltip at \(tip.map { "\($0)" } ?? "none")")
+        }
+        attach(seen.joined(separator: "\n"), named: "Tooltip frames")
     }
 
-    /// Moves the pointer off any tooltip, hovers `element`, and returns the frame of the tooltip that appears.
+    /// Hovers `element` and returns the frame of the tooltip that appears next to it. A tooltip that hasn't
+    /// shown yet doesn't survive a refresh, so the pointer moves off and back on, up to eight times.
     @MainActor
-    private func tooltipFrame(hovering element: XCUIElement, in window: XCUIElement, app: XCUIApplication) -> CGRect {
-        let tag = app.helpTags.firstMatch
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.02)).hover()
-        XCTAssertTrue(waitUntil(timeout: 10) { !tag.exists }, "A tooltip shows before hovering")
-        element.hover()
-        XCTAssertTrue(tag.waitForExistence(timeout: 10), "No tooltip appeared over \(element.frame)")
-        let frame = tag.frame
-        XCTAssertTrue(window.frame.contains(frame), "The tooltip isn't over MoniMac's window")
-        // macOS puts a tooltip just below the pointer, which rests in the element's middle.
-        XCTAssertLessThan(abs(frame.minY - element.frame.midY), 60, "The tooltip isn't next to the hovered element")
-        return frame
+    private func tooltipFrame(hovering element: XCUIElement, in window: XCUIElement, app: XCUIApplication) -> CGRect? {
+        // macOS puts a tooltip just below the pointer, which rests in the element's middle (near the
+        // window's edge it can extend past the window).
+        let target = element.frame
+        let nearby = { () -> CGRect? in
+            app.helpTags.allElementsBoundByIndex.map { $0.frame }.first {
+                abs($0.minY - target.midY) < 60 && abs($0.minX - target.midX) < 300
+            }
+        }
+        for _ in 0..<8 {
+            // The empty sidebar between the tabs and Settings, where nothing has a tooltip.
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.8)).hover()
+            _ = waitUntil(timeout: 3) { nearby() == nil }
+            // macOS shows tooltips only in the active app, and the throwaway app can take activation.
+            app.activate()
+            element.hover()
+            var frame: CGRect?
+            if waitUntil(timeout: 7, { frame = nearby(); return frame != nil }) { return frame }
+        }
+        XCTFail("No tooltip appeared next to \(target)")
+        return nil
     }
 
     // MARK: Share card (19)

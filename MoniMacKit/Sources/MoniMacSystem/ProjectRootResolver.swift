@@ -12,13 +12,17 @@ import MoniMacCore
 public enum ProjectFolderAccess {
     static let key = "projects.protectedFoldersAllowed"
 
+    /// Where the answer is remembered: the app's settings. Set once at launch, before anything reads it
+    /// (`--isolated-storage` points it at a separate suite).
+    nonisolated(unsafe) public static var defaults = UserDefaults.standard
+
     /// Called when the Projects tab appears. Remembered across launches.
     public static func allow() {
-        UserDefaults.standard.set(true, forKey: key)
+        defaults.set(true, forKey: key)
     }
 
     static var isAllowed: Bool {
-        UserDefaults.standard.bool(forKey: key)
+        defaults.bool(forKey: key)
     }
 
     /// Whether reading under `path` can raise a privacy prompt.

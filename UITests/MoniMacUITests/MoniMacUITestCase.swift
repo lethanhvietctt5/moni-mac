@@ -3,7 +3,10 @@ import XCTest
 
 /// Shared plumbing for the UI tests. Every test launches MoniMac through `launchMoniMac`, which:
 /// - always passes `--mute-notifications`, so no permission prompt or banner appears;
-/// - snapshots MoniMac's settings and restores them exactly once MoniMac has quit, even on failure.
+/// - always passes `--isolated-storage`, so MoniMac keeps history in memory and its settings in a separate
+///   suite, which the test fills before launch and empties afterwards;
+/// - snapshots the user's own MoniMac settings and restores them exactly once MoniMac has quit, as a
+///   safety net for anything AppKit writes there (e.g. the save panel's last folder).
 ///
 /// The tests take no screenshots. Xcode's automatic screen capture records the whole screen, including the
 /// user's other apps, so the scheme turns it off; without it `XCUIElement.screenshot()` fails too. Tests
@@ -17,20 +20,23 @@ class MoniMacUITestCase: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Launches MoniMac with `arguments` (dev flags such as `--show-popover`) and registers its teardown:
-    /// quit MoniMac, then put its settings back as they were.
+    /// Launches MoniMac with `arguments` (dev flags such as `--show-popover`) and `settings` (preference
+    /// keys, e.g. `menuBar.memory.enabled`), and registers its teardown: quit MoniMac, empty the isolated
+    /// settings, and put the user's settings back as they were.
     @MainActor
     @discardableResult
-    func launchMoniMac(_ arguments: [String] = []) -> XCUIApplication {
-        let settings = MoniMacSettings.snapshot()
+    func launchMoniMac(_ arguments: [String] = [], settings: [String: Any] = [:]) -> XCUIApplication {
+        let userSettings = PreferenceDomain.user.snapshot()
+        PreferenceDomain.isolated.replace(with: settings)
         let app = XCUIApplication()
-        app.launchArguments = ["--mute-notifications"] + arguments
+        app.launchArguments = ["--mute-notifications", "--isolated-storage"] + arguments
         addTeardownBlock { @MainActor in
             if app.state != .notRunning {
                 app.terminate()
                 _ = app.wait(for: .notRunning, timeout: 10)
             }
-            MoniMacSettings.restore(settings)
+            PreferenceDomain.isolated.replace(with: [:])
+            PreferenceDomain.user.replace(with: userSettings)
         }
         app.launch()
         return app
@@ -102,8 +108,9 @@ class MoniMacUITestCase: XCTestCase {
     // MARK: The throwaway app
 
     /// Launches MoniMacUITestDummy, a throwaway regular app built next to the test runner that keeps one
-    /// core busy (so it tops Top Apps and shows watts), so quit tests never touch the user's apps. It's launched through LaunchServices (so macOS sees it as its own app,
-    /// not a child of the runner) and without activating, so it doesn't close MoniMac's popover.
+    /// core busy (so it tops Top Apps and shows watts), so quit tests never touch the user's apps. It's
+    /// launched through LaunchServices (so macOS sees it as its own app, not a child of the runner) and
+    /// without activating, so it doesn't close MoniMac's popover.
     /// It's force-quit in teardown if a test left it running.
     @MainActor
     func launchDummy() throws -> NSRunningApplication {
@@ -132,30 +139,36 @@ class MoniMacUITestCase: XCTestCase {
     }
 }
 
-/// MoniMac's settings domain. The runner is sandboxed; its entitlements grant this one domain.
-enum MoniMacSettings {
-    private static var domain: CFString { MoniMacUITestCase.bundleID as CFString }
+/// A preferences domain the sandboxed runner may read and write (see its entitlements).
+struct PreferenceDomain {
+    /// The user's own MoniMac settings.
+    static let user = PreferenceDomain(name: MoniMacUITestCase.bundleID)
+    /// The settings MoniMac uses with `--isolated-storage` (`AppDelegate.isolatedSuite`).
+    static let isolated = PreferenceDomain(name: "io.github.lethanhvietctt5.MoniMac.isolated")
 
-    private static var keys: [String] {
+    let name: String
+    private var domain: CFString { name as CFString }
+
+    private var keys: [String] {
         CFPreferencesCopyKeyList(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String] ?? []
     }
 
-    static func snapshot() -> [String: Any] {
+    func snapshot() -> [String: Any] {
         CFPreferencesAppSynchronize(domain)
         return CFPreferencesCopyMultiple(keys as CFArray, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
             as? [String: Any] ?? [:]
     }
 
-    /// Puts every key back as it was and removes keys the test added (e.g. status item positions).
-    static func restore(_ snapshot: [String: Any]) {
+    /// Makes the domain hold exactly `values`: sets them and removes every other key.
+    func replace(with values: [String: Any]) {
         CFPreferencesAppSynchronize(domain)
-        let added = keys.filter { snapshot[$0] == nil }
-        CFPreferencesSetMultiple(snapshot as CFDictionary, added as CFArray, domain, kCFPreferencesCurrentUser,
+        let others = keys.filter { values[$0] == nil }
+        CFPreferencesSetMultiple(values as CFDictionary, others as CFArray, domain, kCFPreferencesCurrentUser,
                                  kCFPreferencesAnyHost)
         CFPreferencesAppSynchronize(domain)
     }
 
-    static func value(_ key: String) -> Any? {
+    func value(_ key: String) -> Any? {
         CFPreferencesAppSynchronize(domain)
         return CFPreferencesCopyAppValue(key as CFString, domain)
     }

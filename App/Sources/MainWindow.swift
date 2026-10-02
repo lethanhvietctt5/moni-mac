@@ -100,7 +100,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             }))
         window.delegate = self
         window.center()
-        window.setFrameAutosaveName("MoniMac.MainWindow")
+        if !AppDelegate.isolatedStorage { window.setFrameAutosaveName("MoniMac.MainWindow") }
         return window
     }
 

@@ -2,10 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- The UI test runner is sandboxed. It snapshots MoniMac's settings before each test and restores them after. -->
+	<!-- The UI test runner is sandboxed. It fills MoniMac's isolated settings suite before each test and empties it after, and restores the user's MoniMac settings as a safety net. -->
 	<key>com.apple.security.temporary-exception.shared-preference.read-write</key>
 	<array>
 		<string>io.github.lethanhvietctt5.MoniMac</string>
+		<string>io.github.lethanhvietctt5.MoniMac.isolated</string>
 	</array>
 	<!-- The share card test saves into a fresh folder here and reads the PNG back. -->
 	<key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>

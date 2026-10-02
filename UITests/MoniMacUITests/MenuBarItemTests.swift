@@ -2,15 +2,16 @@ import XCTest
 
 /// Tickets 05, 07, 10: Memory, Network, and Temperature menu bar items can be shown next to CPU.
 final class MenuBarItemTests: MoniMacUITestCase {
-    /// The items are turned on for this launch only, through launch arguments (the argument domain), so
-    /// the user's settings are never written.
+    /// The items are turned on in the isolated settings, so the user's settings are never written. GPU
+    /// stays off (the isolated settings start empty), so its "%" can't be mistaken for CPU's.
     @MainActor
     func testMemoryNetworkAndTemperatureItemsCanBeShown() throws {
-        let metrics = ["cpu", "memory", "network", "temperature"]
-        // GPU is turned off, so its "%" can't be mistaken for CPU's.
-        let arguments = metrics.flatMap { ["-menuBar.\($0).enabled", "<true/>", "-menuBar.\($0).style", "value"] }
-            + ["-menuBar.gpu.enabled", "<false/>"]
-        let app = launchMoniMac(arguments)
+        var settings: [String: Any] = [:]
+        for metric in ["cpu", "memory", "network", "temperature"] {
+            settings["menuBar.\(metric).enabled"] = true
+            settings["menuBar.\(metric).style"] = "value"
+        }
+        let app = launchMoniMac(settings: settings)
         // Each item's text: CPU "12%", Memory "8.2 GB", Network "1.2 MB/s", Temperature "58°C".
         let formats = [
             "cpu": #"^\d+(\.\d+)?%$"#,
