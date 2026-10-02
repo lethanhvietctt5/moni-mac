@@ -13,6 +13,15 @@ const sections = [
 
 export function Nav() {
   const [open, setOpen] = useState(false)
+  // Transparent over the hero; frosted once the page scrolls under it.
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -22,7 +31,13 @@ export function Nav() {
   }, [open])
 
   return (
-    <header className="scheme-dark sticky top-0 z-50 border-b border-white/[0.08] bg-[#08090d]/90 text-ink backdrop-blur-xl backdrop-saturate-150">
+    <header
+      className={`scheme-dark fixed inset-x-0 top-0 z-50 border-b text-ink transition-[background-color,border-color,backdrop-filter] duration-300 ${
+        scrolled || open
+          ? 'border-white/[0.08] bg-[#08090d]/80 backdrop-blur-xl backdrop-saturate-150'
+          : 'border-transparent bg-transparent'
+      }`}
+    >
       <nav aria-label="Main" className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <a href="#top" className="flex items-center gap-2 font-semibold tracking-tight">
           <img src="/icon-256.webp" alt="" width={28} height={28} className="size-7" />

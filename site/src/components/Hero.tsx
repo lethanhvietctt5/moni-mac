@@ -20,7 +20,7 @@ export function Hero() {
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#07080c]" />
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-24 sm:pb-28">
+      <div className="mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6 sm:pt-38 sm:pb-28">
         <m.div
           className="mx-auto max-w-3xl text-center"
           initial={{ opacity: 0, y: 16 }}
