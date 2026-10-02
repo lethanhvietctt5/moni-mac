@@ -44,10 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         app.run()
     }
 
+    /// Receives notification buttons, including one that launches MoniMac, so it's set before launch finishes.
+    /// Setting it never prompts.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        if !Self.notificationsMuted { UNUserNotificationCenter.current().delegate = alertResponder }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = Self.makeMainMenu()
-        // Receives notification buttons, including the one that launched MoniMac. Setting it never prompts.
-        if !Self.notificationsMuted { UNUserNotificationCenter.current().delegate = alertResponder }
         statusBar = StatusBarController(
             monitor: monitor,
             quitSheet: quitSheet,

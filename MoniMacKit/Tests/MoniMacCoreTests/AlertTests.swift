@@ -153,6 +153,13 @@ struct AlertTests {
         #expect(alert.showColumn == .memory)
     }
 
+    @Test func aSteadyLeakOfExactlyOneGigabytePerTenMinutesFires() throws {
+        let (monitor, sampler) = try makeMonitor()
+        run(monitor, sampler, for: 1800) { t in Load(xcodeMemory: (2 + 0.1 * t / 60) * gib) }
+
+        #expect(delivered.map(\.rule) == [.memoryGrowth])
+    }
+
     @Test func memoryGrowthDoesNotFireBelowItsThresholdOrOverLongerThanTenMinutes() throws {
         let (monitor, sampler) = try makeMonitor()
         // +0.9 GB in 5 minutes, then flat.
@@ -453,6 +460,8 @@ struct AlertTests {
         var rows = monitor.settingsPanel(version: "1.0").alertRules
         #expect(rows.map(\.menuTitle) == ["6.7%", "Off", "10 GB", "10 MB/s"])
         #expect(rows[1].options.allSatisfy { !$0.isSelected })
+        #expect(rows.map(\.isOffSelected) == [false, true, false, false])
+        #expect(rows.map(\.isMenuDisabled) == [false, false, true, true])
         // Disk has its own switch: its menu still shows the threshold it will use.
         #expect(rows[2].options.filter(\.isSelected).map(\.title) == ["10 GB"])
 

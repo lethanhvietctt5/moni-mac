@@ -242,7 +242,7 @@ private struct ThresholdPopup: View {
                 Button {
                     monitor.setAlertEnabled(false, for: row.rule)
                 } label: {
-                    if row.isEnabled { Text("Off") } else { Label("Off", systemImage: "checkmark") }
+                    if row.isOffSelected { Label("Off", systemImage: "checkmark") } else { Text("Off") }
                 }
             }
         } label: {
@@ -263,8 +263,8 @@ private struct ThresholdPopup: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .disabled(row.hasSwitch && !row.isEnabled)
-        .opacity(row.hasSwitch && !row.isEnabled ? 0.5 : 1)
+        .disabled(row.isMenuDisabled)
+        .opacity(row.isMenuDisabled ? 0.5 : 1)
     }
 }
 

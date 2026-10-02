@@ -103,11 +103,14 @@ public struct AlertRuleRow: Equatable, Sendable, Identifiable {
     /// e.g. "Possible leak: +1 GB within 10 minutes".
     public var description: String
     public var isEnabled: Bool
-    public var threshold: Double
     /// The current threshold, e.g. "80%".
     public var thresholdTitle: String
     /// What the threshold menu reads: the threshold, or "Off" for a rule turned off from that menu.
     public var menuTitle: String
+    /// Whether the menu's "Off" entry is checked (rules without a switch only).
+    public var isOffSelected: Bool
+    /// A rule with a switch keeps its threshold menu dimmed while it's off.
+    public var isMenuDisabled: Bool
     /// The thresholds offered, always including the current one.
     public var options: [Option]
     /// Turned on and off with a switch beside the threshold, as the design draws disk and network.
@@ -202,9 +205,10 @@ extension Monitor {
                 label: label,
                 description: description,
                 isEnabled: settings.isEnabled,
-                threshold: settings.threshold,
                 thresholdTitle: title,
                 menuTitle: offInMenu ? "Off" : title,
+                isOffSelected: offInMenu,
+                isMenuDisabled: hasSwitch && !settings.isEnabled,
                 options: values.map {
                     AlertRuleRow.Option(value: $0, title: format.threshold($0, for: rule),
                                         isSelected: !offInMenu && $0 == settings.threshold)

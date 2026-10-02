@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Cost: the system rule reads each snapshot's CPU total. Per-app rules run at most every `appInterval`
 /// (the process list's own cadence) over the app grouping the Monitor already caches, and keep their
-/// rolling windows in memory as a few one-minute buckets per app: nothing is read back from history.
+/// rolling windows in memory as at most 60 buckets per app and rule: nothing is read back from history.
 struct AlertEngine {
     /// How often per-app rules run: the process list refreshes about every 4 s, so evaluating more often
     /// would only see the same figures again.
@@ -151,17 +151,17 @@ private struct AppTracker {
     }
 }
 
-/// Values over a rolling window, kept as one-minute buckets so memory stays bounded however often values arrive.
-/// The window is honored conservatively: only buckets that start inside it count, so it spans its length less
-/// up to one bucket, never more.
+/// Values over a rolling window, kept in 60 buckets so memory stays bounded however often values arrive.
+/// Every bucket that overlaps the window counts, so a rule never misses its threshold at the edge: the window
+/// spans its length plus at most one bucket (10 s on 10 minutes, 1 minute on an hour).
 struct RollingBuckets {
-    static let bucketWidth: TimeInterval = 60
-
     let window: TimeInterval
+    private let bucketWidth: TimeInterval
     private var buckets: [(start: TimeInterval, value: Double)] = []
 
     init(window: TimeInterval) {
         self.window = window
+        bucketWidth = window / 60
     }
 
     var isEmpty: Bool { buckets.isEmpty }
@@ -170,14 +170,14 @@ struct RollingBuckets {
 
     mutating func add(_ value: Double, at now: Date, combine: (Double, Double) -> Double) {
         let time = now.timeIntervalSinceReferenceDate
-        let start = (time / Self.bucketWidth).rounded(.down) * Self.bucketWidth
+        let start = (time / bucketWidth).rounded(.down) * bucketWidth
         if let last = buckets.indices.last, buckets[last].start == start {
             buckets[last].value = combine(buckets[last].value, value)
         } else {
             buckets.append((start, value))
         }
         let oldest = time - window
-        if let first = buckets.firstIndex(where: { $0.start >= oldest }), first > 0 {
+        if let first = buckets.firstIndex(where: { $0.start + bucketWidth > oldest }), first > 0 {
             buckets.removeFirst(first)
         }
     }
