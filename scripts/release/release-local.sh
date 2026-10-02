@@ -57,6 +57,9 @@ fi
 git tag "$TAG"
 git push --quiet origin "$TAG"
 # --latest: the feed URL (releases/latest/download/appcast.xml) follows the release GitHub marks as latest.
-gh release create "$TAG" "$DMG" "$DIST/appcast.xml" --repo "$REPO" --verify-tag --latest \
+# MoniMac.dmg is the same image under a fixed name, so releases/latest/download/MoniMac.dmg always fetches the
+# newest version (the website and the Terminal installer link to it). Sparkle uses the versioned name.
+cp "$DMG" "$DIST/MoniMac.dmg"
+gh release create "$TAG" "$DMG" "$DIST/MoniMac.dmg" "$DIST/appcast.xml" --repo "$REPO" --verify-tag --latest \
     --title "MoniMac $VERSION" --notes-file "$DIST/release-notes.md"
 echo "Published: https://github.com/$REPO/releases/tag/$TAG"
