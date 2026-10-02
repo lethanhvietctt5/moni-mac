@@ -12,7 +12,7 @@
 - The window CPU tab uses the design's single CPU color for all cores; the popover keeps teal for efficiency cores, as its design does.
 - "Open MoniMac" in the popover lives on the Overview tab (ticket 11). The popover header's window button is wired now.
 
-- [ ] The popover's open-window button and "Open MoniMac" open the main window on the CPU tab (both open the main window, clicked by UI tests `PopoverTests.testOpenWindowButtonOpensMainWindow` and `testOverviewOpenMoniMacLinkOpensMainWindow`, but on Overview: since ticket 11 the window opens on its current tab, Overview by default. This criterion predates Overview; the maintainer decides whether CPU is still wanted)
+- [x] The popover's open-window button and "Open MoniMac" open the main window, on its current tab (Overview by default since ticket 11, which made Overview the first tab; this criterion originally said CPU because it predates Overview) (UI tests `PopoverTests.testOpenWindowButtonOpensMainWindow`, `testOverviewOpenMoniMacLinkOpensMainWindow`)
 - [x] The sidebar shows the grouped tabs, and selecting a tab switches the content (UI test `WindowTests.testSidebarSwitchesTabs`)
 - [x] The CPU history chart switches between 12H/24H/7D/30D and labels the peak value and time (UI test `WindowTests.testCPUHistoryRangesSwitchChartAndPeakLabel`)
 - [x] Per-core bars show performance and efficiency cores separately
