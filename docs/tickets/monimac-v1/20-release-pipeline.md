@@ -4,7 +4,7 @@
 
 **Blocked by:** 13 — Settings: General, Units, Menu Bar Items, Window Tabs
 
-**Status:** built; release steps wait on the maintainer. Creating the keys, setting the secrets, and pushing tags are outward-facing, so none of the criteria below has been observed yet. `scripts/release/setup-wizard.sh` walks the maintainer through them, and its last stage reports each criterion.
+**Status:** v0.1.0 published (2026-10-02) by `scripts/release/release-local.sh`. The maintainer chose the simple path: an ad-hoc signed DMG built on their Mac, plus the Sparkle key for **Check for Updates…**; no certificate, CI secrets, or tag-triggered workflow (`release.yml` is now manual and optional). Open: the update path, which needs the repo public (the maintainer is doing that) and a v0.1.1 release.
 
 **Built:**
 - **Updater:** Sparkle 2.10.0 (SPM, pinned), started by `App/Sources/UpdateController.swift`.
@@ -44,8 +44,8 @@
 - macOS App Management allowing a self-update without a Team ID
 - Gatekeeper and permissions after an update
 
-- [ ] Pushing a release tag produces a signed build and an update feed entry on GitHub Releases
+- [x] Publishing a release produces an update feed entry on GitHub Releases: `release-local.sh v0.1.0` published `MoniMac-0.1.0.dmg` and `appcast.xml`; the DMG downloaded back from GitHub is byte-identical and its EdDSA signature verifies against the key the app ships. (Originally "pushing a tag produces a signed build"; tags no longer trigger CI, and the build is ad-hoc signed by choice.)
 - [ ] A previously installed build detects and installs the update
 - [ ] An updated app launches without the Gatekeeper prompt again, or if it can't, "Update available" links to the release page instead
-- [ ] Permissions granted before the update (notifications, audio capture, location) are still granted after it
-- [ ] The README contains the install steps with the Open Anyway screenshots (the steps are there; the screenshots are placeholders the maintainer adds in wizard stage 9)
+- [ ] After an update, MoniMac runs and its permissions are either kept or asked for again (ad-hoc signing gives each release a new signature, so macOS may ask again; the maintainer accepted this instead of a stable certificate)
+- [x] The README and every release's notes contain the install steps: open the DMG, drag MoniMac to Applications, then run `xattr -dr com.apple.quarantine /Applications/MoniMac.app` in Terminal once (the maintainer's users prefer Terminal to System Settings › Open Anyway, so no screenshots are needed)
