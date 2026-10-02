@@ -7,7 +7,9 @@ final class MenuBarItemTests: MoniMacUITestCase {
     @MainActor
     func testMemoryNetworkAndTemperatureItemsCanBeShown() throws {
         let metrics = ["cpu", "memory", "network", "temperature"]
+        // GPU is turned off, so its "%" can't be mistaken for CPU's.
         let arguments = metrics.flatMap { ["-menuBar.\($0).enabled", "<true/>", "-menuBar.\($0).style", "value"] }
+            + ["-menuBar.gpu.enabled", "<false/>"]
         let app = launchMoniMac(arguments)
         // Each item's text: CPU "12%", Memory "8.2 GB", Network "1.2 MB/s", Temperature "58°C".
         let formats = [

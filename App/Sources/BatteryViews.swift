@@ -432,7 +432,6 @@ private struct EnergyRow: View {
                 .foregroundStyle(Palette.textPrimary)
                 .frame(minWidth: 48, alignment: .trailing)
                 .help(BatteryDetail.appEstimateHelp)
-                .accessibilityIdentifier("battery.energy.watts")
         }
     }
 }

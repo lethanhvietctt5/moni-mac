@@ -115,7 +115,6 @@ private struct OverviewListContent: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.visible)
                 .fixedSize()
-                .accessibilityIdentifier("overviewList.sort")
                 Toggle(isOn: $query.grouped) {
                     Text("Group processes by app").font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Palette.textPrimary)

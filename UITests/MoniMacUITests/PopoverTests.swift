@@ -119,15 +119,20 @@ final class PopoverTests: MoniMacUITestCase {
         let title = app.staticTexts["quitSheet.title"]
         XCTAssertTrue(title.waitForExistence(timeout: 10), "The quit sheet didn't open")
         // The standalone sheet is a floating panel, which accessibility reports as a dialog.
-        let sheet = [app.dialogs, app.windows, app.sheets].lazy
+        let sheet = try XCTUnwrap([app.dialogs, app.windows, app.sheets].lazy
             .map { $0.containing(.staticText, identifier: "quitSheet.title").firstMatch }
-            .first { $0.exists } ?? app
+            .first { $0.exists }, "The quit sheet's window wasn't found")
         guard text(of: title).contains(Self.dummyName) else {
             sheet.buttons["quitSheet.cancel"].click()
-            XCTFail("The quit sheet is for \"\(text(of: title))\", not the throwaway app; cancelled")
-            throw XCTSkip("Wrong quit sheet")
+            throw WrongQuitSheet(title: text(of: title))
         }
         XCTAssertFalse(app.popovers.firstMatch.exists, "The popover stayed open behind the sheet")
         return sheet
     }
+}
+
+/// The quit sheet named another app, so it was cancelled and the test stops.
+private struct WrongQuitSheet: Error, CustomStringConvertible {
+    let title: String
+    var description: String { "The quit sheet was \"\(title)\", not the throwaway app's; it was cancelled" }
 }

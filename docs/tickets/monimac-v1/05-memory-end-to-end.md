@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** done. The menu bar item was seen in the real app by a UI test (`UITests/`).
+**Status:** done. A UI test (`UITests/`) saw the menu bar item in the real app. The Memory tabs were seen only in offscreen renders (see below).
 
 - [x] A Memory menu bar item can be shown alongside the CPU item (UI test `MenuBarItemTests.testMemoryNetworkAndTemperatureItemsCanBeShown`, which enables it for one launch through launch-argument settings and reads the item's title, e.g. "17.7 GB")
 - [x] The popover and window Memory tabs show live values matching the design sections (seen in offscreen renders of the real views from live `HostSampler` data; not yet in the running app, since reaching the tab needs a click)

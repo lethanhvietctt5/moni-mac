@@ -151,7 +151,6 @@ private struct QuitSheetContent: View {
                     Text("Force Quit").foregroundStyle(.red)
                 }
                 .help("Ends the app at once. Unsaved work is lost.")
-                .accessibilityIdentifier("quitSheet.forceQuit")
                 Spacer()
                 Button("Cancel") { finish(.cancel) }
                     .keyboardShortcut(.cancelAction)

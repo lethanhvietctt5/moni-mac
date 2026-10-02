@@ -132,7 +132,7 @@ class MoniMacUITestCase: XCTestCase {
     }
 }
 
-/// MoniMac's settings domain, read and written as the user (the runner isn't sandboxed).
+/// MoniMac's settings domain. The runner is sandboxed; its entitlements grant this one domain.
 enum MoniMacSettings {
     private static var domain: CFString { MoniMacUITestCase.bundleID as CFString }
 

@@ -36,7 +36,7 @@ struct PopoverView: View {
             header
             VStack(spacing: 12) {
                 SegmentedPicker(options: PopoverTab.allCases.filter { $0.isShown(on: monitor) }, selection: $tab,
-                                label: \.rawValue, identifierPrefix: "popover.tab")
+                                label: \.rawValue)
                 let range = range(for: tab)
                 switch tab {
                 case .overview: OverviewPopoverTab(monitor: monitor, openWindow: openWindow)

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — History + CPU sparkline in the menu bar
 
-**Status:** done. The clicks below were made in the real app by the UI tests in `UITests/` (see CLAUDE.md › UI tests).
+**Status:** done. The range buttons, ×, Quit MoniMac, and Activity Monitor were clicked in the real app by the UI tests in `UITests/` (see CLAUDE.md › UI tests). The tests open the popover with `--show-popover`, so the status item click itself is still unexercised.
 
 **Decisions made while building:**
 - **Process sampling without a privileged helper.** Your own processes are read with `proc_pid_rusage` (every 4 s). Other users' processes (WindowServer, root daemons) are invisible to that API, so they're read from the setuid `/bin/ps` in the background every 15 s, with rates averaged over that interval.

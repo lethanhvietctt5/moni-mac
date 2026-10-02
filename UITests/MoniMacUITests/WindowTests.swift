@@ -108,13 +108,15 @@ final class WindowTests: MoniMacUITestCase {
         let window = mainWindow(of: app)
         let chip = window.buttons["settings.tabChip.gpu"]
         XCTAssertTrue(chip.waitForExistence(timeout: 10))
-        XCTAssertEqual(chip.label, "Hide GPU", "GPU should start shown")
+        // If the user hid GPU, show it first (settings are restored after the test).
+        if chip.label == "Show GPU" { chip.click() }
+        XCTAssertTrue(waitUntil(timeout: 5) { chip.label == "Hide GPU" }, "The chip reads \"\(chip.label)\"")
         XCTAssertTrue(window.buttons["sidebar.gpu"].exists)
 
         chip.click()
         XCTAssertTrue(waitUntil(timeout: 5) { !window.buttons["sidebar.gpu"].exists }, "GPU is still in the sidebar")
         XCTAssertTrue(waitUntil(timeout: 5) { chip.label == "Show GPU" }, "The chip reads \"\(chip.label)\"")
-        XCTAssertEqual(MoniMacSettings.value("layout.tabs.hidden") as? [String], ["gpu"])
+        XCTAssertTrue((MoniMacSettings.value("layout.tabs.hidden") as? [String] ?? []).contains("gpu"))
 
         chip.click()
         XCTAssertTrue(waitUntil(timeout: 5) { window.buttons["sidebar.gpu"].exists }, "GPU didn't come back")
@@ -136,11 +138,22 @@ final class WindowTests: MoniMacUITestCase {
         let initial = try XCTUnwrap(policy())
         let flipped: NSApplication.ActivationPolicy = initial == .regular ? .accessory : .regular
 
-        // The small switch can report "not hittable" while it is plainly visible, so click its center.
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-        XCTAssertTrue(waitUntil(timeout: 5) { policy() == flipped }, "The Dock icon setting didn't take effect")
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-        XCTAssertTrue(waitUntil(timeout: 5) { policy() == initial }, "Turning it back didn't take effect")
+        XCTAssertTrue(flip(toggle) { policy() == flipped }, "The Dock icon setting didn't take effect")
+        XCTAssertTrue(flip(toggle) { policy() == initial }, "Turning it back didn't take effect")
+    }
+
+    /// Clicks a switch and waits for `done`. A click can be lost (the switch's value doesn't change), so a
+    /// lost click is retried once; a click that changed the switch is never repeated.
+    @MainActor
+    private func flip(_ toggle: XCUIElement, until done: () -> Bool) -> Bool {
+        for _ in 0..<2 {
+            let before = toggle.value as? Int
+            // The small switch can report "not hittable" while it is plainly visible, so click its center.
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+            if waitUntil(timeout: 5, done) { return true }
+            if toggle.value as? Int != before { return false }
+        }
+        return false
     }
 
     /// 09: hovering Power Draw shows a tooltip over MoniMac's window.
@@ -197,6 +210,8 @@ final class WindowTests: MoniMacUITestCase {
     @MainActor
     func testShareCardSaveWrites1200x630PNG() throws {
         let directory = try outputDirectory()
+        // The card shows the user's week, so it isn't left on disk.
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
         let app = launchMoniMac(["--show-window"])
         let preview = try openShareCard(app)
         preview.buttons["shareCard.save"].click()

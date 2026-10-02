@@ -10,10 +10,14 @@ final class SoundTests: MoniMacUITestCase {
     func testVolumeSliderChangesSystemVolume() throws {
         let device = try XCTUnwrap(SystemAudio.defaultOutput, "No default output device")
         let original = try XCTUnwrap(SystemAudio.volume(of: device), "The default output has no volume control")
+        let originalMute = SystemAudio.isMuted(device)
         addTeardownBlock { @MainActor in
             // MoniMac sets the volume on a background queue; let it finish, then put the user's back.
             RunLoop.current.run(until: Date().addingTimeInterval(1))
             SystemAudio.setVolume(original, of: device)
+            if let originalMute, SystemAudio.isMuted(device) != originalMute {
+                SystemAudio.setMuted(originalMute, device)
+            }
         }
         // Lower, so a test never plays louder than the user had it (unless it was nearly silent).
         let target = original >= 0.2 ? original - 0.15 : original + 0.1
@@ -118,6 +122,14 @@ enum SystemAudio {
 
     static func setVolume(_ volume: Double, of device: AudioObjectID) {
         write(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume, Float32(volume), kAudioObjectPropertyScopeOutput)
+    }
+
+    static func isMuted(_ device: AudioObjectID) -> Bool? {
+        read(device, kAudioDevicePropertyMute, kAudioObjectPropertyScopeOutput, UInt32(0)).map { $0 != 0 }
+    }
+
+    static func setMuted(_ muted: Bool, _ device: AudioObjectID) {
+        write(device, kAudioDevicePropertyMute, UInt32(muted ? 1 : 0), kAudioObjectPropertyScopeOutput)
     }
 
     /// Devices with at least one output stream.
