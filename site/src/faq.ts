@@ -6,7 +6,7 @@ export const faq: { question: string; answer: string }[] = [
   {
     question: 'What is MoniMac?',
     answer:
-      'MoniMac is a free, open-source system monitor for macOS. It shows CPU, memory, GPU, network, disk, battery and temperature in your menu bar, with a popover and a full window that break every number down by app and keep 30 days of history.',
+      'MoniMac is a free, open-source system monitor for macOS. It puts CPU, memory, GPU, network and temperature in your menu bar, and its popover and window add disk, battery, Bluetooth devices and sound, show which apps use the most CPU, memory, GPU, network, disk and power, and keep up to 90 days of history.',
   },
   {
     question: 'Is MoniMac really free?',
@@ -16,12 +16,12 @@ export const faq: { question: string; answer: string }[] = [
   {
     question: 'How is MoniMac different from Activity Monitor?',
     answer:
-      'Activity Monitor shows live numbers while its window is open. MoniMac keeps them in your menu bar, groups helper processes under the app they belong to, keeps 30 days of history for each metric, shows temperatures and fan speeds, and alerts you when an app keeps using too much CPU, memory, disk or network.',
+      'Activity Monitor shows what is running right now. MoniMac keeps the numbers in your menu bar, groups helper processes under the app they belong to, keeps up to 90 days of history, shows temperatures and fan speeds, and alerts you when an app keeps using too much CPU, memory, disk or network.',
   },
   {
     question: 'Is MoniMac an alternative to iStat Menus or Stats?',
     answer:
-      'Yes. Like iStat Menus and Stats, MoniMac puts CPU, memory, GPU, network, disk, battery and temperature readings in the macOS menu bar. iStat Menus is paid, while MoniMac is free. MoniMac also breaks every metric down by app, alerts you when an app misbehaves, sets the volume of each app, shows AirPods battery levels, and finds local dev servers you forgot to stop.',
+      'Yes. Like iStat Menus and Stats, MoniMac shows CPU, memory, GPU, network and temperature in the macOS menu bar, with disk, battery and Bluetooth devices in its window. iStat Menus is paid; MoniMac is free and open source. MoniMac also alerts you when an app keeps using too much, sets the volume of each app, and finds local dev servers you forgot to stop.',
   },
   {
     question: 'How do I check CPU temperature and fan speed on a Mac?',

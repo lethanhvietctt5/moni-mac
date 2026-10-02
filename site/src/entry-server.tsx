@@ -23,7 +23,7 @@ export function structuredData() {
       '@type': 'SoftwareApplication',
       name: 'MoniMac',
       description:
-        'A free, open-source system monitor for macOS: CPU, memory, GPU, network, disk, battery and temperature in the menu bar, with per-app usage and 30 days of history.',
+        'A free, open-source system monitor for macOS: CPU, memory, GPU, network and temperature in the menu bar, plus disk, battery and per-app usage with up to 90 days of history.',
       url: `${SITE_URL}/`,
       image: `${SITE_URL}/icon-256.webp`,
       screenshot: `${SITE_URL}/shots/hero.webp`,

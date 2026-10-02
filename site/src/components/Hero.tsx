@@ -35,7 +35,7 @@ export function Hero() {
         </motion.h1>
 
         <motion.p {...rise(0.16)} className="max-w-[640px] text-[18px]/[28px] text-ink-2 sm:text-[20px]/[30px]">
-          MoniMac is a free system monitor for macOS. It keeps CPU, memory, network, battery and temperature one
+          MoniMac is a free system monitor for macOS. It keeps CPU, memory, GPU, network and temperature one
           glance away in your menu bar — and tells you the moment an app starts dragging your Mac down.
         </motion.p>
 

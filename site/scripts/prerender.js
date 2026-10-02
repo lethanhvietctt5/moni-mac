@@ -4,11 +4,13 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
 
 const server = new URL('../dist-ssr/entry-server.js', import.meta.url)
 const { render, structuredData, SITE_URL } = await import(server.href)
+if (!SITE_URL) throw new Error('VITE_SITE_URL is not set (site/.env)')
 const page = new URL('../dist/index.html', import.meta.url)
 
 const html = await readFile(page, 'utf8')
 const root = '<div id="root"></div>'
 if (!html.includes(root)) throw new Error(`dist/index.html has no empty ${root}`)
+// Replacements are functions, so `$&` and the like in the page or the JSON stay literal.
 // `<` is escaped so no text inside the JSON can close the script element.
 const json = (data) => JSON.stringify(data).replaceAll('<', '\\u003c')
 const ldScripts = structuredData()
@@ -16,7 +18,7 @@ const ldScripts = structuredData()
   .join('')
 await writeFile(
   page,
-  html.replace(root, `<div id="root">${render()}</div>`).replace('</head>', `${ldScripts}  </head>`),
+  html.replace(root, () => `<div id="root">${render()}</div>`).replace('</head>', () => `${ldScripts}  </head>`),
 )
 
 const today = new Date().toISOString().slice(0, 10)
