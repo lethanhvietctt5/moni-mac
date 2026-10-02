@@ -377,6 +377,15 @@ struct SoundTests {
         #expect(actions.recorded.suffix(2) == [.openURL(SoundDetail.privacySettingsURL), .retrySoundAccess])
     }
 
+    @Test func saysWhenATapCouldNotStart() throws {
+        let (monitor, sampler) = try makeMonitor()
+        monitor.setSoundAppVolume(0.5, for: spotify)
+        sampler.reading = .value(SoundReading(output: speakers, processes: designApps(), access: .unused,
+                                              tapProblem: "Per-app volume can't run on this output device"))
+        monitor.tick()
+        #expect(monitor.soundDetail.notice == .problem("Per-app volume can't run on this output device"))
+    }
+
     @Test func showsWhyNothingIsListedBeforeTheFirstReading() throws {
         let (monitor, _) = try makeMonitor()
         monitor.tick()

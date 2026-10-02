@@ -32,6 +32,8 @@ public final class AudioMixer: @unchecked Sendable {
     static let stalledAfter: TimeInterval = 3
     static let silentAfter: TimeInterval = 8
     static let rebuildInterval: TimeInterval = 60
+    /// A tap that couldn't be built isn't tried again for this long.
+    static let retryAfterFailure: TimeInterval = 30
 
     /// For `--sound-selftest`: what the taps are doing.
     public struct Status: Sendable, CustomStringConvertible {
@@ -56,6 +58,7 @@ public final class AudioMixer: @unchecked Sendable {
 
     private struct Published {
         var access = SoundAccess.unused
+        var problem: String?
         var levels: [String: Double?] = [:]
         var status = Status(access: .unused, taps: [])
     }
@@ -75,6 +78,10 @@ public final class AudioMixer: @unchecked Sendable {
     private var watchdog: DispatchSourceTimer?
     private var pendingRebuild: DispatchWorkItem?
     private var isShutDown = false
+    /// Targets whose tap couldn't be built, and when.
+    private var failures: [SoundTarget: Date] = [:]
+    /// Why the last tap couldn't be built, for the Sound tab; cleared when one is.
+    private var problem: String?
 
     /// What the watchdog last saw of a tap.
     private struct Health {
@@ -129,7 +136,7 @@ public final class AudioMixer: @unchecked Sendable {
     func reading() -> Reading<SoundReading> {
         let cache = watcher.latest()
         guard cache.isReady else { return .unavailable(.warmingUp) }
-        let (access, levels) = published.withLock { ($0.access, $0.levels) }
+        let (access, problem, levels) = published.withLock { ($0.access, $0.problem, $0.levels) }
         let processes = cache.clients.compactMap { client -> SoundProcess? in
             guard let app = client.app else { return nil }
             return SoundProcess(pid: client.pid, appID: app.id, appName: app.name, appPath: app.path,
@@ -137,7 +144,7 @@ public final class AudioMixer: @unchecked Sendable {
         }
         return .value(SoundReading(
             output: cache.output, devices: cache.devices, processes: processes,
-            taps: levels.mapValues { SoundTap(level: $0) }, access: access
+            taps: levels.mapValues { SoundTap(level: $0) }, access: access, tapProblem: problem
         ))
     }
 
@@ -195,10 +202,11 @@ public final class AudioMixer: @unchecked Sendable {
                 if Set(pipeline.objects) != Set(want.objects), !pipeline.retarget(want.objects) {
                     rebuild(target, objects: want.objects, gain: want.gain)
                 }
-            } else {
+            } else if failures[target].map({ now.timeIntervalSince($0) >= Self.retryAfterFailure }) ?? true {
                 rebuild(target, objects: want.objects, gain: want.gain)
             }
         }
+        failures = failures.filter { wanted[$0.key] != nil }
         pipelines.isEmpty ? stopWatchdog() : startWatchdog()
         publish()
     }
@@ -237,10 +245,19 @@ public final class AudioMixer: @unchecked Sendable {
             old?.destroy()
             pipelines[target] = pipeline
             health[target] = Health(rebuiltAt: old == nil ? nil : Date())
+            failures[target] = nil
+            problem = nil
             if access == .unused { setAccess(.checking) }
         } catch {
             log.error("Couldn't start a tap for \(String(describing: target), privacy: .public): \(String(describing: error), privacy: .public)")
+            failures[target] = Date()
             if old == nil { health[target] = nil }
+            problem = switch error {
+            case AudioTapPipeline.Failure.unexpectedInputs:
+                "Per-app volume can't run on this output device: MoniMac couldn't keep its microphone out of the way."
+            default: "Per-app volume couldn't start (\(error)). MoniMac will try again."
+            }
+            publish()
         }
     }
 
@@ -342,9 +359,10 @@ public final class AudioMixer: @unchecked Sendable {
         }
         var appLevels: [String: Double?] = [:]
         for tap in taps { if case .app(let id) = tap.target { appLevels[id] = tap.level } }
-        let (access, levels) = (access, appLevels)
+        let (access, problem, levels) = (access, problem, appLevels)
         published.withLock {
             $0.access = access
+            $0.problem = problem
             $0.levels = levels
             $0.status = Status(access: access, taps: taps)
         }

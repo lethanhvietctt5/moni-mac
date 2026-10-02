@@ -50,6 +50,8 @@ public struct SoundDetail: Equatable, Sendable {
         case explain(String)
         /// A tap is starting; macOS may be asking.
         case checking(String)
+        /// A tap couldn't start.
+        case problem(String)
         /// Taps hear only silence: the controls are off until MoniMac is reopened or the user tries again.
         case notWorking(title: String, text: String)
     }
@@ -120,7 +122,7 @@ public struct SoundDetail: Equatable, Sendable {
             devices: sound.devices.map { DeviceChoice(uid: $0.uid, name: $0.name, isCurrent: $0.uid == sound.output?.uid) },
             rows: rows,
             message: sound.output == nil ? "No output device" : (rows.isEmpty ? "No apps are using audio" : nil),
-            notice: notice(sound.access, perAppUsed: perAppUsed),
+            notice: sound.tapProblem.map(Notice.problem) ?? notice(sound.access, perAppUsed: perAppUsed),
             controlsEnabled: sound.access != .notWorking,
             canReset: !settings.isEmpty,
             duck: duck,

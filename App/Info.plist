@@ -28,6 +28,8 @@
 	<true/>
 	<key>MoniMacUpdatesEnabled</key>
 	<string>$(MONIMAC_UPDATES)</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>MoniMac changes an app's volume by routing its audio through MoniMac. Nothing is recorded or saved.</string>
 	<key>NSLocationUsageDescription</key>
 	<string>MoniMac shows the name of the Wi-Fi network you're connected to.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

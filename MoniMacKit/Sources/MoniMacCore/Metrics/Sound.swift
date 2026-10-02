@@ -23,14 +23,18 @@ public struct SoundReading: Equatable, Sendable {
     /// Whether per-app volume can work: the audio capture permission has no API, so this is judged from
     /// what the taps deliver.
     public var access: SoundAccess
+    /// Why the last tap couldn't start (e.g. the output device's microphone couldn't be kept out of it);
+    /// nil once one does.
+    public var tapProblem: String?
 
     public init(output: SoundDevice?, devices: [SoundDevice] = [], processes: [SoundProcess] = [],
-                taps: [String: SoundTap] = [:], access: SoundAccess = .unused) {
+                taps: [String: SoundTap] = [:], access: SoundAccess = .unused, tapProblem: String? = nil) {
         self.output = output
         self.devices = devices
         self.processes = processes
         self.taps = taps
         self.access = access
+        self.tapProblem = tapProblem
     }
 }
 
