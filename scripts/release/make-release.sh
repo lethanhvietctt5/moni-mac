@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds everything a release publishes into dist/: the signed zip, appcast.xml, and release-notes.md.
+# Builds everything a release publishes into dist/: the disk image with the signed app, appcast.xml, and release-notes.md.
 # It doesn't publish; the workflow runs publish.sh afterwards.
 #
 # Usage:
@@ -33,10 +33,10 @@ else
 fi
 
 rm -rf "$DIST"
-ZIP="$("$RELEASE/package.sh" "$APP" "$DIST")"
-SIGNATURE="$("$RELEASE/appcast.sh" "$APP" "$ZIP" "$DIST/appcast.xml")"
+DMG="$("$RELEASE/package.sh" "$APP" "$DIST")"
+SIGNATURE="$("$RELEASE/appcast.sh" "$APP" "$DMG" "$DIST/appcast.xml")"
 if [ -n "$PUBLIC_KEY" ]; then
-    swift "$RELEASE/verify-signature.swift" "$PUBLIC_KEY" "$ZIP" "$SIGNATURE"
+    swift "$RELEASE/verify-signature.swift" "$PUBLIC_KEY" "$DMG" "$SIGNATURE"
 else
     echo "warning: dry run without DRY_RUN_PUBLIC_KEY; the signature wasn't checked" >&2
 fi

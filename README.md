@@ -10,8 +10,8 @@ A free, open-source system monitor for your Mac's menu bar. MoniMac shows CPU, m
 
 ## Install
 
-1. Download **MoniMac-x.y.z.zip** from the [latest release](https://github.com/lethanhvietctt5/moni-mac/releases/latest) and open it.
-2. Drag **MoniMac** into your **Applications** folder.
+1. Download **MoniMac-x.y.z.dmg** from the [latest release](https://github.com/lethanhvietctt5/moni-mac/releases/latest) and open it.
+2. Drag **MoniMac** onto the **Applications** shortcut next to it, then eject the disk image.
 3. Open MoniMac. macOS says it can't verify that MoniMac is free of malware. Click **Done**.
 
    > **Screenshot placeholder:** `docs/images/install-blocked.png`, the dialog macOS shows on first launch.
@@ -49,7 +49,7 @@ Builds are ad-hoc signed by default, so macOS asks for permissions again after e
 
 ## Releasing
 
-Pushing a tag like `v1.2.3` runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds, signs, zips, signs the archive for Sparkle, writes `appcast.xml`, and publishes the GitHub release with install notes. The steps live in [`scripts/release/`](scripts/release/) and run locally too:
+Pushing a tag like `v1.2.3` runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds, signs, packs the app into a disk image, signs the image for Sparkle, writes `appcast.xml`, and publishes the GitHub release with install notes. The steps live in [`scripts/release/`](scripts/release/) and run locally too:
 
 ```bash
 scripts/release/make-release.sh v1.2.3 --dry-run   # needs SPARKLE_ED_PRIVATE_KEY; never publishes

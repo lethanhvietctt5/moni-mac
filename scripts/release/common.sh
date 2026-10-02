@@ -5,8 +5,8 @@
 #   1 build.sh              Release build, updates on, version from the tag
 #   2 check-update-key.sh   refuses a build whose SUPublicEDKey is still the placeholder
 #   3 sign.sh               re-signs Sparkle's helpers and the app with the stable identity
-#   4 package.sh            the zip, made with ditto
-#   5 appcast.sh            signs the zip with the EdDSA key and writes appcast.xml
+#   4 package.sh            the disk image (.dmg), with an Applications shortcut
+#   5 appcast.sh            signs the disk image with the EdDSA key and writes appcast.xml
 #   6 release-notes.sh      install steps and changes, for the GitHub release
 #   publish.sh              CI only: the GitHub release
 set -euo pipefail
