@@ -1,5 +1,5 @@
 // Links and facts the page repeats. Update VERSION when a release ships.
-export const VERSION = '0.1.0'
+export const VERSION = '0.1.1'
 export const REPO_URL = 'https://github.com/lethanhvietctt5/moni-mac'
 export const REPO_LABEL = 'github.com/lethanhvietctt5/moni-mac'
 // Every release also carries MoniMac.dmg, so this always fetches the newest version.
