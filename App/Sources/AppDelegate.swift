@@ -75,11 +75,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return .none }
             return monitor.bluetoothDemand(isTabShowing: mainWindow.isShowing(.bluetooth))
         }
-        // Audio is read only while the Sound tab shows or ducking or mute-new-apps needs it.
+        // Audio is read only while the Sound or Bluetooth tab shows, or ducking or mute-new-apps needs it.
         sampler.soundDemand = { [weak self] in
             guard let self else { return .none }
             // With `--show-window`, a covered window still counts, so the tab renders for a screenshot.
-            let showing = mainWindow.isShowing(.sound, ignoringCover: CommandLine.arguments.contains("--show-window"))
+            // The Bluetooth tab uses it too, to say which apps play to the headphones.
+            let ignoringCover = CommandLine.arguments.contains("--show-window")
+            let showing = [WindowTab.sound, .bluetooth].contains { mainWindow.isShowing($0, ignoringCover: ignoringCover) }
             return monitor.soundDemand(isTabShowing: showing)
         }
         observeSettings()

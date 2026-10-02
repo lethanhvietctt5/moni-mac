@@ -221,8 +221,9 @@ extension Monitor {
         return summary.isEmpty ? nil : summary
     }
 
-    /// Whether the sampler should read audio: while the tab shows, and while ducking or mute-new-apps
-    /// needs to see apps start. Adjusted apps alone need no reading: the taps follow their apps themselves.
+    /// Whether the sampler should read audio: while the Sound tab (or the Bluetooth tab, for what plays to
+    /// the headphones) shows, and while ducking or mute-new-apps needs to see apps start. Adjusted apps
+    /// alone need no reading: the taps follow their apps themselves.
     public func soundDemand(isTabShowing: Bool) -> SoundDemand {
         isTabShowing || preferences.soundDuckDuringCalls || preferences.soundMuteNewApps ? .active : .none
     }

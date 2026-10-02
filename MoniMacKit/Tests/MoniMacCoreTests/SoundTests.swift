@@ -386,6 +386,25 @@ struct SoundTests {
         #expect(monitor.soundDetail.notice == .problem("Per-app volume can't run on this output device"))
     }
 
+    // MARK: Bluetooth
+
+    @Test func bluetoothHeadphonesSayWhichAppsPlayToThem() {
+        let airPods = BluetoothDevice(address: "AA:BB:CC:DD:EE:FF", name: "Maya's AirPods Pro", minorType: "Headphones",
+                                      isConnected: true)
+        let output = SoundDevice(uid: "AA-BB-CC-DD-EE-FF:output", name: "Maya's AirPods Pro", kind: .bluetooth)
+        func source(_ processes: [SoundProcess], output: SoundDevice? = output) -> String {
+            BluetoothDetail.source(for: airPods, audio: SoundReading(output: output, processes: processes)).text
+        }
+
+        #expect(source([app("Spotify", spotify, pid: 10, playing: true), app("Slack", slack, pid: 14)])
+            == "Playing from Spotify")
+        #expect(source([app("Spotify", spotify, pid: 10, playing: true), app("Zoom", zoom, pid: 12, playing: true),
+                        app("Music", music, pid: 13, playing: true)]) == "Playing from Music and 2 more")
+        #expect(source([app("Slack", slack, pid: 14)]) == "Nothing playing")
+        #expect(source([], output: speakers) == "Not the current output")
+        #expect(!BluetoothDetail.source(for: airPods, audio: nil).isKnown)
+    }
+
     @Test func showsWhyNothingIsListedBeforeTheFirstReading() throws {
         let (monitor, _) = try makeMonitor()
         monitor.tick()

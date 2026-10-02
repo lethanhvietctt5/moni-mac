@@ -82,7 +82,7 @@ public struct BluetoothDetail: Equatable, Sendable {
         "Notify me when any connected device drops below \(BluetoothLowBatteryRule.threshold)%"
     static let settingsURL = URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings")!
 
-    static let sourceHelp = "macOS doesn't tell MoniMac which app is playing to a Bluetooth device."
+    static let sourceHelp = "MoniMac reads which apps are playing while this tab or the Sound tab shows."
     static let noiseControlHelp = "macOS doesn't share the noise-control mode with other apps."
     static let firmwareHelp = "The device didn't report a firmware version."
     static let noLevelHelp = "This device doesn't report its battery level to the Mac."
@@ -111,9 +111,11 @@ public struct BluetoothDetail: Equatable, Sendable {
         }
     }
 
+    /// `audio` is the Sound reading when audio is being read (it is while this tab shows), so the featured
+    /// card can say which apps play to the headphones.
     static func make(
         reading: Reading<BluetoothReading>, records: [String: BluetoothDeviceRecord], now: Date,
-        lowBatteryAlerts: Bool, calendar: Calendar = .current
+        lowBatteryAlerts: Bool, audio: SoundReading? = nil, calendar: Calendar = .current
     ) -> BluetoothDetail {
         var detail = BluetoothDetail(featured: nil, rows: [], message: nil, lowBatteryAlerts: lowBatteryAlerts)
         guard let reading = reading.value else {
@@ -132,7 +134,7 @@ public struct BluetoothDetail: Equatable, Sendable {
         let clock = Clock(now: now, calendar: calendar)
         let devices = reading.devices.map { Known(device: $0, record: records[$0.address]) }
         let featured = devices.filter(\.kind.isHeadphones).min(by: Known.featuredFirst)
-        detail.featured = featured.map { featuredCard($0, clock: clock) }
+        detail.featured = featured.map { featuredCard($0, clock: clock, audio: audio) }
         detail.rows = devices.filter { $0.device.address != featured?.device.address }
             .sorted(by: Known.listedFirst)
             .map { row($0, clock: clock) }
@@ -141,7 +143,7 @@ public struct BluetoothDetail: Equatable, Sendable {
 
     // MARK: Featured card
 
-    private static func featuredCard(_ known: Known, clock: Clock) -> Featured {
+    private static func featuredCard(_ known: Known, clock: Clock, audio: SoundReading?) -> Featured {
         let device = known.device
         let battery = known.battery
         var facts = [
@@ -164,13 +166,32 @@ public struct BluetoothDetail: Equatable, Sendable {
         return Featured(
             address: device.address, name: device.name, kind: known.kind, isConnected: device.isConnected,
             status: connectionStatus(known, clock: clock),
-            source: device.isConnected ? Fact(text: "Audio source unknown", isKnown: false, help: sourceHelp) : nil,
+            source: device.isConnected ? source(for: device, audio: audio) : nil,
             facts: facts,
             rings: parts.map { label, value in
                 Ring(label: label, level: fraction(value), text: percent(value),
                      tone: tone(value, isConnected: device.isConnected, warnsBelowHalf: true))
             }
         )
+    }
+
+    /// Which apps play to the device: "Playing from Spotify", "Nothing playing", or "Not the current output".
+    /// Core Audio names a Bluetooth output's UID after its address (e.g. "AA-BB-CC-DD-EE-FF:output").
+    static func source(for device: BluetoothDevice, audio: SoundReading?) -> Fact {
+        guard let audio else { return Fact(text: "Audio source unknown", isKnown: false, help: sourceHelp) }
+        let uid = audio.output?.uid.uppercased().replacingOccurrences(of: "-", with: ":") ?? ""
+        guard let output = audio.output, output.kind == .bluetooth,
+              uid.contains(device.address) || output.name == device.name else {
+            return Fact(text: "Not the current output", isKnown: true)
+        }
+        let playing = SoundApps.group(audio.processes).filter(\.isRunningOutput).map(\.name)
+        let text = switch playing.count {
+        case 0: "Nothing playing"
+        case 1: "Playing from \(playing[0])"
+        case 2: "Playing from \(playing[0]) and \(playing[1])"
+        default: "Playing from \(playing[0]) and \(playing.count - 1) more"
+        }
+        return Fact(text: text, isKnown: true)
     }
 
     private static func connectionStatus(_ known: Known, clock: Clock) -> String {
