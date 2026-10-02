@@ -22,6 +22,10 @@ private struct CPUTabContent: View {
         VStack(spacing: 12) {
             hero
             HistoryGraph(bars: panel.history)
+                .accessibilityElement()
+                .accessibilityLabel("CPU history")
+                .accessibilityValue(panel.range.shortLabel)
+                .accessibilityIdentifier("cpu.popover.chart")
             split
             loadAverage
             perCore
@@ -40,7 +44,8 @@ private struct CPUTabContent: View {
                     .foregroundStyle(Palette.textPrimary)
             }
             Spacer()
-            SegmentedPicker(options: CPUPanel.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 8)
+            SegmentedPicker(options: CPUPanel.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 8,
+                            identifierPrefix: "cpu.range")
                 .fixedSize()
         }
     }
@@ -135,6 +140,7 @@ private struct CPUTabContent: View {
                     .buttonStyle(.plain)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Palette.accent)
+                    .accessibilityIdentifier("cpu.activityMonitor")
             }
             .padding(.bottom, 6)
             ForEach(panel.topApps) { app in
@@ -176,6 +182,8 @@ private struct AppRowView: View {
             }
             .buttonStyle(.plain)
             .help("Quit \(app.name)")
+            .accessibilityLabel("Quit \(app.name)")
+            .accessibilityIdentifier("cpu.topApps.quit")
             .opacity(app.canQuit ? 1 : 0)
             .disabled(!app.canQuit)
         }

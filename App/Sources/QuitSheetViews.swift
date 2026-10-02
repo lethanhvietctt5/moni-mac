@@ -134,6 +134,7 @@ private struct QuitSheetContent: View {
                 Image(nsImage: AppIcons.icon(for: sheet.bundlePath)).resizable().frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(sheet.title).font(.system(size: 15, weight: .bold)).foregroundStyle(Palette.textPrimary)
+                        .accessibilityIdentifier("quitSheet.title")
                     Text(sheet.message).font(.system(size: 12)).foregroundStyle(Palette.textSecondary)
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -150,11 +151,14 @@ private struct QuitSheetContent: View {
                     Text("Force Quit").foregroundStyle(.red)
                 }
                 .help("Ends the app at once. Unsaved work is lost.")
+                .accessibilityIdentifier("quitSheet.forceQuit")
                 Spacer()
                 Button("Cancel") { finish(.cancel) }
                     .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("quitSheet.cancel")
                 Button("Quit") { finish(.quit(reopenWindows: reopenWindows)) }
                     .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("quitSheet.quit")
             }
             .controlSize(.large)
             .padding(.top, 4)

@@ -10,6 +10,8 @@ struct SegmentedPicker<Value: Hashable>: View {
     let label: (Value) -> String
     var isEnabled: (Value) -> Bool = { _ in true }
     var horizontalPadding: CGFloat = 6
+    /// UI tests find each segment as `<prefix>.<label>`, e.g. `cpu.range.1H`.
+    var identifierPrefix: String?
 
     var body: some View {
         HStack(spacing: 2) {
@@ -36,6 +38,8 @@ struct SegmentedPicker<Value: Hashable>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier(identifierPrefix.map { "\($0).\(label(option))" } ?? "")
             }
         }
         .padding(2)

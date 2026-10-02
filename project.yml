@@ -61,3 +61,39 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMac
         PRODUCT_NAME: MoniMac
         GENERATE_INFOPLIST_FILE: NO
+    scheme:
+      testTargets:
+        - MoniMacUITests
+  # UI tests (XCUITest) that click the real app. See "UI tests" in CLAUDE.md.
+  MoniMacUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - UITests/MoniMacUITests
+    dependencies:
+      - target: MoniMac
+      # Built next to the runner; the quit tests quit this app, never one of the user's.
+      - target: MoniMacUITestDummy
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMacUITests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: UITests/MoniMacUITests/MoniMacUITests.entitlements
+        TEST_TARGET_NAME: MoniMac
+  # A throwaway regular app for the UI tests to quit through MoniMac's quit sheet.
+  MoniMacUITestDummy:
+    type: application
+    platform: macOS
+    sources:
+      - UITests/Dummy
+    info:
+      path: UITests/Dummy/Info.plist
+      properties:
+        CFBundleDisplayName: MoniMacUITestDummy
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.lethanhvietctt5.MoniMacUITestDummy
+        PRODUCT_NAME: MoniMacUITestDummy
+        GENERATE_INFOPLIST_FILE: NO
