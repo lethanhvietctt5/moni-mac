@@ -12,25 +12,23 @@ A free, open-source system monitor for your Mac's menu bar. MoniMac shows CPU, m
 
 1. Download **MoniMac-x.y.z.dmg** from the [latest release](https://github.com/lethanhvietctt5/moni-mac/releases/latest) and open it.
 2. Drag **MoniMac** onto the **Applications** shortcut next to it, then eject the disk image.
-3. Open MoniMac. macOS says it can't verify that MoniMac is free of malware. Click **Done**.
+3. In Terminal, run this once:
 
-   > **Screenshot placeholder:** `docs/images/install-blocked.png`, the dialog macOS shows on first launch.
-   > The maintainer adds it in stage 9 of `scripts/release/setup-wizard.sh`.
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/MoniMac.app
+   ```
 
-4. Open **System Settings › Privacy & Security**, scroll down to **Security**, and click **Open Anyway** next to "MoniMac was blocked". Confirm with **Open Anyway** and your password.
+4. Open MoniMac from Applications, or with `open -a MoniMac`.
 
-   > **Screenshot placeholder:** `docs/images/install-open-anyway.png`, the Security section with Open Anyway.
-   > The maintainer adds it in stage 9 of `scripts/release/setup-wizard.sh`.
-
-Why the extra step: MoniMac isn't notarized by Apple, which needs a paid developer account. Since macOS 15, right-click › Open no longer gets around this; Open Anyway does, and you only do it once. If you prefer Terminal, `xattr -dr com.apple.quarantine /Applications/MoniMac.app` does the same.
+Why step 3: MoniMac isn't notarized by Apple, which needs a paid developer account, so macOS blocks it while it carries the "downloaded from the internet" flag. The command removes that flag. You only do it on the first install; updates from **Check for Updates…** don't need it.
 
 ## Updates
 
 MoniMac updates itself with [Sparkle](https://sparkle-project.org). On its second launch it asks whether to check for updates automatically; you can also check any time in **Settings › Data & About › Check for Updates…**. The update feed is published with each [GitHub release](https://github.com/lethanhvietctt5/moni-mac/releases).
 
 - **Updates are verified.** Every update archive is signed with the project's EdDSA key. Sparkle installs an update only if that signature matches the public key MoniMac ships with, *or* the new app is code-signed with the same certificate as the installed one ([`SUUpdateValidator.m`](https://github.com/sparkle-project/Sparkle/blob/2.x/Sparkle/SUUpdateValidator.m)).
-- **No second Open Anyway.** Sparkle clears the quarantine flag from the update it installs ([Sparkle's installation docs](https://github.com/sparkle-project/Sparkle/blob/2.x/Documentation/Installation.md), "Regular application installer 1st stage"), and Gatekeeper's first-launch check applies to quarantined apps, so the Open Anyway step happens on first install only.
-- **Permissions carry over.** macOS remembers permissions (notifications, audio capture, location) by the app's code signature. Every release is signed with the same self-signed certificate, so an update keeps them. Builds you make yourself are signed differently; see below.
+- **No Terminal step for updates.** Sparkle clears the quarantine flag from the update it installs ([Sparkle's installation docs](https://github.com/sparkle-project/Sparkle/blob/2.x/Documentation/Installation.md), "Regular application installer 1st stage"), so the `xattr` command is needed on the first install only.
+- **Permissions may be asked again.** macOS remembers permissions (notifications, audio capture, location) by the app's code signature. Releases are signed ad-hoc, so each version has a new signature and macOS may ask for them again after an update.
 
 Development builds (anything you build yourself) never check for updates.
 
