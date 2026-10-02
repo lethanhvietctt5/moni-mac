@@ -49,16 +49,23 @@ Builds are ad-hoc signed by default, so macOS asks for permissions again after e
 
 ## Releasing
 
-Pushing a tag like `v1.2.3` runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds, signs, packs the app into a disk image, signs the image for Sparkle, writes `appcast.xml`, and publishes the GitHub release with install notes. The steps live in [`scripts/release/`](scripts/release/) and run locally too:
+Releases are published from the maintainer's Mac. No Apple account, signing certificate, or CI secrets are needed: the app is signed ad-hoc and packed into a DMG, and only the Sparkle update key is required, so that installed copies trust updates from **Check for Updates…**.
+
+**Once:** create the update key. `generate_keys` (from the Sparkle package, after one build) stores it in your login keychain and prints the public key; `-x` exports a copy for the release script. Back that file up somewhere safe: without it, installed copies can't be updated.
 
 ```bash
-scripts/release/make-release.sh v1.2.3 --dry-run   # needs SPARKLE_ED_PRIVATE_KEY; never publishes
+SPARKLE=build/release/SourcePackages/artifacts/sparkle/Sparkle/bin
+$SPARKLE/generate_keys                                  # prints the public key
+mkdir -p ~/.monimac && $SPARKLE/generate_keys -x ~/.monimac/sparkle-ed-key && chmod 600 ~/.monimac/sparkle-ed-key
 ```
 
-**First-time setup** (signing certificate, EdDSA key, GitHub secrets, the first two releases) is guided by the wizard:
+Put the public key in `project.yml` (`SUPublicEDKey`) and commit it.
+
+**Each release**, from an up-to-date `main`:
 
 ```bash
-scripts/release/setup-wizard.sh
+scripts/release/release-local.sh v1.2.3 --dry-run   # builds dist/MoniMac-1.2.3.dmg and appcast.xml, publishes nothing
+scripts/release/release-local.sh v1.2.3             # tags, then publishes the GitHub release with the DMG and appcast
 ```
 
-It shows every command before running it and asks first. The workflow needs three repository secrets: `MONIMAC_CERT_P12`, `MONIMAC_CERT_PASSWORD`, and `SPARKLE_ED_PRIVATE_KEY`. It refuses to release while `SUPublicEDKey` in `project.yml` is still the placeholder.
+Because each release is signed ad-hoc, macOS may ask users again for permissions after an update. A stable self-signed certificate avoids that; [`.github/workflows/release.yml`](.github/workflows/release.yml) (run by hand) and `scripts/release/setup-wizard.sh` set that up, with three repository secrets.

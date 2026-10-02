@@ -48,7 +48,7 @@ MoniMac is free and open source, and isn't notarized by Apple (that needs a paid
 
 ## Updates
 
-MoniMac checks this page's update feed and offers new versions itself (**Settings › Data & About › Check for Updates…**). Updates are verified with the project's signing key. Sparkle clears the quarantine flag from the update it installs, so it shouldn't need the Open Anyway step, and every release is signed with the same certificate, so the permissions you've granted should carry over.
+MoniMac checks this page's update feed and offers new versions itself (**Settings › Data & About › Check for Updates…**). Updates are verified with the project's signing key, and Sparkle clears the quarantine flag from the update it installs, so it shouldn't need the Open Anyway step. macOS may ask again for permissions you granted (Location, notifications, audio) after an update.
 
 ## What's changed
 
