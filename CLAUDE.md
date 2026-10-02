@@ -189,11 +189,11 @@ Tests feed scripted snapshots and a controlled clock through the fake sampler, t
   - macOS's own processes (`AppKind.system`) never alert. The 90% system rule drives only the menu bar badge.
   - Alerts are delivered through `SystemActions`; an `Alert` carries an `AlertTarget` (`.app` or `.tab`) for its "Show" action. Settings keys are `alerts.<rule>.enabled` and `alerts.<rule>.threshold`.
 - **Releases and updates:**
+  - Releases are published from the maintainer's Mac with `scripts/release/release-local.sh vX.Y.Z`: a Release build signed **ad-hoc**, packed into `MoniMac-x.y.z.dmg` (with an Applications shortcut), signed for Sparkle, and published on GitHub Releases with `appcast.xml`. No certificate or CI secrets are needed.
   - Sparkle 2 checks `releases/latest/download/appcast.xml`. Dev builds never start it.
-  - `.github/workflows/release.yml` runs only on `v*` tags and calls `scripts/release/*.sh`. The version comes from the tag. It refuses to ship while `SUPublicEDKey` is still the placeholder.
-  - Sparkle accepts an update when its EdDSA signature is valid, so losing the EdDSA key breaks updates. The stable certificate is what keeps granted permissions across updates.
-  - The hardened runtime is off: a self-signed certificate has no Team ID, so library validation would refuse Sparkle.framework.
-  - The maintainer's one-time setup is `scripts/release/setup-wizard.sh`.
+  - Sparkle accepts an update when its EdDSA signature is valid, so the one required secret is the Sparkle private key (`~/.monimac/sparkle-ed-key`, never committed). Losing it breaks updates. Releases refuse to ship while `SUPublicEDKey` is still the placeholder.
+  - Ad-hoc signing changes the code signature every release, so macOS may ask for permissions again after an update. The optional stable-certificate path is `.github/workflows/release.yml` (manual, `workflow_dispatch`) plus `scripts/release/setup-wizard.sh`.
+  - The hardened runtime is off: without a Team ID, library validation would refuse Sparkle.framework.
 - **Side effects while verifying:**
   - Check actions (quit, stop, open, reveal, volume, output device, login items, notifications) through `RecordingActions` in tests.
   - In the running app, never quit, stop, signal, or open anything you didn't create yourself. Don't change system state (login items, output device, volume) without restoring it. Never request a permission or post a notification.
