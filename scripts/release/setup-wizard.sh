@@ -356,7 +356,7 @@ fi
 stage "Check the release"
 check() { if eval "$2"; then step "$1 ✓"; else warn "$1 ✗"; fi; }
 ASSETS="$(gh release view v0.1.0 --json assets -q '.assets[].name' 2>/dev/null || true)"
-check "the release has MoniMac-0.1.0.zip" "grep -qx MoniMac-0.1.0.zip <<<\"\$ASSETS\""
+check "the release has MoniMac-0.1.0.dmg" "grep -qx MoniMac-0.1.0.dmg <<<\"\$ASSETS\""
 check "the release has appcast.xml" "grep -qx appcast.xml <<<\"\$ASSETS\""
 FEED="$(curl -fsSL "$REPO_URL/releases/latest/download/appcast.xml" || true)"
 check "the feed URL in the app serves the appcast" "grep -q '<sparkle:shortVersionString>0.1.0<' <<<\"\$FEED\""
@@ -368,8 +368,8 @@ pause
 # ── 9 ────────────────────────────────────────────────────────────────────
 stage "Install like a user, and take the README screenshots"
 say "Use the release, not a local build. If a local MoniMac is running, quit it first."
-step "Download MoniMac-0.1.0.zip from the release page (in Safari or Chrome, so it's quarantined like a user's)."
-step "Open the zip, drag MoniMac into Applications, and open it."
+step "Download MoniMac-0.1.0.dmg from the release page (in Safari or Chrome, so it's quarantined like a user's)."
+step "Open the disk image, drag MoniMac onto the Applications shortcut, eject the image, and open MoniMac."
 step "macOS blocks it. Screenshot that dialog: ⌘⇧4, Space, click the dialog."
 step "  Save as docs/images/install-blocked.png, then click Done."
 step "Open System Settings › Privacy & Security, scroll to Security. Screenshot the window with"

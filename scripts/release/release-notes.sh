@@ -39,8 +39,8 @@ screenshot() { # Only screenshots that exist; the README says which ones the mai
 cat <<EOF
 ## Install
 
-1. Download **MoniMac-$VERSION.zip** below and open it.
-2. Drag **MoniMac** into your **Applications** folder.
+1. Download **MoniMac-$VERSION.dmg** below and open it.
+2. Drag **MoniMac** onto the **Applications** shortcut next to it, then eject the disk image.
 3. Open MoniMac. macOS says it can't verify that MoniMac is free of malware. Click **Done**.$(screenshot install-blocked.png "macOS blocks MoniMac on first launch")
 4. Open **System Settings › Privacy & Security**, scroll down to **Security**, and click **Open Anyway** next to "MoniMac was blocked". Confirm with **Open Anyway** and your password.$(screenshot install-open-anyway.png "Open Anyway in System Settings › Privacy & Security")
 
