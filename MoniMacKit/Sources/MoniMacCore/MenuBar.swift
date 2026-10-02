@@ -38,12 +38,18 @@ public struct MenuBarItem: Equatable, Sendable {
     public var bars: [Double?]
     /// The widest text this item can show. Surfaces size the item for it so it never changes width.
     public var widestText: String
+    /// Set while the system is under strain: the item shows this warning badge instead.
+    public var warning: MenuBarWarning?
 
-    public init(metric: Metric, style: MenuBarStyle, text: String, bars: [Double?], widestText: String) {
+    public init(
+        metric: Metric, style: MenuBarStyle, text: String, bars: [Double?], widestText: String,
+        warning: MenuBarWarning? = nil
+    ) {
         self.metric = metric
         self.style = style
         self.text = text
         self.bars = bars
         self.widestText = widestText
+        self.warning = warning
     }
 }
