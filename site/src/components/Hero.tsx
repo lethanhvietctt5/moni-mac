@@ -1,92 +1,90 @@
-import { m } from 'motion/react'
-import { links, release } from '../data/sample'
-import { useLiveTick } from '../hooks/useLiveTick'
-import { DownloadIcon, GitHubIcon } from './icons'
-import { MenuBar } from './MenuBar'
-import { Popover } from './Popover'
+import { Download } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { DOWNLOAD_URL, MIN_MACOS, REPO_URL, VERSION } from '../site'
+import { GithubIcon } from './ui'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
 export function Hero() {
-  const [ref, tick] = useLiveTick<HTMLDivElement>(2000)
+  const reduce = useReducedMotion()
+  const rise = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.8, delay, ease },
+        }
 
   return (
-    <section id="top" aria-labelledby="hero-title" className="scheme-dark relative isolate overflow-hidden bg-[#07080c] text-ink">
-      {/* Soft glow in the icon's blues */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute top-[-18%] left-1/2 h-[720px] w-[1100px] max-w-[180vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(46,155,255,0.38),rgba(29,91,255,0.16)_55%,transparent)] blur-2xl" />
-        <div className="absolute top-[38%] left-[12%] h-[420px] w-[520px] rounded-full bg-[radial-gradient(closest-side,rgba(94,225,255,0.14),transparent)] blur-2xl" />
-        <div className="absolute top-[30%] right-[6%] h-[460px] w-[560px] rounded-full bg-[radial-gradient(closest-side,rgba(64,76,255,0.18),transparent)] blur-2xl" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#07080c]" />
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6 sm:pt-38 sm:pb-28">
-        <m.div
-          className="mx-auto max-w-3xl text-center"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease }}
+    <section id="top" className="overflow-x-clip bg-gradient-to-b from-white to-sidebar">
+      <div className="flex flex-col items-center gap-7 px-6 pt-[136px] text-center sm:pt-[160px]">
+        <motion.a
+          {...rise(0)}
+          href={`${REPO_URL}/releases`}
+          className="flex items-center gap-2 rounded-full bg-white py-1.5 pr-3.5 pl-2.5 text-[14px] font-medium text-ink-2 outline outline-line transition-colors hover:text-ink"
         >
-          <img
-            src="/icon-256.webp"
-            alt="MoniMac app icon"
-            width={112}
-            height={112}
-            className="mx-auto mb-7 size-24 drop-shadow-[0_18px_40px_rgba(30,110,255,0.55)] sm:size-28"
-          />
-          <h1 id="hero-title" className="text-[42px] leading-[1.04] font-semibold tracking-[-0.025em] text-balance sm:text-[64px] lg:text-[72px]">
-            See what your Mac is{' '}
-            <span className="bg-gradient-to-r from-[#5ee1ff] via-[#3d9bff] to-[#6f7bff] bg-clip-text text-transparent">really doing.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-[18px] leading-relaxed text-pretty text-ink-2 sm:text-[20px]">
-            MoniMac is a free, open-source system monitor that lives in your menu bar and opens into a full window,
-            with history to scroll back through and every number broken down by app.
-          </p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <span className="relative flex size-2">
+            <span className="absolute inset-0 animate-ping rounded-full bg-[#34c759] opacity-60 motion-reduce:hidden" />
+            <span className="relative size-2 rounded-full bg-[#34c759]" />
+          </span>
+          Free &amp; open source · v{VERSION}
+        </motion.a>
+
+        <motion.h1
+          {...rise(0.08)}
+          className="max-w-[960px] text-[44px]/[48px] font-bold tracking-[-1.4px] text-balance sm:text-[60px]/[64px] sm:tracking-[-2px] lg:text-[76px]/[79px] lg:tracking-[-2.6px]"
+        >
+          Never wonder why your Mac is slow again.
+        </motion.h1>
+
+        <motion.p {...rise(0.16)} className="max-w-[640px] text-[18px]/[28px] text-ink-2 sm:text-[20px]/[30px]">
+          MoniMac keeps CPU, memory, network and battery one glance away in your menu bar — and tells you the
+          moment an app starts dragging your Mac down.
+        </motion.p>
+
+        <motion.div {...rise(0.24)} className="flex flex-col items-center gap-7">
+          <div className="flex flex-col gap-3.5 pt-2 sm:flex-row">
             <a
-              href={links.dmg}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-[16px] font-medium text-white shadow-[0_8px_30px_-6px_rgba(10,132,255,0.7)] transition hover:bg-[#2a95ff] sm:w-auto"
+              href={DOWNLOAD_URL}
+              className="flex items-center justify-center gap-2.5 rounded-xl bg-accent px-7 py-4 text-[17px] font-semibold text-white shadow-[0_8px_24px_#0a84ff40] transition-[filter,transform] hover:-translate-y-px hover:brightness-110"
             >
-              <DownloadIcon size={18} strokeWidth={2.2} />
-              Download for Mac
+              <Download className="size-5" strokeWidth={2.25} />
+              Download for macOS
             </a>
             <a
-              href={links.repo}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-6 py-3 text-[16px] font-medium text-ink transition hover:bg-white/10 sm:w-auto"
+              href={REPO_URL}
+              className="flex items-center justify-center gap-2.5 rounded-xl bg-white px-6 py-4 text-[17px] font-semibold outline outline-line transition-[background-color] hover:bg-mist"
             >
-              <GitHubIcon size={18} />
+              <GithubIcon className="size-[18px]" />
               View on GitHub
             </a>
           </div>
-          <p className="mt-4 text-[13px] text-ink-3">
-            Free · v{release.version} · macOS {release.minimumMacOS}+ · Apple silicon
+          <p className="text-[14px] text-ink-3">
+            Native for Apple silicon · {MIN_MACOS} · Under 10 MB
           </p>
-        </m.div>
+        </motion.div>
+      </div>
 
-        {/* A desktop with MoniMac in the menu bar and its popover open */}
-        <m.div
-          ref={ref}
-          className="relative mx-auto mt-14 max-w-5xl sm:mt-20"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.15, ease }}
+      {/* The scene image carries its shadow in a 120 pt margin on every side (9.375% of the
+          1280 pt scene), so negative margins put the scene itself on the column. */}
+      <div className="px-6 pt-14 pb-16 sm:px-10 lg:px-20 lg:pt-[72px] lg:pb-24">
+        <motion.div
+          className="mx-auto max-w-[1280px]"
+          initial={reduce ? false : { opacity: 0, y: 48, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 1.1, delay: 0.35, ease }}
         >
-          <div
-            role="img"
-            aria-label="Illustration: the macOS menu bar with MoniMac showing CPU, memory, and network, and its popover listing every metric and the busiest apps. Values are simulated."
-            className="bg-wallpaper relative h-[600px] overflow-hidden rounded-[18px] border border-white/10 shadow-[0_40px_120px_-30px_rgba(20,90,255,0.55)] sm:h-[620px]"
-          >
-            <MenuBar metrics={['cpu', 'memory', 'network']} style="both" tick={tick} activeMetric="cpu" className="pr-3" compactClock />
-            <m.div
-              className="absolute top-[38px] right-1/2 translate-x-1/2 origin-top md:right-[300px] md:translate-x-0"
-              initial={{ opacity: 0, scale: 0.92, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.9 }}
-            >
-              <Popover tick={tick} className="w-[340px] max-w-[calc(100vw-56px)]" />
-            </m.div>
-          </div>
-        </m.div>
+          <img
+            src="/shots/hero.webp"
+            alt="MoniMac in the macOS menu bar: CPU 32%, memory 11.2 GB and network 2.4 MB/s, with the popover open over the Overview window."
+            width={1520}
+            height={940}
+            fetchPriority="high"
+            draggable={false}
+            className="-mx-[9.375%] -my-[9.375%] block h-auto w-[118.75%] max-w-none select-none"
+          />
+        </motion.div>
       </div>
     </section>
   )

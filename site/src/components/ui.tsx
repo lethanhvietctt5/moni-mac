@@ -1,177 +1,117 @@
-import type { CSSProperties, ReactNode } from 'react'
-import { metricColor, type Metric, type SampleApp } from '../data/sample'
-import { clamp } from '../lib/live'
-import { metricIcon } from '../lib/metricIcons'
+import { motion, useReducedMotion } from 'motion/react'
+import type { ReactNode } from 'react'
 
-/** Vertical bars scaled with transforms, so live updates don't trigger layout. */
-export function Bars({
-  values,
-  max = 100,
-  color,
-  className = 'h-8',
-  gap = 'gap-[3px]',
-  radius = 'rounded-[2px]',
-  minimum = 0.06,
+/** The 1200 px column the design lays every section on. */
+export function Container({ className = '', children }: { className?: string; children: ReactNode }) {
+  return <div className={`mx-auto w-full max-w-[1248px] px-6 ${className}`}>{children}</div>
+}
+
+/** Fades and lifts its content in the first time it scrolls into view. */
+export function Reveal({
+  className,
+  delay = 0,
+  children,
 }: {
-  values: readonly number[]
-  max?: number
-  color: string
   className?: string
-  gap?: string
-  radius?: string
-  minimum?: number
+  delay?: number
+  children: ReactNode
 }) {
+  const reduce = useReducedMotion()
   return (
-    <div className={`flex items-end ${gap} ${className}`} aria-hidden="true">
-      {values.map((v, i) => (
-        <div
-          key={i}
-          className={`bar-y h-full flex-1 ${radius}`}
-          style={{ background: color, transform: `scaleY(${Math.max(minimum, clamp(v / max))})` }}
-        />
-      ))}
-    </div>
+    <motion.div
+      className={className}
+      initial={reduce ? false : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '0px 0px -80px 0px' }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
   )
 }
 
-/** A horizontal track with a colored fill. */
-export function Meter({
-  fraction,
-  color,
-  className = 'h-1',
-  track = 'bg-track',
+/**
+ * A mockup exported from the Pencil design at 2×. `width` and `height` are the design's
+ * point size, so the browser reserves the space before the image loads.
+ */
+export function Shot({
+  name,
+  alt,
+  width,
+  height,
+  className = '',
+  eager = false,
 }: {
-  fraction: number
-  color: string
+  name: string
+  alt: string
+  width: number
+  height: number
   className?: string
-  track?: string
+  eager?: boolean
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-full ${track} ${className}`} aria-hidden="true">
-      <div
-        className="bar-x absolute inset-0 rounded-full"
-        style={{ background: color, transform: `scaleX(${clamp(fraction)})` }}
-      />
+    <img
+      src={`/shots/${name}.webp`}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+      draggable={false}
+      className={`block h-auto max-w-full select-none ${className}`}
+    />
+  )
+}
+
+/** A numbered point in a section's story column, separated by hairlines. */
+export function StoryPoint({ number, title, children }: { number: string; title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-6 pb-7">
+      <span className="text-[13px] font-semibold tracking-[0.4px] text-ink-3">{number}</span>
+      <h3 className="text-[21px]/[27px] font-semibold tracking-[-0.3px] text-ink">{title}</h3>
+      <p className="text-[16px]/[25px] text-ink-2">{children}</p>
     </div>
   )
 }
 
-/** A generic rounded glyph standing in for an app icon (no real app icons). */
-export function AppGlyph({ app, size = 28 }: { app: Pick<SampleApp, 'glyph' | 'tint'>; size?: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center font-semibold text-white shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.26,
-        fontSize: size * 0.46,
-        background: `linear-gradient(160deg, color-mix(in srgb, ${app.tint} 78%, white), ${app.tint})`,
-      }}
-    >
-      {app.glyph}
-    </span>
-  )
-}
-
-/** Colored rounded square with a metric's icon, as in the popover rows. */
-export function MetricBadge({ metric, size = 24 }: { metric: Metric; size?: number }) {
-  const Icon = metricIcon[metric]
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center text-white"
-      style={{ width: size, height: size, borderRadius: size * 0.27, background: metricColor[metric] }}
-    >
-      <Icon size={size * 0.62} strokeWidth={2} />
-    </span>
-  )
-}
-
-/** Small metric label with its icon, as on tiles and cards. */
-export function MetricLabel({ metric, children }: { metric: Metric; children: ReactNode }) {
-  const Icon = metricIcon[metric]
-  return (
-    <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-2">
-      <Icon size={13} style={{ color: metricColor[metric] }} />
-      {children}
-    </span>
-  )
-}
-
-/** The window's 12H / 24H / 7D / 30D control, drawn as part of a picture. */
-type HistoryRange = '12H' | '24H' | '7D' | '30D'
-const historyRanges: HistoryRange[] = ['12H', '24H', '7D', '30D']
-
-export function RangePicker({ selected = '24H' }: { selected?: HistoryRange }) {
-  return (
-    <span className="inline-flex rounded-md bg-track/70 p-0.5 text-[11px] font-medium text-text-2" aria-hidden="true">
-      {historyRanges.map((o) => (
-        <span
-          key={o}
-          className={`rounded-[5px] px-2 py-0.5 ${o === selected ? 'bg-surface-raised text-text shadow-sm' : ''}`}
-        >
-          {o}
-        </span>
-      ))}
-    </span>
-  )
-}
-
-export function Card({ children, className = '', style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
-  return (
-    <div className={`rounded-xl border border-sep/70 bg-surface p-3.5 ${className}`} style={style}>
-      {children}
-    </div>
-  )
-}
-
-/** A row in a "Top Apps by …" list. */
-export function AppRow({
-  app,
-  value,
-  fraction,
-  color,
-  detail,
+/** Section eyebrow, headline, and subhead, as the design's section headers. */
+export function SectionHeader({
+  eyebrow,
+  title,
+  children,
+  dark = false,
+  className = '',
 }: {
-  app: SampleApp
-  value: string
-  fraction: number
-  color: string
-  detail?: string
+  eyebrow: ReactNode
+  title: ReactNode
+  children?: ReactNode
+  dark?: boolean
+  className?: string
 }) {
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <AppGlyph app={app} size={26} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2 text-[13px] text-text">
-          <span className="truncate">{app.name}</span>
-          {detail && <span className="truncate text-[11px] text-text-3">{detail}</span>}
-        </div>
-        <Meter fraction={fraction} color={color} className="mt-1 h-[3px]" />
-      </div>
-      <span className="w-16 shrink-0 text-right text-[13px] font-medium tabular-nums text-text">{value}</span>
-    </div>
+    <Reveal className={`flex flex-col gap-5 ${className}`}>
+      <p className={`text-[15px] font-semibold ${dark ? 'text-snow-2' : 'text-ink-2'}`}>{eyebrow}</p>
+      <h2
+        className={`max-w-[760px] text-[38px]/[42px] font-semibold tracking-[-1px] sm:text-[48px]/[52px] lg:text-[56px]/[60px] lg:tracking-[-1.6px] ${
+          dark ? 'text-snow' : 'text-ink'
+        }`}
+      >
+        {title}
+      </h2>
+      {children && (
+        <p className={`max-w-[640px] text-[17px]/[26px] sm:text-[19px]/[29px] ${dark ? 'text-snow-2' : 'text-ink-2'}`}>
+          {children}
+        </p>
+      )}
+    </Reveal>
   )
 }
 
-export function SectionTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+/** GitHub's mark. Lucide no longer ships brand icons. */
+export function GithubIcon({ className = 'size-4' }: { className?: string }) {
   return (
-    <div className="mb-2 flex items-baseline justify-between gap-3">
-      <h4 className="text-[13px] font-semibold text-text">{children}</h4>
-      {aside && <span className="truncate text-[11px] text-text-2">{aside}</span>}
-    </div>
-  )
-}
-
-/** A history chart's time axis. */
-export function Axis({ labels }: { labels: readonly string[] }) {
-  return (
-    <div className="mt-1.5 flex justify-between text-[10px] text-text-3" aria-hidden="true">
-      {labels.map((l) => (
-        <span key={l}>{l}</span>
-      ))}
-    </div>
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
   )
 }

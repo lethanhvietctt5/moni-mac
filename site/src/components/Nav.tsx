@@ -1,21 +1,20 @@
-import { AnimatePresence, m } from 'motion/react'
+import { Menu, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { links } from '../data/sample'
-import { CloseIcon, DownloadIcon, GitHubIcon, MenuIcon } from './icons'
+import { CHANGELOG_URL, DOWNLOAD_URL, REPO_URL } from '../site'
+import { GithubIcon } from './ui'
 
-const sections = [
-  { href: '#features', label: 'Features' },
-  { href: '#developers', label: 'Developers' },
-  { href: '#privacy', label: 'Privacy' },
-  { href: '#install', label: 'Install' },
-  { href: '#faq', label: 'FAQ' },
+const links = [
+  { label: 'Menu Bar', href: '#menu-bar' },
+  { label: 'Metrics', href: '#metrics' },
+  { label: 'Alerts', href: '#alerts' },
+  { label: 'Developers', href: '#developers' },
+  { label: 'Changelog', href: CHANGELOG_URL },
 ]
 
 export function Nav() {
   const [open, setOpen] = useState(false)
   // Transparent over the hero; frosted once the page scrolls under it.
   const [scrolled, setScrolled] = useState(false)
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
     onScroll()
@@ -23,100 +22,71 @@ export function Nav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open])
-
   return (
     <header
-      className={`scheme-dark fixed inset-x-0 top-0 z-50 border-b text-ink transition-[background-color,border-color,backdrop-filter] duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] duration-300 ${
         scrolled || open
-          ? 'border-white/[0.08] bg-[#08090d]/80 backdrop-blur-xl backdrop-saturate-150'
+          ? 'border-black/[0.06] bg-white/75 backdrop-blur-xl backdrop-saturate-150'
           : 'border-transparent bg-transparent'
       }`}
     >
-      <nav aria-label="Main" className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
-        <a href="#top" className="flex items-center gap-2 font-semibold tracking-tight">
-          <img src="/icon-256.webp" alt="" width={28} height={28} className="size-7" />
-          <span>MoniMac</span>
+      <nav className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-6 lg:px-16">
+        <a href="#top" className="flex items-center gap-2.5 lg:w-[220px]" onClick={() => setOpen(false)}>
+          <img src="/icon-256.webp" alt="" width={30} height={30} className="size-[30px]" />
+          <span className="text-[18px] font-semibold tracking-[-0.3px]">MoniMac</span>
         </a>
 
-        <ul className="ml-6 hidden items-center gap-1 text-[14px] text-ink-2 md:flex">
-          {sections.map((s) => (
-            <li key={s.href}>
-              <a href={s.href} className="rounded-md px-3 py-1.5 transition-colors hover:text-ink">
-                {s.label}
+        <ul className="hidden items-center gap-9 md:flex">
+          {links.map((l) => (
+            <li key={l.label}>
+              <a href={l.href} className="text-[14px] font-medium text-ink-2 transition-colors hover:text-ink">
+                {l.label}
               </a>
             </li>
           ))}
         </ul>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center justify-end gap-5 lg:w-[220px]">
           <a
-            href={links.repo}
-            className="flex size-9 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-white/10 hover:text-ink"
-            aria-label="MoniMac on GitHub"
+            href={REPO_URL}
+            className="hidden items-center gap-1.5 text-[14px] font-medium transition-opacity hover:opacity-70 sm:flex"
           >
-            <GitHubIcon size={19} />
+            <GithubIcon />
+            GitHub
           </a>
           <a
-            href={links.dmg}
-            className="hidden items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-[14px] font-medium text-white transition-colors hover:bg-[#2a95ff] sm:flex"
+            href={DOWNLOAD_URL}
+            className="rounded-lg bg-accent px-4 py-2 text-[14px] font-semibold text-white transition-[filter] hover:brightness-110"
           >
-            <DownloadIcon size={15} strokeWidth={2.2} />
             Download
           </a>
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-white/10 hover:text-ink md:hidden"
-            aria-expanded={open}
-            aria-controls="mobile-menu"
+            className="-mr-2 p-2 md:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
-            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
           >
-            {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </nav>
 
-      <AnimatePresence initial={false}>
-        {open && (
-          <m.div
-            id="mobile-menu"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            className="overflow-hidden border-t border-white/[0.08] md:hidden"
-          >
-            <ul className="space-y-1 px-4 py-3">
-              {sections.map((s) => (
-                <li key={s.href}>
-                  <a
-                    href={s.href}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2.5 text-[15px] text-ink-2 hover:bg-white/5 hover:text-ink"
-                  >
-                    {s.label}
-                  </a>
-                </li>
-              ))}
-              <li className="pt-2">
-                <a
-                  href={links.dmg}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[15px] font-medium text-white"
-                >
-                  <DownloadIcon size={16} strokeWidth={2.2} />
-                  Download for Mac
-                </a>
-              </li>
-            </ul>
-          </m.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <ul className="flex flex-col gap-1 px-6 pb-5 md:hidden">
+          {[...links, { label: 'GitHub', href: REPO_URL }].map((l) => (
+            <li key={l.label}>
+              <a
+                href={l.href}
+                className="block py-2 text-[16px] font-medium text-ink-2"
+                onClick={() => setOpen(false)}
+              >
+                {l.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </header>
   )
 }
