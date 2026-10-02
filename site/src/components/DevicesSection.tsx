@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Container, Reveal, Shot } from './ui'
 
-/** A device tile: title and blurb, then a crop of that tab's window running off the bottom. */
+/** A device tile: title and blurb, then a crop of that tab's window running off the tile's edges. */
 function Tile({
   icon: Icon,
   color,
@@ -33,13 +33,10 @@ function Tile({
           </h3>
           <p className="max-w-[480px] text-[16px]/[24px] text-ink-2">{children}</p>
         </div>
-        <Shot
-          name={shot}
-          width={wide ? 672 : 332}
-          height={wide ? 403 : 379}
-          alt={alt}
-          className="mt-auto w-full lg:mt-0"
-        />
+        {/* The crop spans the whole tile: the window runs through the side padding to the tile's edge. */}
+        <div className="-mx-6 mt-auto sm:-mx-11 lg:mt-0">
+          <Shot name={shot} width={wide ? 760 : 420} height={wide ? 403 : 379} alt={alt} className="w-full" />
+        </div>
       </div>
     </Reveal>
   )
@@ -142,11 +139,13 @@ export function DevicesSection() {
             </div>
           </Reveal>
           <Reveal delay={0.1}>
+            {/* The crop carries the band's 120 pt side padding (10% of the column) so the window's
+                shadow fades out as in the design; the band clips what doesn't fit. */}
             <Shot
               name="projects"
-              width={1200}
+              width={1440}
               height={600}
-              className="w-full"
+              className="-mx-[10%] w-[120%] max-w-none"
               alt="MoniMac's Projects tab: local dev servers grouped by repository, with port, uptime, memory and an idle warning."
             />
           </Reveal>
