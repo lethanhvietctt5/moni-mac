@@ -8,7 +8,7 @@ A free, open-source system monitor for your Mac's menu bar. MoniMac shows CPU, m
 - Reads the system without admin rights or a privileged helper; never writes to the SMC (no fan control)
 - No account, no license, no telemetry
 
-**Website:** the landing page's source is in [`site/`](site/README.md) (React and Vite, deployed on Vercel).
+**Website:** the landing page's source is in [`site/`](site/README.md) (React and Vite; deploys to Vercel from `site/`).
 
 ## Install
 
