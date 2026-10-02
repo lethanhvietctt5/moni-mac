@@ -130,6 +130,7 @@ private struct OutputCard: View {
                 .buttonStyle(.plain)
                 .fixedSize()
                 .help("Switch the output device")
+                .accessibilityIdentifier("sound.outputDevice")
                 Text(output.detail).font(.system(size: 12)).foregroundStyle(Palette.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,6 +139,8 @@ private struct OutputCard: View {
                     Image(systemName: "speaker.wave.1.fill").font(.system(size: 13)).foregroundStyle(Palette.textSecondary)
                     LiveSlider(value: volume, tint: Palette.accent, onChange: monitor.setSystemVolume)
                         .frame(width: 200)
+                        .accessibilityLabel("System volume")
+                        .accessibilityIdentifier("sound.systemVolume")
                     Image(systemName: "speaker.wave.3.fill").font(.system(size: 13)).foregroundStyle(Palette.textSecondary)
                     Text(output.volumeText)
                         .font(.system(size: 13, weight: .bold).monospacedDigit())

@@ -292,6 +292,7 @@ private struct OverviewPopoverContent: View {
                     Text("Busiest Right Now").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                     Spacer()
                     Button("Open MoniMac", action: openWindow)
+                        .accessibilityIdentifier("overview.openWindow")
                         .buttonStyle(.plain)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Palette.accent)

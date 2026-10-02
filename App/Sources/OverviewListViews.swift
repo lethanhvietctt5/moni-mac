@@ -28,6 +28,7 @@ struct ShowAllButton: View {
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(Palette.accent)
             .help("Show every app, sorted by \(column.title)")
+            .accessibilityIdentifier("showAll.\(column.rawValue)")
     }
 }
 
@@ -170,6 +171,8 @@ private struct OverviewListContent: View {
                 }
                 .buttonStyle(.plain)
                 .help(column.sortLabel)
+                .accessibilityAddTraits(sorted ? .isSelected : [])
+                .accessibilityIdentifier("overviewList.header.\(column.rawValue)")
             }
         }
         .font(.system(size: 11, weight: .semibold))

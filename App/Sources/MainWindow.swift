@@ -100,7 +100,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             }))
         window.delegate = self
         window.center()
-        window.setFrameAutosaveName("MoniMac.MainWindow")
+        if !AppDelegate.isolatedStorage { window.setFrameAutosaveName("MoniMac.MainWindow") }
         return window
     }
 
@@ -160,6 +160,7 @@ struct MainWindowView: View {
                 Text(state.tab.title)
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Palette.textPrimary)
+                    .accessibilityIdentifier("window.title")
                 if let subtitle {
                     Text(subtitle).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
                 }
@@ -176,6 +177,8 @@ struct MainWindowView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Palette.textSecondary)
             .help("Share your week")
+            .accessibilityLabel("Share your week")
+            .accessibilityIdentifier("toolbar.share")
         }
         .padding(.horizontal, 24)
         .frame(height: 56)
@@ -258,5 +261,7 @@ private struct Sidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("sidebar.\(tab.rawValue)")
     }
 }

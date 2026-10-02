@@ -25,7 +25,7 @@
 - **Dev flags:** `--sound-selftest <dir>` adjusts only pids a script writes to `<dir>/phase`. With `--show-window`, a covered window counts as showing for the audio reading, so the tab renders while other apps are in front.
 - **Self-cost** (Release, window and popover closed, nothing adjusted, 120 s from 60 s after launch, `sample` attached): `main` 1.31% (`coreaudiod` 5.79%), this branch 1.35% (`coreaudiod` 1.57%). `coreaudiod` swings with other apps' audio. The branch profile has no Core Audio frames. One earlier branch run was discarded: the popover was opened during it.
 
-- [ ] Switching output devices and changing system volume work and are recorded through SystemActions (recorded in tests; the running app showed the device menu and volume slider, but switching and setting were deliberately not exercised on this Mac)
+- [x] Switching output devices and changing system volume work and are recorded through SystemActions (recorded in tests; in the real app by UI tests `SoundTests.testOutputMenuSwitchesDefaultDevice` and `SoundTests.testVolumeSliderChangesSystemVolume`, which read the result back with Core Audio and restore the original device and volume)
 - [ ] Per-app volume and mute work and persist (if the spike was a go) (gains and persistence by bundle id tested; real taps need the user verification script)
 - [ ] Ducking lowers other apps while a call is active and restores them afterwards (if the spike was a go) (state machine tested with scripted readings; not tried with a real call)
 - [x] ~~If the spike was a no-go, no per-app controls are shown~~ Not applicable: the spike (ticket 16) was a go, so per-app controls are built

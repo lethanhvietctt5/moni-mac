@@ -124,7 +124,7 @@ final class StatusBarController: NSObject {
 
     private func makeStatusItem(for metric: Metric) -> NSStatusItem {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.autosaveName = "MoniMac.\(metric.rawValue)"
+        if !AppDelegate.isolatedStorage { statusItem.autosaveName = "MoniMac.\(metric.rawValue)" }
         if let button = statusItem.button {
             button.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
             button.target = self

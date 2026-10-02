@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — History + CPU sparkline in the menu bar
 
-**Status:** done pending a manual click-through (automation can't click the status item without Accessibility permission). Unchecked boxes are built but not yet exercised in the real app.
+**Status:** done. The range buttons, ×, Quit MoniMac, and Activity Monitor were clicked in the real app by the UI tests in `UITests/` (see CLAUDE.md › UI tests). The tests open the popover with `--show-popover`, so the status item click itself is still unexercised.
 
 **Decisions made while building:**
 - **Process sampling without a privileged helper.** Your own processes are read with `proc_pid_rusage` (every 4 s). Other users' processes (WindowServer, root daemons) are invisible to that API, so they're read from the setuid `/bin/ps` in the background every 15 s, with rates averaged over that interval.
@@ -16,8 +16,8 @@
 - **Self-cost:** about 0.4% CPU for the Release app with the popover closed, plus about 0.1% for the `ps` runs.
 
 - [x] Clicking the CPU item opens the popover on the CPU tab with all sections populated from live data (popover verified via `--show-popover`; the click handler itself is not yet exercised)
-- [ ] Range buttons switch the chart between 1m, 5m, 1H, and 24H (built; not yet clicked in the real app)
+- [x] Range buttons switch the chart between 1m, 5m, 1H, and 24H (UI test `PopoverTests.testRangeButtonsSwitchPopoverChart`)
 - [x] Top Apps groups helpers under their app (e.g. Chrome helpers count toward Google Chrome)
-- [ ] Pressing × on an app records a graceful-quit action for that app (verified with the recording fake) and quits it in the real app (the real `terminate()` path is not yet clicked)
-- [ ] The Quit MoniMac and Activity Monitor actions work (built; not yet clicked in the real app)
+- [x] Pressing × on an app opens the quit sheet, and the sheet's Quit quits the app gracefully (the action is verified with the recording fake; in the real app a throwaway app was quit this way: UI test `PopoverTests.testPopoverQuitButtonThenQuitQuitsTheApp`)
+- [x] The Quit MoniMac and Activity Monitor actions work (UI tests `PopoverTests.testQuitMoniMacQuitsTheApp`, `PopoverTests.testActivityMonitorLinkOpensActivityMonitor`)
 - [x] Tests cover AppGrouping roll-up and the CPU tab's feature state from scripted snapshots

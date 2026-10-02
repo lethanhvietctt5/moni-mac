@@ -4,9 +4,9 @@
 
 **Blocked by:** 03 — Popover with CPU tab, top apps, and quit; 04 — Main window with CPU tab
 
-**Status:** done pending a manual click-through (automation can't click the status item, the popover's Memory tab, or the window sidebar). Unchecked boxes are built but not yet seen in the running app.
+**Status:** done. A UI test (`UITests/`) saw the menu bar item in the real app. The Memory tabs were seen only in offscreen renders (see below).
 
-- [ ] A Memory menu bar item can be shown alongside the CPU item (built and covered by feature-state tests; the running app was launched with it enabled, but macOS doesn't expose status items to the screenshot script)
+- [x] A Memory menu bar item can be shown alongside the CPU item (UI test `MenuBarItemTests.testMemoryNetworkAndTemperatureItemsCanBeShown`, which enables it for one launch through launch-argument settings and reads the item's title, e.g. "17.7 GB")
 - [x] The popover and window Memory tabs show live values matching the design sections (seen in offscreen renders of the real views from live `HostSampler` data; not yet in the running app, since reaching the tab needs a click)
 - [x] The pressure history chart colors buckets by Low/Med/High
 - [x] Top Apps by Memory uses grouped app totals

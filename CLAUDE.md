@@ -33,6 +33,16 @@ Rerun `xcodegen generate` after adding or removing app source files or editing `
 
 **Screenshots:** use `scripts/screenshot-window.sh window|popover out.png`, which captures one MoniMac window by window ID. **Never capture the full screen or a screen region**: they record the user's other apps. Menu bar items can't be captured, so they're verified by tests.
 
+**UI tests** (`UITests/`, XCUITest; they click the real app, so quit any running MoniMac first):
+```bash
+xcodegen generate && xcodebuild test -project MoniMac.xcodeproj -scheme MoniMac -destination 'platform=macOS' -only-testing:MoniMacUITests -derivedDataPath build
+```
+- **Permission:** macOS may ask once to let the test runner control the Mac (UI automation / Accessibility). The user grants it; never click it yourself. The Copy test also needs `MoniMacUITests-Runner` set to Allow in Privacy & Security › Paste from Other Apps, or it skips.
+- **No screenshots:** the scheme turns Xcode's automatic screen capture off, because it records the whole screen. Without it `XCUIElement.screenshot()` fails too, so tests assert accessibility state and attach text. Never turn capture back on.
+- **Quitting:** tests quit only `MoniMacUITestDummy`, a throwaway app built next to the runner. The popover × test presses Cancel. Activity Monitor is closed afterwards only if the test opened it.
+- **Restoring:** `launchMoniMac` restores MoniMac's settings after each test. The sound tests restore the volume and default output, and the Copy test restores the pasteboard.
+- **Identifiers:** add an `accessibilityIdentifier` (`area.thing`, e.g. `cpu.range.1H`) when a query needs one. SwiftUI text reports its string as the element's `value`, so use `text(of:)`/`staticText(_:in:)`.
+
 **Self-cost** (budget: under 1% average CPU at a 2 s refresh with the popover closed):
 - **Build:** measure a **Release** build; Debug is several times slower.
 - **Wait:** start at least 60 s after launch, so SMC key discovery is done.

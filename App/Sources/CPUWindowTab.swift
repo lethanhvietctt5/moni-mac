@@ -83,10 +83,12 @@ private struct CPUWindowContent: View {
                     Text("History").font(.system(size: 13, weight: .bold)).foregroundStyle(Palette.textPrimary)
                     if let peak = detail.peak {
                         Text(peak).font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
+                            .accessibilityIdentifier("cpu.history.peak")
                     }
                 }
                 Spacer()
-                SegmentedPicker(options: CPUDetail.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 10)
+                SegmentedPicker(options: CPUDetail.ranges, selection: $range, label: \.shortLabel, horizontalPadding: 10,
+                                identifierPrefix: "cpu.history.range")
                     .fixedSize()
             }
             VStack(spacing: 6) {
@@ -109,7 +111,7 @@ private struct CPUWindowContent: View {
                 HStack {
                     ForEach(Array(detail.xAxis.enumerated()), id: \.offset) { index, label in
                         if index > 0 { Spacer() }
-                        Text(label)
+                        Text(label).accessibilityIdentifier("cpu.history.xAxis")
                     }
                 }
                 .font(.system(size: 10))

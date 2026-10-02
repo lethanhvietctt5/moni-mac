@@ -53,6 +53,7 @@ private struct SettingsContent: View {
             }
             SettingsRow(label: "Show icon in Dock", isLast: true) {
                 SettingsSwitch(isOn: panel.showsDockIcon, set: monitor.setShowsDockIcon)
+                    .accessibilityIdentifier("settings.showsDockIcon")
             }
         }
     }
@@ -349,6 +350,9 @@ private struct TabChip: View {
         .buttonStyle(.plain)
         .disabled(!chip.canToggle)
         .help(chip.canToggle ? (chip.isShown ? "Hide \(chip.title)" : "Show \(chip.title)") : "Always shown")
+        // The ✓ or + is an image, so the label says what a click does, as the tooltip does.
+        .accessibilityLabel(chip.isShown ? "Hide \(chip.title)" : "Show \(chip.title)")
+        .accessibilityIdentifier("settings.tabChip.\(chip.tab.rawValue)")
     }
 }
 

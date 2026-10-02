@@ -62,15 +62,15 @@ struct PopoverView: View {
                 .foregroundStyle(Palette.textPrimary)
             Spacer()
             HStack(spacing: 12) {
-                headerButton("macwindow", help: "Open MoniMac", action: openWindow)
-                headerButton("gearshape", help: "Settings", action: openSettings)
+                headerButton("macwindow", help: "Open MoniMac", id: "popover.openWindow", action: openWindow)
+                headerButton("gearshape", help: "Settings", id: "popover.settings", action: openSettings)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
     }
 
-    private func headerButton(_ symbol: String, help: String, action: (() -> Void)?) -> some View {
+    private func headerButton(_ symbol: String, help: String, id: String, action: (() -> Void)?) -> some View {
         Button { action?() } label: {
             Image(systemName: symbol).font(.system(size: 13))
         }
@@ -78,6 +78,8 @@ struct PopoverView: View {
         .foregroundStyle(Palette.textSecondary)
         .disabled(action == nil)
         .help(help)
+        .accessibilityLabel(help)
+        .accessibilityIdentifier(id)
     }
 
     private func footer(status: String) -> some View {
@@ -90,6 +92,7 @@ struct PopoverView: View {
             Button("Quit MoniMac", action: quit)
                 .buttonStyle(.plain)
                 .fontWeight(.medium)
+                .accessibilityIdentifier("popover.quit")
         }
         .font(.system(size: 11))
         .foregroundStyle(Palette.textSecondary)

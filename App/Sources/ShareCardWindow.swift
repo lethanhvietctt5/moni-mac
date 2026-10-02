@@ -82,7 +82,7 @@ private struct ShareCardPreview: View {
 
             HStack(spacing: 12) {
                 SegmentedPicker(options: [false, true], selection: $dark, label: { $0 ? "Dark" : "Light" },
-                                horizontalPadding: 14)
+                                horizontalPadding: 14, identifierPrefix: "shareCard.appearance")
                     .frame(width: 150)
                 Text("1200 × 630 PNG · made on this Mac, nothing is uploaded")
                     .font(.system(size: 11)).foregroundStyle(Palette.textSecondary)
@@ -90,8 +90,8 @@ private struct ShareCardPreview: View {
                 if copied {
                     Text("Copied").font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.textSecondary)
                 }
-                Button("Copy", action: copy)
-                Button("Save…", action: save).keyboardShortcut(.defaultAction)
+                Button("Copy", action: copy).accessibilityIdentifier("shareCard.copy")
+                Button("Save…", action: save).keyboardShortcut(.defaultAction).accessibilityIdentifier("shareCard.save")
             }
         }
         .padding(24)
