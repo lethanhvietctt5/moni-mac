@@ -319,8 +319,9 @@ struct AlertTests {
 
     @Test func turningARuleOnAsksForPermission() throws {
         let (monitor, _) = try makeMonitor()
-        monitor.setAlertEnabled(false, for: .appCPU)
         monitor.setAlertThreshold(2, for: .appCPU)
+        monitor.setAlertEnabled(false, for: .appCPU)
+        monitor.setAlertThreshold(5_000_000, for: .network)
         #expect(actions.recorded.isEmpty)
 
         monitor.setAlertEnabled(true, for: .network)
@@ -440,5 +441,27 @@ struct AlertTests {
         #expect(rows[0].options.map(\.title) == ["50%", "80%", "100%", "150%", "200%", "400%"])
         #expect(rows[1].isEnabled == false)
         #expect(rows[3].thresholdTitle == "80 Mbps")
+        #expect(rows[0].options.filter(\.isSelected).map(\.title) == ["150%"])
+    }
+
+    @Test func cpuAndMemoryTurnOffFromTheirMenuAndBackOnByPickingAThreshold() throws {
+        let (monitor, _) = try makeMonitor()
+        monitor.tick()
+        monitor.setAlertEnabled(false, for: .memoryGrowth)
+        monitor.setAlertEnabled(false, for: .diskWrites)
+
+        var rows = monitor.settingsPanel(version: "1.0").alertRules
+        #expect(rows.map(\.menuTitle) == ["6.7%", "Off", "10 GB", "10 MB/s"])
+        #expect(rows[1].options.allSatisfy { !$0.isSelected })
+        // Disk has its own switch: its menu still shows the threshold it will use.
+        #expect(rows[2].options.filter(\.isSelected).map(\.title) == ["10 GB"])
+
+        monitor.setAlertThreshold(2 * gib, for: .memoryGrowth)
+        monitor.setAlertThreshold(20_000_000_000, for: .diskWrites)
+        rows = monitor.settingsPanel(version: "1.0").alertRules
+        #expect(rows[1].isEnabled)
+        #expect(rows[1].menuTitle == "2 GB")
+        #expect(rows[2].isEnabled == false)
+        #expect(rows[2].description == "More than 20 GB written in an hour")
     }
 }

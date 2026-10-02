@@ -15,6 +15,10 @@ public enum AlertRule: String, CaseIterable, Sendable {
 
     var enabledByDefault: Bool { self != .network }
 
+    /// Disk and network turn on and off with a switch, as the design draws them; CPU and memory have
+    /// an "Off" entry in their threshold menu instead.
+    var hasSwitch: Bool { self == .diskWrites || self == .network }
+
     var defaultThreshold: Double {
         switch self {
         case .appCPU: 0.8

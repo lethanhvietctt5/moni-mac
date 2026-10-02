@@ -34,6 +34,36 @@ enum MenuBarGraphics {
         }
     }
 
+    /// The warning badge, e.g. "⚠ CPU 98%": dark text and a warning sign on amber, as the design draws it.
+    /// Not a template: it keeps its colors on any menu bar. Sized for `widestText` so it never changes width.
+    static func warningBadge(_ text: String, widestText: String) -> NSImage {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        let ink = NSColor(red: 0x1D / 255, green: 0x1D / 255, blue: 0x1F / 255, alpha: 1)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: ink]
+        let symbolSize: CGFloat = 12
+        let (padding, gap): (CGFloat, CGFloat) = (6, 5)
+        let textWidth = ceil((widestText as NSString).size(withAttributes: attributes).width)
+        let width = padding + symbolSize + gap + textWidth + padding
+        let symbol = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Warning")?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 10, weight: .bold)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [ink])))
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
+            NSColor(red: 1, green: 0xB3 / 255, blue: 0x40 / 255, alpha: 1).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
+            if let symbol {
+                let size = symbol.size
+                symbol.draw(in: NSRect(x: padding + (symbolSize - size.width) / 2, y: (height - size.height) / 2,
+                                       width: size.width, height: size.height))
+            }
+            let textSize = (text as NSString).size(withAttributes: attributes)
+            (text as NSString).draw(at: NSPoint(x: padding + symbolSize + gap, y: (height - textSize.height) / 2),
+                                    withAttributes: attributes)
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+
     private static func sparklineWidth(_ count: Int) -> CGFloat {
         CGFloat(count) * barWidth + CGFloat(max(count - 1, 0)) * barGap
     }

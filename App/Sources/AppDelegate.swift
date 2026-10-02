@@ -3,19 +3,26 @@ import MoniMacCore
 import MoniMacSystem
 import Observation
 import os
+import UserNotifications
 
 private let log = Logger(subsystem: "io.github.lethanhvietctt5.MoniMac", category: "App")
 
 @main
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Development aid: `--mute-notifications` evaluates alerts but only logs them: no permission prompt, no banners.
+    private static let notificationsMuted = CommandLine.arguments.contains("--mute-notifications")
     private let monitor = Monitor(
-        sampler: HostSampler(storageScanCache: .standard), history: makeHistory(), preferences: Preferences(), actions: WorkspaceActions()
+        sampler: HostSampler(storageScanCache: .standard), history: makeHistory(), preferences: Preferences(),
+        actions: WorkspaceActions(notificationsMuted: notificationsMuted)
     )
     private var statusBar: StatusBarController?
     /// The quit confirmation, shared by the popover, the window, and (later) notifications.
     private lazy var quitSheet = QuitSheetPresenter(monitor: monitor)
     private lazy var mainWindow = MainWindowController(monitor: monitor, quitSheet: quitSheet)
+    private lazy var alertResponder = AlertNotificationResponder(quitSheet: quitSheet) { [weak self] column, app in
+        self?.mainWindow.show(sortedBy: column, expanding: [app])
+    }
     private var refresh: Task<Void, Never>?
     /// The interval the refresh loop runs at; the loop restarts when the setting changes.
     private var refreshInterval: RefreshInterval?
@@ -39,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = Self.makeMainMenu()
+        // Receives notification buttons, including the one that launched MoniMac. Setting it never prompts.
+        if !Self.notificationsMuted { UNUserNotificationCenter.current().delegate = alertResponder }
         statusBar = StatusBarController(
             monitor: monitor,
             quitSheet: quitSheet,

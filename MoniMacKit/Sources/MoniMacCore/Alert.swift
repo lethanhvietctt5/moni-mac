@@ -93,6 +93,8 @@ public struct AlertRuleRow: Equatable, Sendable, Identifiable {
         public var value: Double
         /// e.g. "80%", "1 GB".
         public var title: String
+        /// Checked in the menu: the current threshold, unless the menu's own "Off" is.
+        public var isSelected: Bool
         public var id: Double { value }
     }
 
@@ -104,6 +106,8 @@ public struct AlertRuleRow: Equatable, Sendable, Identifiable {
     public var threshold: Double
     /// The current threshold, e.g. "80%".
     public var thresholdTitle: String
+    /// What the threshold menu reads: the threshold, or "Off" for a rule turned off from that menu.
+    public var menuTitle: String
     /// The thresholds offered, always including the current one.
     public var options: [Option]
     /// Turned on and off with a switch beside the threshold, as the design draws disk and network.
@@ -191,6 +195,8 @@ extension Monitor {
             case .diskWrites: "Heavy disk writes"
             case .network: "Heavy network activity"
             }
+            let hasSwitch = rule.hasSwitch
+            let offInMenu = !hasSwitch && !settings.isEnabled
             return AlertRuleRow(
                 rule: rule,
                 label: label,
@@ -198,8 +204,12 @@ extension Monitor {
                 isEnabled: settings.isEnabled,
                 threshold: settings.threshold,
                 thresholdTitle: title,
-                options: values.map { AlertRuleRow.Option(value: $0, title: format.threshold($0, for: rule)) },
-                hasSwitch: rule == .diskWrites || rule == .network
+                menuTitle: offInMenu ? "Off" : title,
+                options: values.map {
+                    AlertRuleRow.Option(value: $0, title: format.threshold($0, for: rule),
+                                        isSelected: !offInMenu && $0 == settings.threshold)
+                },
+                hasSwitch: hasSwitch
             )
         }
     }
@@ -212,8 +222,10 @@ extension Monitor {
         if enabled { requestNotificationPermission() }
     }
 
+    /// For a rule without a switch, picking a threshold from its menu also turns it back on.
     public func setAlertThreshold(_ threshold: Double, for rule: AlertRule) {
         guard threshold > 0 else { return }
         preferences.setAlertThreshold(threshold, for: rule)
+        if !rule.hasSwitch, !preferences.alertSettings(rule).isEnabled { setAlertEnabled(true, for: rule) }
     }
 }

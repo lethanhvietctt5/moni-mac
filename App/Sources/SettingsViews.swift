@@ -71,20 +71,20 @@ private struct SettingsContent: View {
         }
     }
 
-    /// Alert rules arrive with notifications (ticket 14); until then the section shows what's coming.
+    /// One row per alert rule. CPU and memory pick a threshold or Off from one menu; disk and network have a
+    /// switch beside their threshold, as the design draws them.
     private var notifications: some View {
-        SettingsGroup(title: "Notifications", note: "Coming soon") {
-            SettingsRow(label: "App exceeds CPU threshold",
-                        description: "Alert when one app stays above the limit for 2 min") { DisabledPopup() }
-            SettingsRow(label: "Rapid memory growth", description: "Possible leak: memory growing fast") {
-                DisabledPopup()
+        SettingsGroup(title: "Notifications") {
+            ForEach(Array(panel.alertRules.enumerated()), id: \.element.id) { index, row in
+                SettingsRow(label: row.label, description: row.description,
+                            isLast: index == panel.alertRules.count - 1) {
+                    ThresholdPopup(row: row, monitor: monitor)
+                    if row.hasSwitch {
+                        SettingsSwitch(isOn: row.isEnabled) { monitor.setAlertEnabled($0, for: row.rule) }
+                    }
+                }
             }
-            SettingsRow(label: "Heavy disk writes", description: "Too much written in an hour") {
-                SettingsSwitch(isOn: false, set: nil)
-            }
-            SettingsRow(label: "Heavy network activity", isLast: true) { SettingsSwitch(isOn: false, set: nil) }
         }
-        .help("Notifications are coming in a later version")
     }
 
     // MARK: Right column
@@ -223,18 +223,48 @@ private struct SettingsSwitch: View {
     }
 }
 
-/// A threshold popup for a rule that isn't available yet.
-private struct DisabledPopup: View {
+/// An alert rule's threshold menu, e.g. "80% ⌃". Rules without a switch also turn off here.
+private struct ThresholdPopup: View {
+    let row: AlertRuleRow
+    let monitor: Monitor
+
     var body: some View {
-        HStack(spacing: 6) {
-            Text(Format.placeholder).font(.system(size: 12, weight: .medium))
-            Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+        Menu {
+            ForEach(row.options) { option in
+                Button {
+                    monitor.setAlertThreshold(option.value, for: row.rule)
+                } label: {
+                    if option.isSelected { Label(option.title, systemImage: "checkmark") } else { Text(option.title) }
+                }
+            }
+            if !row.hasSwitch {
+                Divider()
+                Button {
+                    monitor.setAlertEnabled(false, for: row.rule)
+                } label: {
+                    if row.isEnabled { Text("Off") } else { Label("Off", systemImage: "checkmark") }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(row.menuTitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Palette.textPrimary)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Palette.textSecondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Palette.surfaceRaised))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Palette.separator, lineWidth: 1))
+            .contentShape(Rectangle())
         }
-        .foregroundStyle(Palette.textTertiary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Palette.surfaceRaised))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Palette.separator, lineWidth: 1))
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(row.hasSwitch && !row.isEnabled)
+        .opacity(row.hasSwitch && !row.isEnabled ? 0.5 : 1)
     }
 }
 
