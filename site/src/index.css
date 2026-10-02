@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/*
+ * Color tokens. Metric and surface colors come from the app's
+ * App/Sources/Palette.swift and the per-metric Palette extensions,
+ * resolved for light and dark appearance.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Page */
+  --page: #fbfbfd;
+  --page-alt: #f3f3f7;
+  --ink: #1d1d1f;
+  --ink-2: #57575d;
+  --ink-3: #6e6e73;
+  --line: #e3e3e8;
+  --card: #ffffff;
+
+  /* App surfaces (Palette.swift) */
+  --win: #ffffff;
+  --sidebar: #f2f1f6;
+  --surface: #f7f7f9;
+  --surface-raised: #ffffff;
+  --sep: #e5e5ea;
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --text-3: #737378;
+  --track: #e9e9ee;
+
+  /* Metrics */
+  --accent: #0a84ff;
+  --cpu: #0a84ff;
+  --memory: #af52de;
+  --gpu: #ff9f0a;
+  --network: #30b0c7;
+  --disk: #5e5ce6;
+  --battery: #34c759;
+  --temp: #ff453a;
+  --warning: #ff9f0a;
+  --danger: #ff3b30;
+  --success: #34c759;
+
+  /* Desktop mockups */
+  --wallpaper: radial-gradient(120% 90% at 10% 0%, #8db4ee 0%, transparent 60%), radial-gradient(100% 80% at 90% 10%, #c5b3ea 0%, transparent 55%), linear-gradient(160deg, #a9c4ef 0%, #c9b8e8 50%, #f0cdb8 100%);
+  --menubar-bg: rgba(255, 255, 255, 0.5);
+  --menubar-fg: #1d1d1f;
+  --menubar-hl: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0b0b0e;
+    --page-alt: #121216;
+    --ink: #f5f5f7;
+    --ink-2: #b4b4ba;
+    --ink-3: #8e8e94;
+    --line: #26262b;
+    --card: #16161a;
+
+    --win: #1e1e20;
+    --sidebar: #262628;
+    --surface: #2c2c2e;
+    --surface-raised: #323234;
+    --sep: #3a3a3c;
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --text-3: #8a8a90;
+    --track: #3a3a3c;
+
+    --accent: #0a84ff;
+    --cpu: #409cff;
+    --memory: #bf5af2;
+    --gpu: #ffb340;
+    --network: #40c8e0;
+    --disk: #7d7aff;
+    --battery: #30d158;
+    --temp: #ff6961;
+    --warning: #ffb340;
+    --danger: #ff453a;
+    --success: #30d158;
+
+    --wallpaper: radial-gradient(120% 90% at 10% 0%, #1b3f7a 0%, transparent 60%), radial-gradient(100% 80% at 90% 10%, #3a2a6e 0%, transparent 55%), linear-gradient(160deg, #13284d 0%, #251d4a 55%, #3b2232 100%);
+    --menubar-bg: rgba(24, 24, 30, 0.5);
+    --menubar-fg: #f5f5f7;
+    --menubar-hl: rgba(255, 255, 255, 0.16);
+  }
+}
+
+/* The hero stays dark in both appearances. */
+.scheme-dark {
+  color-scheme: dark;
+  --ink: #f5f5f7;
+  --ink-2: #b4b4ba;
+  --ink-3: #8e8e94;
+  --line: #26262b;
+  --win: #1e1e20;
+  --sidebar: #262628;
+  --surface: #2c2c2e;
+  --surface-raised: #323234;
+  --sep: #3a3a3c;
+  --text: #f5f5f7;
+  --text-2: #a1a1a6;
+  --text-3: #8a8a90;
+  --track: #3a3a3c;
+  --cpu: #409cff;
+  --memory: #bf5af2;
+  --gpu: #ffb340;
+  --network: #40c8e0;
+  --disk: #7d7aff;
+  --battery: #30d158;
+  --temp: #ff6961;
+  --warning: #ffb340;
+  --danger: #ff453a;
+  --success: #30d158;
+  --wallpaper: radial-gradient(120% 90% at 10% 0%, #1b3f7a 0%, transparent 60%), radial-gradient(100% 80% at 90% 10%, #3a2a6e 0%, transparent 55%), linear-gradient(160deg, #13284d 0%, #251d4a 55%, #3b2232 100%);
+  --menubar-bg: rgba(24, 24, 30, 0.5);
+  --menubar-fg: #f5f5f7;
+  --menubar-hl: rgba(255, 255, 255, 0.16);
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-page: var(--page);
+  --color-page-alt: var(--page-alt);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-card: var(--card);
+
+  --color-win: var(--win);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-sep: var(--sep);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-track: var(--track);
+
+  --color-accent: var(--accent);
+  --color-cpu: var(--cpu);
+  --color-memory: var(--memory);
+  --color-gpu: var(--gpu);
+  --color-network: var(--network);
+  --color-disk: var(--disk);
+  --color-battery: var(--battery);
+  --color-temp: var(--temp);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-menubar-fg: var(--menubar-fg);
+  --color-menubar-bg: var(--menubar-bg);
+  --color-menubar-hl: var(--menubar-hl);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Sticky nav height, so anchored sections aren't hidden under it. */
+  section[id] {
+    scroll-margin-top: 4.5rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+@layer components {
+  /* Bars that grow from the bottom: transforms only, so live updates stay cheap. */
+  .bar-y {
+    transform-origin: bottom;
+    transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bar-x {
+    transform-origin: left;
+    transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .live-dot {
+    animation: live-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
