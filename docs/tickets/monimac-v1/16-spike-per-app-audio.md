@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** done — decision **GO**; see `docs/spikes/16-per-app-audio.md`. Two observations are pending the user's report: the exact prompt wording, and the listening checks (no faint copy of a muted app; whether a muted-by-default app blips at start). Not exercised: output device switching (documented from the API and research), a denied grant (from research), and ducking with a real call.
+**Status:** done — decision **GO**; see `docs/spikes/16-per-app-audio.md`. The user saw the prompt (system audio recording, Allow / Don't Allow) but doesn't remember its exact wording. Three things are not confirmed by ear and were measured digitally only: that a muted app is fully silent, whether a muted-by-default app blips at start, and the purple recording indicator. Not exercised: output device switching (documented from the API and research), a denied grant (from research), and ducking with a real call.
 
 - [x] The prototype changes one app's volume independently of the others on a real Mac, or a clear reason is documented why it can't
-- [ ] The permission prompts and failure modes are documented (the failure modes and the prompt's timing are documented; the exact prompt wording is pending the user's report, and the denied path is from research, not observed)
+- [x] The permission prompts and failure modes are documented. The prompt and its Allow / Don't Allow buttons were observed, and its timing was measured. The exact wording is unconfirmed, and the denied path comes from research, not observation.
 - [x] The spec's per-app volume decision is updated with go or no-go

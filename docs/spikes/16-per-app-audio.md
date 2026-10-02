@@ -1,13 +1,13 @@
 # Spike 16: per-app audio with Core Audio process taps
 
-**Decision: GO.** Per-app volume, mute, ducking, and "mute new apps" all work with Core Audio process taps feeding a MoniMac-owned private aggregate device. They work from an ad-hoc-signed, non-notarized, non-sandboxed build. Two checks are still open: the listening checks and the exact prompt text, both **pending user report**. Neither changes the decision.
+**Decision: GO.** Per-app volume, mute, ducking, and "mute new apps" all work with Core Audio process taps feeding a MoniMac-owned private aggregate device. They work from an ad-hoc-signed, non-notarized, non-sandboxed build. The listening checks and the privacy indicator are not confirmed by ear; measured digitally only. The prompt's exact wording is unconfirmed. Neither changes the decision. The main cost is in `coreaudiod`: roughly 3% CPU per tap in one rough reading. So Sound must tap only the apps the user has adjusted (see [What ticket 17 should build](#what-ticket-17-should-build)).
 
 | Capability | Result | Evidence |
 |---|---|---|
 | Per-app volume | **Go** | Gain 0.25 lowered app A by exactly −12.0 dB. App B stayed at −30.5 dBFS (±0.0 dB). |
-| Mute | **Go** | Gain 0 produced digital silence on MoniMac's path. The tap's `muteBehavior` suppresses the original stream. Listening check pending. |
+| Mute | **Go** | Gain 0 produced digital silence on MoniMac's path. The tap's `muteBehavior` suppresses the original stream. Silence at the speaker is not confirmed by ear; measured digitally only. |
 | Duck during calls | **Go** for the gain; call detection **not exercised** | Gain 0.5 measured −6.0 dB. Detection is a heuristic over `kAudioProcessPropertyIsRunningInput` (below). It wasn't tried with a real call. |
-| Mute new apps by default | **Go**, with a short leak window | A muted pipeline was running 25 ms after the new process started output (98 ms after spawn). Whether that blip is audible is pending user report. |
+| Mute new apps by default | **Go**, with a short leak window | A muted pipeline was running 25 ms after the new process started output (98 ms after spawn). Whether that blip is audible is not confirmed by ear; measured digitally only. |
 | Self-signed or ad-hoc, non-notarized | **Go** | Observed with an ad-hoc signature, no notarization, no sandbox. |
 
 The prototype was a throwaway app bundle in the session scratchpad and is not merged. It tapped only `afplay` processes it started itself, which played generated sine tones at −30.5 dBFS.
@@ -39,7 +39,7 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
 - **Isolation:** each tap contains only its own process. Tone B in A's tap read −159 to −180 dBFS, over 125 dB down.
 - **Taps read pre-mute audio:** O2 kept reading −30.5 dBFS while the muted taps were active. So a tap can't prove that the hardware stream was muted. That rests on the header contract and the listening check.
   - The header contract (`CATapDescription.h`) for `CATapMuted` is "no audio is sent from the process to the audio hardware".
-  - **Listening check:** pending user report on whether the 440 Hz tone went fully silent in P3, with no faint copy.
+  - **Listening check:** not confirmed by ear; measured digitally only. The user ran the test but doesn't remember whether the 440 Hz tone went fully silent in P3.
 - **Both mute behaviors work:** `.muted` (A) and `.mutedWhenTapped` (B) behaved the same while MoniMac was reading.
   - Prefer `.mutedWhenTapped`, as FineTune and Mimir do. If MoniMac's reader stops, the app is heard again instead of going silent.
 
@@ -68,7 +68,8 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
 - **Info.plist key:** `NSAudioCaptureUsageDescription`, with the prompt's explanation. The prototype had it; running without it was not tested.
   - Put the key in `App/Info.plist` (or `project.yml`'s info properties), not as an `INFOPLIST_KEY_…` build setting, which Xcode reportedly drops for this key.
 - **Prompt:** a system-audio-recording consent prompt naming the app.
-  - Exact wording and buttons: **pending user report**. Third-party sources quote `"<App>" would like access to record your system audio`.
+  - **Observed:** the prompt asked about recording system audio and had two buttons, **Allow** and **Don't Allow**. The user clicked Allow.
+  - **Exact wording: unconfirmed.** The user doesn't remember it. Third-party sources quote `"<App>" would like access to record your system audio` (openscreen PR #740).
   - The grant appears in System Settings › Privacy & Security › Screen & System Audio Recording.
 - **When it appears:**
   - Creating the tap (4 ms) and the aggregate (7 ms) returned at once with `noErr`.
@@ -87,7 +88,7 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
   - The grant worked and persisted across launches of the same ad-hoc build: the second run started `authorized(0)`.
   - Rebuilding changes the cdhash, and TCC then treats it as a new app (Apple DTS). This wasn't tested here, to keep the grant.
   - Releases signed with the stable self-signed certificate should keep the grant across updates, because TCC keys on the designated requirement. That is inferred from TN3127, not observed.
-- **Privacy indicator:** while any tap is running, macOS shows the purple "system audio is being recorded" dot in the menu bar (Apple Mac User Guide). Whether it showed during the spike is pending user report. This supports running taps only when they're needed (below).
+- **Privacy indicator:** while any tap is running, macOS shows the purple "system audio is being recorded" dot in the menu bar (Apple Mac User Guide). Whether it showed during the spike is not confirmed by ear; measured digitally only: the user doesn't remember. This supports running taps only when they're needed (below).
 - **UX for story 143 (ask on first use):**
   - Sound tab: show the activity list without sliders, plus "Turn on per-app volume…" with one plain sentence: *"MoniMac changes an app's volume by routing its audio through MoniMac. macOS will ask to let MoniMac record system audio; nothing is recorded or saved."*
   - The first slider move or mute, or turning on Duck or "Mute new apps", triggers the prompt.
@@ -108,7 +109,7 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
 - **Mute new apps:**
   - C was spawned, its object appeared at 34 ms, output started at 72 ms, and a muted gain-0 pipeline was running **25 ms later**. That is 98 ms from spawn, with polling at 1 ms.
   - The tapped stream was −30.5 dBFS in and digital silence out.
-  - A brief leak at the start is possible; whether it was audible is **pending user report**.
+  - A brief leak at the start is possible; whether it was audible is not confirmed by ear; measured digitally only.
   - Apps that connect to the HAL (object appears) before they play could be tapped when the object appears, instead of when output starts, which would close the window. How often real apps do this wasn't checked.
 - **State while muted:** `IsRunningOutput` stays 1 while the tap mutes the app. Playing/Silent can't come from `IsRunningOutput` alone (below).
 
@@ -190,6 +191,10 @@ Machine: MacBook Pro, Apple silicon, macOS 27.0 (26A428), output on MacBook Pro 
   - owns the real-time IOProcs. They take no locks and no allocations; gain is an atomic float with a 20–30 ms ramp.
 
 ## What ticket 17 should build
+
+> **The cost is in `coreaudiod`, not in MoniMac.** Each running tap pipeline added about **3% CPU in `coreaudiod`** in one rough 10 s reading: 10.9% → 17.5% for two pipelines. MoniMac's own process added only about 0.1% per pipeline. So:
+> - **Tap only the apps the user has adjusted:** volume below 100%, muted, ducked during a call, or muted by default. Never tap every audio app, and tear a pipeline down as soon as its app is back at 100%.
+> - **Count `coreaudiod` in Sound's self-cost check.** Measure its `ps -o cputime` delta alongside MoniMac's, with 0, 1, and several adjusted apps. The single reading above came from a busy Mac, so re-measure it before relying on it.
 
 **Build:**
 
