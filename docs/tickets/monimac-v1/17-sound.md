@@ -28,4 +28,4 @@
 - [ ] Switching output devices and changing system volume work and are recorded through SystemActions (recorded in tests; the running app showed the device menu and volume slider, but switching and setting were deliberately not exercised on this Mac)
 - [ ] Per-app volume and mute work and persist (if the spike was a go) (gains and persistence by bundle id tested; real taps need the user verification script)
 - [ ] Ducking lowers other apps while a call is active and restores them afterwards (if the spike was a go) (state machine tested with scripted readings; not tried with a real call)
-- [ ] If the spike was a no-go, no per-app controls are shown (not applicable: the spike was a go)
+- [x] ~~If the spike was a no-go, no per-app controls are shown~~ Not applicable: the spike (ticket 16) was a go, so per-app controls are built
