@@ -54,6 +54,10 @@ final class RecordingActions: SystemActions {
         case setLaunchAtLogin(Bool)
         case requestNotificationAuthorization
         case deliver(Alert)
+        case setOutputDevice(uid: String)
+        case setSystemVolume(Double)
+        case setSoundMix(SoundMix)
+        case retrySoundAccess
     }
 
     private(set) var recorded: [Action] = []
@@ -74,6 +78,15 @@ final class RecordingActions: SystemActions {
     }
     func requestNotificationAuthorization() { recorded.append(.requestNotificationAuthorization) }
     func deliver(_ alert: Alert) { recorded.append(.deliver(alert)) }
+    func setOutputDevice(uid: String) { recorded.append(.setOutputDevice(uid: uid)) }
+    func setSystemVolume(_ volume: Double) { recorded.append(.setSystemVolume(volume)) }
+    func setSoundMix(_ mix: SoundMix) { recorded.append(.setSoundMix(mix)) }
+    func retrySoundAccess() { recorded.append(.retrySoundAccess) }
+
+    /// The sound mixes applied so far.
+    var soundMixes: [SoundMix] {
+        recorded.compactMap { if case .setSoundMix(let mix) = $0 { mix } else { nil } }
+    }
 
     /// The alerts delivered so far.
     var delivered: [Alert] {

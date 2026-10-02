@@ -22,6 +22,10 @@ public final class HostSampler: SystemSampler {
     /// What needs Bluetooth read, asked on every tick; the app answers from the window and the settings.
     /// Until it's set, nothing does, and Bluetooth is never read.
     public var bluetoothDemand: @MainActor () -> BluetoothDemand = { .none }
+    private let audio: AudioMixer
+    /// What needs audio read, asked on every tick. Until it's set, nothing does, and Core Audio is never called.
+    public var soundDemand: @MainActor () -> SoundDemand = { .none }
+    private var lastSoundDemand = SoundDemand.none
     /// The latest process list with GPU and network figures added. Annotation runs only when the
     /// process list is refreshed, so readers see the same cadence and can compute their own rates.
     private var annotatedProcesses: Reading<[ProcessSample]> = .unavailable(.warmingUp)
@@ -29,8 +33,9 @@ public final class HostSampler: SystemSampler {
     /// `storageScanCache` keeps the storage scan across launches; the app passes `.standard`.
     /// `bluetoothFixture` (the `--bluetooth-fixture` development flag) reads Bluetooth devices from a saved
     /// `system_profiler SPBluetoothDataType -json` file instead, so the tab can be checked with devices this
-    /// Mac doesn't have.
-    public init(storageScanCache: StorageScanCache? = nil, bluetoothFixture: URL? = nil) {
+    /// Mac doesn't have. `audio` is shared with `WorkspaceActions`, whose per-app volume it applies.
+    public init(storageScanCache: StorageScanCache? = nil, bluetoothFixture: URL? = nil, audio: AudioMixer = AudioMixer()) {
+        self.audio = audio
         bluetooth = BluetoothReader(fixture: bluetoothFixture)
         cores = CoreLoadReader(host: host, efficiencyCores: system.efficiencyCores)
         disk = DiskReader(storageScanCache: storageScanCache)
@@ -52,7 +57,8 @@ public final class HostSampler: SystemSampler {
             battery: battery.sample(),
             thermal: thermal.sample(),
             devServers: sampleDevServers(),
-            bluetooth: sampleBluetooth()
+            bluetooth: sampleBluetooth(),
+            sound: sampleSound()
         )
     }
 
@@ -72,6 +78,16 @@ public final class HostSampler: SystemSampler {
     private func sampleBluetooth() -> Reading<BluetoothReading> {
         bluetooth.refreshIfDue(demand: bluetoothDemand())
         return bluetooth.latest()
+    }
+
+    /// The listeners keep the reading current while it's needed; a tick only copies it.
+    private func sampleSound() -> Reading<SoundReading> {
+        let demand = soundDemand()
+        if demand != lastSoundDemand {
+            lastSoundDemand = demand
+            audio.setReadingNeeded(demand == .active)
+        }
+        return demand == .active ? audio.reading() : .unavailable(.warmingUp)
     }
 
     private func sampleCPU() -> Reading<CPUUsage> {
